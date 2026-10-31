@@ -22,3 +22,8 @@ export * from "./skillsync-matches";
 export * from "./skillsync-rooms";
 export * from "./skillsync-messages";
 export * from "./skillsync-submissions";
+export * from "./skillsync-reports";
+export * from "./skillsync-ai-usage";
+export * from "./skillsync-admin-actions";
+export * from "./skillsync-suspensions";
+export * from "./skillsync-user-notices";

@@ -209,6 +209,240 @@ paths:
             application/json:
               schema:
                 $ref: "#/components/schemas/ProjectSubmission"
+  /skillsync/reports:
+    post:
+      operationId: submitSkillSyncReport
+      tags: [skillsync]
+      summary: Submit a partner or technical complaint
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/ReportInput"
+      responses:
+        "201":
+          description: Created complaint
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ReportTicket"
+  /skillsync/notices:
+    get:
+      operationId: getSkillSyncNotices
+      tags: [skillsync]
+      summary: Get unread account notices
+      responses:
+        "200":
+          description: Unread notices
+          content:
+            application/json:
+              schema:
+                type: array
+                items: { $ref: "#/components/schemas/UserNotice" }
+  /skillsync/notices/{noticeId}/read:
+    post:
+      operationId: markSkillSyncNoticeRead
+      tags: [skillsync]
+      summary: Mark an account notice as read
+      parameters:
+        - name: noticeId
+          in: path
+          required: true
+          schema: { type: string }
+      responses:
+        "204":
+          description: Notice marked read
+  /skillsync/admin/access:
+    get:
+      operationId: getSkillSyncAdminAccess
+      tags: [skillsync]
+      summary: Check whether the signed-in user is an administrator
+      responses:
+        "200":
+          description: Admin access status
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/AdminAccess" }
+  /skillsync/admin/overview:
+    get:
+      operationId: getSkillSyncAdminOverview
+      tags: [skillsync]
+      summary: Get platform analytics for administrators
+      responses:
+        "200":
+          description: Platform analytics
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/AdminOverview" }
+  /skillsync/admin/reports:
+    get:
+      operationId: listSkillSyncAdminReports
+      tags: [skillsync]
+      summary: List and filter complaints
+      parameters:
+        - name: status
+          in: query
+          required: false
+          schema:
+            type: string
+            enum: [pending, under_review, resolved]
+      responses:
+        "200":
+          description: Complaints
+          content:
+            application/json:
+              schema:
+                type: array
+                items: { $ref: "#/components/schemas/ReportTicket" }
+  /skillsync/admin/reports/{reportId}:
+    get:
+      operationId: getSkillSyncAdminReport
+      tags: [skillsync]
+      summary: Inspect a complaint and its room transcript
+      parameters:
+        - name: reportId
+          in: path
+          required: true
+          schema: { type: string }
+      responses:
+        "200":
+          description: Complaint detail
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/AdminReportDetail" }
+    patch:
+      operationId: updateSkillSyncAdminReport
+      tags: [skillsync]
+      summary: Update complaint status and admin notes
+      parameters:
+        - name: reportId
+          in: path
+          required: true
+          schema: { type: string }
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: "#/components/schemas/ReportUpdateInput" }
+      responses:
+        "200":
+          description: Updated complaint
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/ReportTicket" }
+  /skillsync/admin/users:
+    get:
+      operationId: listSkillSyncAdminUsers
+      tags: [skillsync]
+      summary: List student profiles and account status
+      responses:
+        "200":
+          description: Student profiles
+          content:
+            application/json:
+              schema:
+                type: array
+                items: { $ref: "#/components/schemas/AdminUser" }
+  /skillsync/admin/rooms:
+    get:
+      operationId: listSkillSyncAdminRooms
+      tags: [skillsync]
+      summary: List all co-learning rooms
+      responses:
+        "200":
+          description: Learning rooms
+          content:
+            application/json:
+              schema:
+                type: array
+                items: { $ref: "#/components/schemas/AdminRoom" }
+  /skillsync/admin/users/{userId}/warning:
+    post:
+      operationId: warnSkillSyncAdminUser
+      tags: [skillsync]
+      summary: Send a documented warning to a student
+      parameters:
+        - name: userId
+          in: path
+          required: true
+          schema: { type: string }
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: "#/components/schemas/WarningInput" }
+      responses:
+        "201":
+          description: Warning notice
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/AdminAction" }
+  /skillsync/admin/users/{userId}/suspension:
+    put:
+      operationId: suspendSkillSyncAdminUser
+      tags: [skillsync]
+      summary: Suspend a student account
+      parameters:
+        - name: userId
+          in: path
+          required: true
+          schema: { type: string }
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: "#/components/schemas/SuspensionInput" }
+      responses:
+        "200":
+          description: Suspension recorded
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/AdminAction" }
+    delete:
+      operationId: unsuspendSkillSyncAdminUser
+      tags: [skillsync]
+      summary: Restore a suspended account
+      parameters:
+        - name: userId
+          in: path
+          required: true
+          schema: { type: string }
+      responses:
+        "204":
+          description: Suspension removed
+  /skillsync/admin/rooms/{roomId}/unmatch:
+    post:
+      operationId: unmatchSkillSyncAdminRoom
+      tags: [skillsync]
+      summary: Unmatch a pair and preserve its transcript
+      parameters:
+        - name: roomId
+          in: path
+          required: true
+          schema: { type: string }
+      responses:
+        "200":
+          description: Pair unmatched
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/AdminAction" }
+  /skillsync/admin/rooms/{roomId}/regenerate-curriculum:
+    post:
+      operationId: regenerateSkillSyncAdminCurriculum
+      tags: [skillsync]
+      summary: Regenerate a room's curriculum
+      parameters:
+        - name: roomId
+          in: path
+          required: true
+          schema: { type: string }
+      responses:
+        "200":
+          description: New curriculum
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/CurriculumRegeneration" }
 components:
   schemas:
     HealthStatus:
@@ -280,7 +514,7 @@ components:
         partnerUserId: { type: string }
         partnerName: { type: string }
         projectTitle: { type: string }
-        status: { type: string, enum: [active, completed] }
+        status: { type: string, enum: [active, completed, unmatched] }
         progress: { type: integer, minimum: 0, maximum: 100 }
         lastMessage: { type: ["string", "null"] }
         updatedAt: { type: string, format: date-time }
@@ -340,7 +574,7 @@ components:
         partnerUserId: { type: string }
         partnerName: { type: string }
         projectTitle: { type: string }
-        status: { type: string, enum: [active, completed] }
+        status: { type: string, enum: [active, completed, unmatched] }
         progress: { type: integer, minimum: 0, maximum: 100 }
         curriculum: { $ref: "#/components/schemas/Curriculum" }
         challenge:
@@ -416,4 +650,156 @@ components:
       properties:
         title: { type: string, minLength: 1, maxLength: 120 }
         content: { type: string, minLength: 1, maxLength: 12000 }
+    ReportInput:
+      type: object
+      required: [category, summary, details]
+      properties:
+        category: { type: string, enum: [inactive_partner, inappropriate_behavior, technical_issue, other] }
+        summary: { type: string, minLength: 4, maxLength: 120 }
+        details: { type: string, minLength: 10, maxLength: 2000 }
+        reportedUserId: { type: ["string", "null"] }
+        roomId: { type: ["string", "null"] }
+    ReportTicket:
+      type: object
+      required: [id, reporterUserId, reporterName, reportedUserId, reportedName, roomId, roomTitle, category, summary, details, status, adminNotes, isDemo, createdAt, updatedAt]
+      properties:
+        id: { type: string }
+        reporterUserId: { type: string }
+        reporterName: { type: string }
+        reportedUserId: { type: ["string", "null"] }
+        reportedName: { type: ["string", "null"] }
+        roomId: { type: ["string", "null"] }
+        roomTitle: { type: ["string", "null"] }
+        category: { type: string, enum: [inactive_partner, inappropriate_behavior, technical_issue, other] }
+        summary: { type: string }
+        details: { type: string }
+        status: { type: string, enum: [pending, under_review, resolved] }
+        adminNotes: { type: ["string", "null"] }
+        isDemo: { type: boolean }
+        createdAt: { type: string, format: date-time }
+        updatedAt: { type: string, format: date-time }
+    ReportUpdateInput:
+      type: object
+      required: [status]
+      properties:
+        status: { type: string, enum: [pending, under_review, resolved] }
+        adminNotes: { type: ["string", "null"], maxLength: 2000 }
+    UserNotice:
+      type: object
+      required: [id, kind, message, createdAt]
+      properties:
+        id: { type: string }
+        kind: { type: string, enum: [warning] }
+        message: { type: string }
+        createdAt: { type: string, format: date-time }
+    AdminAccess:
+      type: object
+      required: [isAdmin, configured]
+      properties:
+        isAdmin: { type: boolean }
+        configured: { type: boolean }
+    SkillCount:
+      type: object
+      required: [skill, count]
+      properties:
+        skill: { type: string }
+        count: { type: integer }
+    ReportStatusCount:
+      type: object
+      required: [status, count]
+      properties:
+        status: { type: string, enum: [pending, under_review, resolved] }
+        count: { type: integer }
+    AdminOverviewStats:
+      type: object
+      required: [totalStudents, demoStudents, activeRooms, completedProjects, openComplaints, connectionsMade, matchAttempts, matchSuccessRate, aiActions, geminiCalls, fallbackCalls]
+      properties:
+        totalStudents: { type: integer }
+        demoStudents: { type: integer }
+        activeRooms: { type: integer }
+        completedProjects: { type: integer }
+        openComplaints: { type: integer }
+        connectionsMade: { type: integer }
+        matchAttempts: { type: integer }
+        matchSuccessRate: { type: number, minimum: 0, maximum: 100 }
+        aiActions: { type: integer }
+        geminiCalls: { type: integer }
+        fallbackCalls: { type: integer }
+    AdminOverview:
+      type: object
+      required: [stats, skillDistribution, reportStatuses, sampleDataIncluded]
+      properties:
+        stats: { $ref: "#/components/schemas/AdminOverviewStats" }
+        skillDistribution:
+          type: array
+          items: { $ref: "#/components/schemas/SkillCount" }
+        reportStatuses:
+          type: array
+          items: { $ref: "#/components/schemas/ReportStatusCount" }
+        sampleDataIncluded: { type: boolean }
+    AdminReportDetail:
+      type: object
+      required: [report, transcript]
+      properties:
+        report: { $ref: "#/components/schemas/ReportTicket" }
+        transcript:
+          type: array
+          items: { $ref: "#/components/schemas/ChatMessage" }
+    AdminUser:
+      type: object
+      required: [userId, displayName, university, teachSkill, learnSkill, isDemo, isSuspended, suspensionEndsAt, roomCount, warningCount, createdAt]
+      properties:
+        userId: { type: string }
+        displayName: { type: string }
+        university: { type: string }
+        teachSkill: { type: string }
+        learnSkill: { type: string }
+        isDemo: { type: boolean }
+        isSuspended: { type: boolean }
+        suspensionEndsAt: { type: ["string", "null"], format: date-time }
+        roomCount: { type: integer }
+        warningCount: { type: integer }
+        createdAt: { type: string, format: date-time }
+    AdminRoom:
+      type: object
+      required: [roomId, matchId, partnerNames, projectTitle, status, progress, isDemo, updatedAt]
+      properties:
+        roomId: { type: string }
+        matchId: { type: string }
+        partnerNames:
+          type: array
+          items: { type: string }
+        projectTitle: { type: string }
+        status: { type: string, enum: [active, completed, unmatched] }
+        progress: { type: integer, minimum: 0, maximum: 100 }
+        isDemo: { type: boolean }
+        updatedAt: { type: string, format: date-time }
+    WarningInput:
+      type: object
+      required: [message]
+      properties:
+        message: { type: string, minLength: 4, maxLength: 1000 }
+    SuspensionInput:
+      type: object
+      required: [reason, durationDays]
+      properties:
+        reason: { type: string, minLength: 4, maxLength: 1000 }
+        durationDays: { type: ["integer", "null"], minimum: 1, maximum: 3650 }
+    AdminAction:
+      type: object
+      required: [id, action, targetUserId, roomId, description, createdAt]
+      properties:
+        id: { type: string }
+        action: { type: string }
+        targetUserId: { type: ["string", "null"] }
+        roomId: { type: ["string", "null"] }
+        description: { type: string }
+        createdAt: { type: string, format: date-time }
+    CurriculumRegeneration:
+      type: object
+      required: [roomId, curriculum, aiPowered]
+      properties:
+        roomId: { type: string }
+        curriculum: { $ref: "#/components/schemas/Curriculum" }
+        aiPowered: { type: boolean }
 
