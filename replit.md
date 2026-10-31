@@ -1,15 +1,18 @@
-# [Project name]
+# SkillSync AI
 
-_Replace the heading above with the project's name, and this line with one sentence describing what this app does for users._
+A peer-to-peer skill-sharing platform where university students teach each other, learn in shared rooms, and build projects with AI guidance.
 
 ## Run & Operate
 
 - `pnpm --filter @workspace/api-server run dev` — run the API server (port 5000)
+- `pnpm --filter @workspace/skillsync-ai run dev` — run the SkillSync AI web app
 - `pnpm run typecheck` — full typecheck across all packages
 - `pnpm run build` — typecheck + build all packages
 - `pnpm --filter @workspace/api-spec run codegen` — regenerate API hooks and Zod schemas from the OpenAPI spec
 - `pnpm --filter @workspace/db run push` — push DB schema changes (dev only)
-- Required env: `DATABASE_URL` — Postgres connection string
+- Required env: `DATABASE_URL` — provisioned PostgreSQL connection
+- Auth env: Clerk keys are provisioned by Replit's managed Clerk setup
+- Optional env: `GEMINI_API_KEY` — enables live Gemini 2.5 Flash matching, room moderation, challenge generation, and project evaluation; deterministic demo behavior is used when unset
 
 ## Stack
 
@@ -22,23 +25,31 @@ _Replace the heading above with the project's name, and this line with one sente
 
 ## Where things live
 
-_Populate as you build — short repo map plus pointers to the source-of-truth file for DB schema, API contracts, theme files, etc._
+- `artifacts/skillsync-ai` — React + Vite application and student experience
+- `artifacts/api-server` — Express API, Clerk middleware, and SkillSync routes
+- `lib/api-spec/openapi.yaml` — API source of truth
+- `lib/db/src/schema/` — PostgreSQL schema
+- `lib/api-client-react` and `lib/api-zod` — generated client hooks and request/response validation
 
 ## Architecture decisions
 
-_Populate as you build — non-obvious choices a reader couldn't infer from the code (3-5 bullets)._
+- Clerk owns sign-in; API routes use Clerk's session cookie and profiles are keyed by Clerk user ID.
+- The shared PostgreSQL database stores profiles, matches, learning rooms, messages, and evaluations.
+- Gemini is accessed only by the server. Keep `GEMINI_API_KEY` in Replit Secrets; never expose it to the browser.
+- OpenAPI is the contract source; regenerate client hooks and Zod schemas after contract changes.
 
 ## Product
 
-_Describe the high-level user-facing capabilities of this app once they exist._
+Students create teach/learn profiles, discover complementary peers, open shared learning rooms, follow a joint mini-project curriculum, chat with periodic refresh, request daily challenges, and submit work for technical and communication feedback.
 
 ## User preferences
 
-_Populate as you build — explicit user instructions worth remembering across sessions._
+The app should run without a Gemini key; AI-dependent actions have clearly identified deterministic demo behavior until the key is configured.
 
 ## Gotchas
 
-_Populate as you build — sharp edges, "always run X before Y" rules._
+- All `/api/skillsync/*` routes require an authenticated Clerk session.
+- After changing `lib/api-spec/openapi.yaml`, run API code generation before typechecking packages that consume generated schemas.
 
 ## Pointers
 

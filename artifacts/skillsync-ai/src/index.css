@@ -1,0 +1,104 @@
+@import url('https://fonts.googleapis.com/css2?family=DM+Sans:wght@400;500;600;700&family=Manrope:wght@400;500;600;700;800&family=Space+Mono:wght@400;700&display=swap');
+@layer theme, base, clerk, components, utilities;
+@import 'tailwindcss';
+@import '@clerk/themes/shadcn.css';
+@import 'tw-animate-css';
+@import './styles.css';
+@plugin "@tailwindcss/typography";
+@custom-variant dark (&:is(.dark *));
+
+@theme inline {
+  --color-background: hsl(var(--background));
+  --color-foreground: hsl(var(--foreground));
+  --color-border: hsl(var(--border));
+  --color-input: hsl(var(--input));
+  --color-ring: hsl(var(--ring));
+  --color-card: hsl(var(--card));
+  --color-card-foreground: hsl(var(--card-foreground));
+  --color-primary: hsl(var(--primary));
+  --color-primary-foreground: hsl(var(--primary-foreground));
+  --color-secondary: hsl(var(--secondary));
+  --color-secondary-foreground: hsl(var(--secondary-foreground));
+  --color-muted: hsl(var(--muted));
+  --color-muted-foreground: hsl(var(--muted-foreground));
+  --color-accent: hsl(var(--accent));
+  --color-accent-foreground: hsl(var(--accent-foreground));
+  --color-destructive: hsl(var(--destructive));
+  --color-destructive-foreground: hsl(var(--destructive-foreground));
+  --font-sans: var(--app-font-sans);
+  --font-serif: var(--app-font-serif);
+  --font-mono: var(--app-font-mono);
+  --radius-sm: calc(var(--radius) - 4px);
+  --radius-md: calc(var(--radius) - 2px);
+  --radius-lg: var(--radius);
+  --radius-xl: calc(var(--radius) + 4px);
+}
+
+:root {
+  --background: 43 39% 96%;
+  --foreground: 167 25% 17%;
+  --border: 43 21% 86%;
+  --input: 43 21% 86%;
+  --card: 43 38% 99%;
+  --card-foreground: 167 25% 17%;
+  --primary: 160 35% 31%;
+  --primary-foreground: 43 39% 96%;
+  --secondary: 38 45% 88%;
+  --secondary-foreground: 167 25% 17%;
+  --muted: 42 26% 91%;
+  --muted-foreground: 164 10% 44%;
+  --accent: 18 71% 68%;
+  --accent-foreground: 167 25% 17%;
+  --destructive: 4 60% 50%;
+  --destructive-foreground: 0 0% 100%;
+  --ring: 160 35% 31%;
+  --app-font-sans: 'DM Sans', sans-serif;
+  --app-font-serif: 'Manrope', sans-serif;
+  --app-font-mono: 'Space Mono', monospace;
+  --radius: 1rem;
+  --shadow-sm: 0 4px 14px rgba(39, 67, 56, .055);
+  --shadow-md: 0 18px 55px rgba(39, 67, 56, .1);
+  --sidebar: 162 27% 21%;
+  --sidebar-foreground: 43 35% 93%;
+}
+
+.dark {
+  --background: 165 22% 11%;
+  --foreground: 43 32% 93%;
+  --border: 163 13% 25%;
+  --input: 163 13% 25%;
+  --card: 164 20% 15%;
+  --card-foreground: 43 32% 93%;
+  --primary: 155 39% 57%;
+  --primary-foreground: 164 22% 12%;
+  --secondary: 162 15% 22%;
+  --secondary-foreground: 43 32% 93%;
+  --muted: 163 15% 20%;
+  --muted-foreground: 158 10% 65%;
+  --accent: 18 66% 66%;
+  --accent-foreground: 164 22% 12%;
+  --destructive: 4 60% 55%;
+  --destructive-foreground: 0 0% 100%;
+  --ring: 155 39% 57%;
+}
+
+* { box-sizing: border-box; }
+html { scroll-behavior: smooth; }
+body { margin: 0; background: hsl(var(--background)); color: hsl(var(--foreground)); font-family: var(--app-font-sans); -webkit-font-smoothing: antialiased; }
+button, input, textarea { font: inherit; }
+button { cursor: pointer; }
+a { color: inherit; text-decoration: none; }
+::selection { background: #d9e7dc; color: #203c32; }
+
+.noise::after { content: ''; position: fixed; pointer-events: none; inset: 0; opacity: .15; z-index: 20; background-image: url("data:image/svg+xml,%3Csvg viewBox='0 0 180 180' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='.9' numOctaves='3' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)' opacity='.12'/%3E%3C/svg%3E"); }
+.display { font-family: var(--app-font-serif); letter-spacing: -.055em; }
+.mono { font-family: var(--app-font-mono); }
+.page-enter { animation: enter .45s ease both; }
+@keyframes enter { from { opacity: 0; transform: translateY(10px); } to { opacity: 1; transform: translateY(0); } }
+.soft-grid { background-image: linear-gradient(rgba(43, 78, 62, .055) 1px, transparent 1px), linear-gradient(90deg, rgba(43, 78, 62, .055) 1px, transparent 1px); background-size: 28px 28px; }
+.cl-formFieldInput::placeholder { color: #89978d; opacity: 1; }
+.cl-cardBox { box-shadow: 0 24px 72px rgba(34, 61, 49, .13); }
+
+@media (prefers-reduced-motion: reduce) {
+  *, *::before, *::after { animation-duration: .01ms !important; animation-iteration-count: 1 !important; scroll-behavior: auto !important; }
+}

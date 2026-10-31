@@ -1,0 +1,6 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="180" height="44" viewBox="0 0 180 44" fill="none">
+  <rect x="2" y="5" width="34" height="34" rx="11" fill="#406F5B" transform="rotate(-7 2 5)"/>
+  <path d="M15 15v14M23 12v20" stroke="#F4E7CA" stroke-width="4" stroke-linecap="round"/>
+  <text x="45" y="31" fill="#294238" font-family="DM Sans, sans-serif" font-size="25" font-weight="700" letter-spacing="-1.8">skillsync</text>
+  <circle cx="154" cy="29" r="2.5" fill="#DC9775"/>
+</svg>

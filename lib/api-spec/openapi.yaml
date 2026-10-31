@@ -10,6 +10,8 @@ servers:
 tags:
   - name: health
     description: Health operations
+  - name: skillsync
+    description: SkillSync AI platform operations
 paths:
   /healthz:
     get:
@@ -24,6 +26,189 @@ paths:
             application/json:
               schema:
                 $ref: "#/components/schemas/HealthStatus"
+  /skillsync/dashboard:
+    get:
+      operationId: getSkillSyncDashboard
+      tags: [skillsync]
+      summary: Get the signed-in user's dashboard
+      responses:
+        "200":
+          description: Dashboard overview
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Dashboard"
+  /skillsync/profile:
+    get:
+      operationId: getSkillSyncProfile
+      tags: [skillsync]
+      summary: Get the signed-in user's profile
+      responses:
+        "200":
+          description: User profile, or null when onboarding is incomplete
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ProfileEnvelope"
+    put:
+      operationId: saveSkillSyncProfile
+      tags: [skillsync]
+      summary: Create or update the signed-in user's profile
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/ProfileInput"
+      responses:
+        "200":
+          description: Saved profile
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/UserProfile"
+  /skillsync/matches:
+    get:
+      operationId: getSkillSyncMatches
+      tags: [skillsync]
+      summary: Get compatible students for the signed-in user
+      responses:
+        "200":
+          description: Compatible student profiles
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/MatchCandidate"
+  /skillsync/matches/recommendations:
+    post:
+      operationId: generateSkillSyncRecommendations
+      tags: [skillsync]
+      summary: Generate AI-powered complementary skill recommendations
+      responses:
+        "200":
+          description: Match recommendations
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/RecommendationResponse"
+  /skillsync/matches/connect:
+    post:
+      operationId: connectSkillSyncMatch
+      tags: [skillsync]
+      summary: Connect to a student and create a shared learning room
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/ConnectInput"
+      responses:
+        "201":
+          description: Created learning room
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/RoomSummary"
+  /skillsync/rooms:
+    get:
+      operationId: getSkillSyncRooms
+      tags: [skillsync]
+      summary: List the signed-in user's learning rooms
+      responses:
+        "200":
+          description: Learning rooms
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/RoomSummary"
+  /skillsync/rooms/{roomId}:
+    get:
+      operationId: getSkillSyncRoom
+      tags: [skillsync]
+      summary: Get a learning room, curriculum, messages, and submissions
+      parameters:
+        - name: roomId
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        "200":
+          description: Learning room detail
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/LearningRoom"
+  /skillsync/rooms/{roomId}/messages:
+    post:
+      operationId: sendSkillSyncMessage
+      tags: [skillsync]
+      summary: Send a chat message and receive moderator guidance
+      parameters:
+        - name: roomId
+          in: path
+          required: true
+          schema:
+            type: string
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/ChatMessageInput"
+      responses:
+        "201":
+          description: Saved message and optional AI moderator response
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ChatSendResult"
+  /skillsync/rooms/{roomId}/daily-challenge:
+    post:
+      operationId: generateSkillSyncDailyChallenge
+      tags: [skillsync]
+      summary: Generate the room's next daily challenge
+      parameters:
+        - name: roomId
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        "200":
+          description: Daily challenge
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/DailyChallenge"
+  /skillsync/rooms/{roomId}/submissions:
+    post:
+      operationId: submitSkillSyncProject
+      tags: [skillsync]
+      summary: Submit a joint project for AI evaluation
+      parameters:
+        - name: roomId
+          in: path
+          required: true
+          schema:
+            type: string
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/SubmissionInput"
+      responses:
+        "201":
+          description: Project evaluation
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ProjectSubmission"
 components:
   schemas:
     HealthStatus:
@@ -33,4 +218,202 @@ components:
           type: string
       required:
         - status
+    ProfileEnvelope:
+      type: object
+      required: [profile]
+      properties:
+        profile:
+          oneOf:
+            - $ref: "#/components/schemas/UserProfile"
+            - type: "null"
+    UserProfile:
+      type: object
+      required: [userId, displayName, university, teachSkill, learnSkill, bio, createdAt, updatedAt]
+      properties:
+        userId: { type: string }
+        displayName: { type: string }
+        university: { type: string }
+        teachSkill: { type: string }
+        learnSkill: { type: string }
+        bio: { type: string }
+        createdAt: { type: string, format: date-time }
+        updatedAt: { type: string, format: date-time }
+    ProfileInput:
+      type: object
+      required: [displayName, university, teachSkill, learnSkill, bio]
+      properties:
+        displayName: { type: string, minLength: 1, maxLength: 80 }
+        university: { type: string, minLength: 1, maxLength: 120 }
+        teachSkill: { type: string, minLength: 1, maxLength: 80 }
+        learnSkill: { type: string, minLength: 1, maxLength: 80 }
+        bio: { type: string, maxLength: 500 }
+    MatchCandidate:
+      type: object
+      required: [userId, displayName, university, teachSkill, learnSkill, bio, compatibilityScore, whyMatch]
+      properties:
+        userId: { type: string }
+        displayName: { type: string }
+        university: { type: string }
+        teachSkill: { type: string }
+        learnSkill: { type: string }
+        bio: { type: string }
+        compatibilityScore: { type: integer, minimum: 0, maximum: 100 }
+        whyMatch: { type: string }
+    RecommendationResponse:
+      type: object
+      required: [recommendations, aiPowered]
+      properties:
+        recommendations:
+          type: array
+          items: { $ref: "#/components/schemas/MatchCandidate" }
+        aiPowered: { type: boolean }
+    ConnectInput:
+      type: object
+      required: [partnerUserId]
+      properties:
+        partnerUserId: { type: string }
+    RoomSummary:
+      type: object
+      required: [roomId, partnerUserId, partnerName, projectTitle, status, progress, lastMessage, updatedAt]
+      properties:
+        roomId: { type: string }
+        partnerUserId: { type: string }
+        partnerName: { type: string }
+        projectTitle: { type: string }
+        status: { type: string, enum: [active, completed] }
+        progress: { type: integer, minimum: 0, maximum: 100 }
+        lastMessage: { type: ["string", "null"] }
+        updatedAt: { type: string, format: date-time }
+    Curriculum:
+      type: object
+      required: [title, description, goal, stages]
+      properties:
+        title: { type: string }
+        description: { type: string }
+        goal: { type: string }
+        stages:
+          type: array
+          items: { type: string }
+    ChatMessage:
+      type: object
+      required: [id, roomId, senderId, senderName, senderType, content, createdAt]
+      properties:
+        id: { type: string }
+        roomId: { type: string }
+        senderId: { type: ["string", "null"] }
+        senderName: { type: string }
+        senderType: { type: string, enum: [student, moderator] }
+        content: { type: string }
+        createdAt: { type: string, format: date-time }
+    Challenge:
+      type: object
+      required: [id, prompt, hint, dayNumber, completed, aiPowered]
+      properties:
+        id: { type: string }
+        prompt: { type: string }
+        hint: { type: string }
+        dayNumber: { type: integer }
+        completed: { type: boolean }
+        aiPowered: { type: boolean }
+    ProjectSubmission:
+      type: object
+      required: [id, title, content, technicalScore, communicationScore, overallScore, technicalFeedback, communicationFeedback, nextSteps, submittedAt, aiPowered]
+      properties:
+        id: { type: string }
+        title: { type: string }
+        content: { type: string }
+        technicalScore: { type: integer, minimum: 0, maximum: 100 }
+        communicationScore: { type: integer, minimum: 0, maximum: 100 }
+        overallScore: { type: integer, minimum: 0, maximum: 100 }
+        technicalFeedback: { type: string }
+        communicationFeedback: { type: string }
+        nextSteps:
+          type: array
+          items: { type: string }
+        submittedAt: { type: string, format: date-time }
+        aiPowered: { type: boolean }
+    LearningRoom:
+      type: object
+      required: [roomId, partnerUserId, partnerName, projectTitle, status, progress, curriculum, challenge, messages, submissions, updatedAt]
+      properties:
+        roomId: { type: string }
+        partnerUserId: { type: string }
+        partnerName: { type: string }
+        projectTitle: { type: string }
+        status: { type: string, enum: [active, completed] }
+        progress: { type: integer, minimum: 0, maximum: 100 }
+        curriculum: { $ref: "#/components/schemas/Curriculum" }
+        challenge:
+          oneOf:
+            - $ref: "#/components/schemas/Challenge"
+            - type: "null"
+        messages:
+          type: array
+          items: { $ref: "#/components/schemas/ChatMessage" }
+        submissions:
+          type: array
+          items: { $ref: "#/components/schemas/ProjectSubmission" }
+        updatedAt: { type: string, format: date-time }
+    DashboardStats:
+      type: object
+      required: [activeRooms, connectionsMade, projectsSubmitted]
+      properties:
+        activeRooms: { type: integer }
+        connectionsMade: { type: integer }
+        projectsSubmitted: { type: integer }
+    ActivityItem:
+      type: object
+      required: [id, label, detail, createdAt]
+      properties:
+        id: { type: string }
+        label: { type: string }
+        detail: { type: string }
+        createdAt: { type: string, format: date-time }
+    Dashboard:
+      type: object
+      required: [profileComplete, aiEnabled, stats, recommendations, rooms, recentActivity]
+      properties:
+        profileComplete: { type: boolean }
+        aiEnabled: { type: boolean }
+        stats: { $ref: "#/components/schemas/DashboardStats" }
+        recommendations:
+          type: array
+          items: { $ref: "#/components/schemas/MatchCandidate" }
+        rooms:
+          type: array
+          items: { $ref: "#/components/schemas/RoomSummary" }
+        recentActivity:
+          type: array
+          items: { $ref: "#/components/schemas/ActivityItem" }
+    ChatMessageInput:
+      type: object
+      required: [content]
+      properties:
+        content: { type: string, minLength: 1, maxLength: 4000 }
+    ChatSendResult:
+      type: object
+      required: [message, moderatorMessage, aiPowered]
+      properties:
+        message: { $ref: "#/components/schemas/ChatMessage" }
+        moderatorMessage:
+          oneOf:
+            - $ref: "#/components/schemas/ChatMessage"
+            - type: "null"
+        aiPowered: { type: boolean }
+    DailyChallenge:
+      type: object
+      required: [id, prompt, hint, dayNumber, completed, aiPowered]
+      properties:
+        id: { type: string }
+        prompt: { type: string }
+        hint: { type: string }
+        dayNumber: { type: integer }
+        completed: { type: boolean }
+        aiPowered: { type: boolean }
+    SubmissionInput:
+      type: object
+      required: [title, content]
+      properties:
+        title: { type: string, minLength: 1, maxLength: 120 }
+        content: { type: string, minLength: 1, maxLength: 12000 }
 

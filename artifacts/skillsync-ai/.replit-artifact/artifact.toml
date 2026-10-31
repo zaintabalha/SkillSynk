@@ -1,0 +1,28 @@
+kind = "web"
+previewPath = "/"
+title = "SkillSync AI"
+description = "A collaborative skill-sharing platform where university students and graduates teach each other, meet through complementary skill matches, learn in AI-guided rooms, and submit joint projects for feedback."
+version = "1.0.0"
+id = "artifacts/skillsync-ai"
+router = "path"
+
+[[services]]
+name = "web"
+paths = [ "/" ]
+localPort = 23541
+
+[services.development]
+run = "pnpm --filter @workspace/skillsync-ai run dev"
+
+[services.production]
+build = [ "pnpm", "--filter", "@workspace/skillsync-ai", "run", "build" ]
+serve = "static"
+publicDir = "artifacts/skillsync-ai/dist/public"
+
+[[services.production.rewrites]]
+from = "/*"
+to = "/index.html"
+
+[services.env]
+PORT = "23541"
+BASE_PATH = "/"

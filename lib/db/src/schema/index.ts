@@ -17,4 +17,8 @@
 //   export type InsertPost = z.infer<typeof insertPostSchema>;
 //   export type Post = typeof postsTable.$inferSelect;
 
-export {}
+export * from "./skillsync-profiles";
+export * from "./skillsync-matches";
+export * from "./skillsync-rooms";
+export * from "./skillsync-messages";
+export * from "./skillsync-submissions";

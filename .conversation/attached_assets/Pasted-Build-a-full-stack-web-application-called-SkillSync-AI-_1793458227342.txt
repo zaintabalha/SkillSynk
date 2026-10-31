@@ -1,0 +1,23 @@
+Build a full-stack web application called "SkillSync AI" - a peer-to-peer collaborative skill-sharing platform for university students and graduates, heavily powered by Google Gemini AI.
+
+### Core Architecture & Features:
+1. **User Profile & Skills Input:** 
+   - Users sign up and specify what skill they CAN teach (e.g., Programming) and what skill they WANT to learn (e.g., Foreign Languages).
+2. **AI-Powered Smart Matching (The Matchmaker):**
+   - Instead of a random dating-style swipe, use Google Gemini API to analyze users' skills and match complementary pairs (e.g., Programmer + Linguist).
+3. **The Co-Learning AI Room (The Core Feature):**
+   - Once matched, a shared collaborative room is created for the pair.
+   - **The AI Moderator (Gemini API):** An embedded AI agent inside the chat that acts as an academic third party. It:
+     - Generates a **Custom Co-Learning Curriculum** (a joint mini-project merging both fields, e.g., building a translation app together).
+     - Sends daily interactive challenges/questions to the pair.
+     - Automatically moderates and corrects misunderstandings if one user explains a concept incorrectly.
+4. **Smart Output Evaluation:**
+   - A section where they submit their joint project output, and Gemini evaluates it, giving feedback on both the code/technical part and the linguistic/soft-skill part.
+
+### Tech Stack:
+- Frontend: Clean, modern, minimalist UI (Tailwind CSS) with real-time chat interface and project dashboard.
+- Backend: Node.js / Express (or Next.js API routes).
+- AI Integration: `@google/genai` SDK using `gemini-2.5-flash` model for generating matches, curricula, moderation, and evaluations.
+- Database: Simple lightweight database (Prisma + SQLite or in-memory/JSON for easy setup on Replit) to store users, matches, and chat histories.
+
+Please set up the entire project structure, install dependencies, integrate the Google Gemini API (leave a placeholder process.env.GEMINI_API_KEY), and make sure the app runs smoothly out of the box.
