@@ -1,0 +1,1 @@
+- [AI admission scope](ai-admission.md) — limits protect authenticated callers, not simulated partners; process-local budgets need shared storage before scaling out.

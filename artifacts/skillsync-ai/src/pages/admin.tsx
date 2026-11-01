@@ -12,6 +12,7 @@ import type { AdminRoom, ListSkillSyncAdminReportsStatus, ReportUpdateInputStatu
 import { Link } from 'wouter';
 import { Brand, EmptyState, ErrorState, LanguageToggle, LoadingScreen, Modal, PortalSwitcher, StatusPill, initials, useAdminAccess } from '@/components/shell';
 import { formatDate, formatTime, useI18n, type DictKey } from '@/lib/i18n';
+import { aiErrorMessage } from '@/lib/ai-error';
 
 const MIN = 60_000;
 const intervals = [{ v: 0, k: 'autoOff' }, { v: 5 * MIN, k: 'every5' }, { v: 15 * MIN, k: 'every15' }, { v: 60 * MIN, k: 'every60' }] as const;
@@ -258,7 +259,7 @@ function RoomsTable({ refetchInterval }: RI) {
       <td><span className="cell-progress"><span className="progress-track"><i style={{ width: `${r.progress}%` }} /></span><span className="mono">{r.progress}%</span></span></td><td>{formatDate(r.updatedAt, locale, t('recently'))}</td>
       <td className="no-print"><span className="row-actions"><button onClick={() => regen.mutate({ roomId: r.roomId }, { onSuccess: () => { setRegenDone(r.roomId); invalidate(); } })} disabled={regen.isPending || r.status === 'unmatched'} data-testid={`button-regen-${r.roomId}`}>{regen.isPending && regen.variables?.roomId === r.roomId ? <LoaderCircle size={13} className="spin" /> : regenDone === r.roomId ? <Check size={13} /> : <WandSparkles size={13} />} {regenDone === r.roomId ? t('curriculumRegenerated') : t('regenerate')}</button><button className="danger-text" onClick={() => setConfirm(r)} disabled={r.status === 'unmatched'} data-testid={`button-unmatch-${r.roomId}`}><Unlink size={13} /> {t('unmatch')}</button></span></td>
     </tr>)}</tbody></table></div>}
-    {(regen.isError) && <p className="inline-error">{t('actionError')}</p>}
+    {(regen.isError) && <p className="inline-error">{aiErrorMessage(regen.error, t('actionError'))}</p>}
     {confirm && <Modal title={t('unmatch')} detail={t('unmatchConfirm', { names: confirm.partnerNames.join(' & ') })} onClose={() => setConfirm(null)}><div className="modal-actions">{unmatch.isError && <span className="inline-error">{t('actionError')}</span>}<button className="quiet-button" onClick={() => setConfirm(null)}><RotateCcw size={13} /> {t('cancel')}</button><button className="button danger" disabled={unmatch.isPending} onClick={() => unmatch.mutate({ roomId: confirm.roomId }, { onSuccess: () => { invalidate(); setConfirm(null); } })} data-testid="button-confirm-unmatch">{unmatch.isPending && <LoaderCircle size={14} className="spin" />}{t('confirmUnmatch')}</button></div></Modal>}
   </section>;
 }

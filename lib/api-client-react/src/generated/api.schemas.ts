@@ -5,6 +5,21 @@
  * API specification
  * OpenAPI spec version: 0.1.0
  */
+export type AiLimitResponseCode = typeof AiLimitResponseCode[keyof typeof AiLimitResponseCode];
+
+
+export const AiLimitResponseCode = {
+  AI_LIMIT_EXCEEDED: 'AI_LIMIT_EXCEEDED',
+} as const;
+
+export interface AiLimitResponse {
+  /** Retry guidance in English and Arabic. */
+  error: string;
+  code: AiLimitResponseCode;
+  /** @minimum 1 */
+  retryAfterSeconds: number;
+}
+
 export interface HealthStatus {
   status: string;
 }
@@ -606,6 +621,11 @@ export interface CurriculumRegeneration {
   curriculum: Curriculum;
   aiPowered: boolean;
 }
+
+/**
+ * AI rate or concurrency limit reached. Ordinary partner chat remains available.
+ */
+export type AiLimitedResponse = AiLimitResponse;
 
 export type ListSkillSyncAdminReportsParams = {
 status?: ListSkillSyncAdminReportsStatus;

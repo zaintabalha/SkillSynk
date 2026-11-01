@@ -11,6 +11,7 @@ import type { MatchCandidate, ProfileInput, RoomSummary } from '@workspace/api-c
 import { Link, useLocation } from 'wouter';
 import { AppShell, EmptyState, ErrorState, LoadingScreen, SectionHeader, StatusPill, initials } from '@/components/shell';
 import { formatDate, useI18n } from '@/lib/i18n';
+import { aiErrorMessage } from '@/lib/ai-error';
 
 export function DashboardPage() {
   const query = useGetSkillSyncDashboard();
@@ -111,13 +112,14 @@ export function MatchesPage() {
   return <AppShell active="/matches"><div className="page-enter">
     <SectionHeader eyebrow={t('matchesEyebrow')} title={t('matchesTitle')} detail={t('matchesDetail')} action={<button className="button button-secondary" onClick={() => generate.mutate(undefined, { onSuccess: () => client.invalidateQueries({ queryKey: getGetSkillSyncMatchesQueryKey() }) })} disabled={generate.isPending} data-testid="button-refresh-matches">{generate.isPending ? <LoaderCircle className="spin" size={15} /> : <WandSparkles size={15} />}{generate.isPending ? t('lookingAround') : t('findFresh')}</button>} />
     <div className="match-intro-strip"><div className="match-intro-icon"><HeartHandshake size={21} /></div><div><b>{t('matchIntroTitle')}</b><span>{t('matchIntroDetail')}</span></div><Plus className="intro-star" size={20} /></div>
+    {generate.isError && <p className="inline-error">{aiErrorMessage(generate.error, t('actionError'))}</p>}
     {query.isLoading && !generate.data ? <div className="match-grid">{[1, 2, 3, 4].map((i) => <div className="skeleton match-skeleton" key={i} />)}</div> : query.isError && !generate.data ? <ErrorState onRetry={() => query.refetch()} /> : recommendations.length ? <div className="match-grid">{recommendations.map((c, index) => <article className={`match-card ${index === 0 ? 'match-card-lead' : ''}`} key={c.userId} data-testid={`card-match-${c.userId}`}>
       <div className="match-card-top"><div className="match-avatar">{initials(c.displayName)}</div><div className="match-score"><span>{t('goodFit')}</span><b dir="ltr">{c.compatibilityScore}<small>%</small></b></div></div>
       <div className="match-name" dir="auto">{c.displayName}</div><div className="match-campus"><GraduationCap size={14} /> <span dir="auto">{c.university}</span></div>
       <div className="exchange-pair"><div><small>{t('theyShare')}</small><b dir="auto">{c.teachSkill}</b></div><ArrowLeftRight size={16} className="exchange-arrow" /><div><small>{t('theyLearn')}</small><b dir="auto">{c.learnSkill}</b></div></div>
       <p className="match-bio" dir="auto">{c.bio}</p><div className="why-match"><Sparkles size={14} /><span dir="auto">{c.whyMatch}</span></div>
       <button className="button match-action" onClick={() => startRoom(c)} disabled={connect.isPending} data-testid={`button-start-room-${c.userId}`}>{connectingId === c.userId ? <LoaderCircle className="spin" size={16} /> : <MessageCircle size={16} />}{connectingId === c.userId ? t('openingRoom') : t('startRoom')} <ArrowRight size={15} className="flip-rtl" /></button>
-      {errorId === c.userId && <p className="inline-error">{t('roomOpenError')}</p>}
+      {errorId === c.userId && <p className="inline-error">{aiErrorMessage(connect.error, t('roomOpenError'))}</p>}
     </article>)}</div> : <EmptyState title={t('noMatchesTitle')} detail={t('noMatchesDetail')} action={<Link href="/profile" className="button button-secondary">{t('setupProfile')} <ArrowRight size={15} className="flip-rtl" /></Link>} />}
   </div></AppShell>;
 }

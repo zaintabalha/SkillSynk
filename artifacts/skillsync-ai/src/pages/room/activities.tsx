@@ -1,3 +1,4 @@
+import { aiErrorMessage } from '@/lib/ai-error';
 import { useEffect, useState, type FormEvent } from 'react';
 import { useQueryClient } from '@tanstack/react-query';
 import { Check, CircleDashed, Code2, Languages, Layers, ListChecks, LoaderCircle, RotateCcw, Sparkles, WandSparkles, X } from 'lucide-react';
@@ -37,7 +38,7 @@ export function ActivitiesTab({ room, actingUserId, selectedId, onSelect }: Prop
         <div className="kind-switch">{(['quiz', 'flashcards', 'simulator'] as const).map((k) => { const M = kindMeta[k]; return <button type="button" key={k} className={kind === k ? 'kind-on' : ''} onClick={() => setKind(k)} data-testid={`button-kind-${k}`}><M.icon size={13} />{t(M.label)}</button>; })}</div>
         <input value={prompt} onChange={(e) => setPrompt(e.target.value)} placeholder={t('activityPromptPh')} maxLength={300} dir="auto" data-testid="input-activity-prompt" />
         <button className="button button-small" disabled={!prompt.trim() || generate.isPending} data-testid="button-generate-activity">{generate.isPending ? <LoaderCircle size={14} className="spin" /> : <WandSparkles size={14} />}{generate.isPending ? t('generating') : t('generateActivity')}</button>
-        {generate.isError && <p className="inline-error">{t('activityError')}</p>}
+        {generate.isError && <p className="inline-error">{aiErrorMessage(generate.error, t('activityError'))}</p>}
       </form>
       <div className="activity-items">{activities.map((a) => { const M = kindMeta[a.kind] || kindMeta.quiz; return <button key={a.id} className={`activity-pick ${a.id === selectedId ? 'pick-on' : ''}`} onClick={() => onSelect(a.id)} data-testid={`button-activity-${a.id}`}><span className="pick-icon"><M.icon size={15} /></span><span className="pick-body"><b dir="auto">{a.title}</b><small>{t(M.label)} · {t('attemptsCount', { n: a.attempts.length })}</small></span></button>; })}</div>
     </aside>

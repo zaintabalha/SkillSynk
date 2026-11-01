@@ -11,6 +11,8 @@ import {
 import interactionRouter, { explicitlyInvokesAi, requestedActivity } from "../routes/skillsync-room-interactions";
 import { isGeminiEnabled } from "../lib/skillsync-ai";
 import type { ChatSendResult, SharedActivity, ActivityAttempt } from "@workspace/api-zod";
+import "./ai-limits.test";
+import { aiLimitErrorHandler, withAiBudget } from "../lib/skillsync-ai-limits";
 
 test("partner chat, shared activities, and simulation permission boundaries", async () => {
   assert.equal(explicitlyInvokesAi("A normal conversation about AI"), false);
@@ -30,6 +32,7 @@ test("partner chat, shared activities, and simulation permission boundaries", as
   // Test-only authentication fixture; this harness is not imported by the running app.
   app.use((_req, res, next) => { res.locals.userId = actingUser; next(); });
   app.use(interactionRouter);
+  app.use(aiLimitErrorHandler);
   const server = app.listen(0);
   await new Promise<void>((resolve) => server.on("listening", resolve));
   const address = server.address() as { port: number };
@@ -38,7 +41,7 @@ test("partner chat, shared activities, and simulation permission boundaries", as
       method: body === undefined ? "GET" : "POST", headers: { "Content-Type": "application/json" },
       body: body === undefined ? undefined : JSON.stringify(body),
     });
-    return { status: response.status, body: await response.json() as T };
+    return { status: response.status, headers: response.headers, body: await response.json() as T };
   };
   try {
     await db.insert(profiles).values(ids.map((userId, i) => ({ userId, displayName: `Test ${i}`, university: "Test university", teachSkill: "Testing", learnSkill: "Design", bio: "" })));
@@ -59,6 +62,26 @@ test("partner chat, shared activities, and simulation permission boundaries", as
     assert.equal(simulated.body.message.senderId, ids[1]);
     assert.equal(simulated.body.assistantMessage, null);
     assert.equal((await request("/messages", { content: "Invalid sender", simulatedUserId: "unrelated-student" })).status, 403);
+    // Occupy the authenticated user's slot, not the simulated student's slot.
+    await withAiBudget(async () => {
+      const before = (await db.select().from(messages).where(eq(messages.roomId, id))).length;
+      for (const [path, body] of [
+        ["/messages", { content: "@AI explain", simulatedUserId: ids[0] }],
+        ["/messages", { content: "@SkillSync اشرح", simulatedUserId: ids[1] }],
+        ["/messages", { content: "Verify", replyToMessageId: simulated.body.message.id }],
+        ["/ai-messages", { content: "Explain" }],
+        ["/activities", { kind: "quiz", prompt: "Practice" }],
+      ] as const) {
+        const blocked = await request<{ error: string; code: string; retryAfterSeconds: number }>(path, body);
+        assert.equal(blocked.status, 429);
+        assert.equal(blocked.body.code, "AI_LIMIT_EXCEEDED");
+        assert.match(blocked.body.error, /Try again/);
+        assert.match(blocked.body.error, /حاول مجدداً/);
+        assert.equal(blocked.headers.get("retry-after"), String(blocked.body.retryAfterSeconds));
+      }
+      assert.equal((await db.select().from(messages).where(eq(messages.roomId, id))).length, before);
+      assert.equal((await request("/messages", { content: "We can still talk about a quiz." })).status, 201);
+    }, { userId: actingUser, roomId: id });
     if (!isGeminiEnabled()) {
       const quiz = await request("/messages", { content: "@AI give us a quiz", simulatedUserId: ids[0] });
       assert.equal(quiz.status, 201);

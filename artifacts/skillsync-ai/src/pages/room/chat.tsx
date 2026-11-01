@@ -5,6 +5,7 @@ import { getGetSkillSyncRoomQueryKey, getListSkillSyncActivitiesQueryKey, useSen
 import type { ChatMessage, LearningRoom } from '@workspace/api-client-react';
 import { initials } from '@/components/shell';
 import { formatTime, useI18n } from '@/lib/i18n';
+import { aiErrorMessage } from '@/lib/ai-error';
 
 export const AI_MENTION = /(^|\s)@(ai|skillsync)\b/i;
 
@@ -85,7 +86,7 @@ export function PartnerChat({ room, actingUserId, viewerId, onOpenActivity }: Ch
       <textarea ref={inputRef} rows={1} value={text} onChange={(e) => setText(e.target.value)} onKeyDown={(e) => { if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); submit(); } }} placeholder={t('partnerPh')} maxLength={2000} dir="auto" data-testid="input-partner-message" />
       <button className="send-button" disabled={!text.trim() || send.isPending} aria-label={t('sendMessage')} data-testid="button-send-partner">{send.isPending ? <LoaderCircle size={16} className="spin" /> : <Send size={16} className="flip-rtl" />}</button>
     </form>
-    {send.isError && <p className="inline-error composer-error">{t('messageError')}</p>}
+    {send.isError && <p className="inline-error composer-error">{aiErrorMessage(send.error, t('messageError'))}</p>}
   </div>;
 }
 
@@ -110,6 +111,6 @@ export function AiChat({ room, actingUserId, viewerId, onOpenActivity }: ChatPro
       <textarea rows={1} value={text} onChange={(e) => setText(e.target.value)} onKeyDown={(e) => { if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); submit(); } }} placeholder={t('aiPh')} maxLength={2000} dir="auto" data-testid="input-ai-message" />
       <button className="send-button" disabled={!text.trim() || send.isPending} aria-label={t('sendMessage')} data-testid="button-send-ai">{send.isPending ? <LoaderCircle size={16} className="spin" /> : <Send size={16} className="flip-rtl" />}</button>
     </form>
-    {send.isError && <p className="inline-error composer-error">{t('messageError')}</p>}
+    {send.isError && <p className="inline-error composer-error">{aiErrorMessage(send.error, t('messageError'))}</p>}
   </div>;
 }

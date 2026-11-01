@@ -13,6 +13,7 @@ import { and, eq } from "drizzle-orm";
 import { randomUUID } from "node:crypto";
 import { roomContext, resolveSpeaker, roomMemory, messageDto, roomActivities, attemptDto, recordAiUse, type RoomContext } from "../lib/skillsync-room-service";
 import { answerRoomQuestion, generateRoomActivity } from "../lib/skillsync-room-ai";
+import { withAiBudget } from "../lib/skillsync-ai-limits";
 
 const router: IRouter = Router();
 type Kind = "quiz" | "flashcards" | "simulator";
@@ -54,37 +55,49 @@ function sendChat(channel: "partner" | "ai"): RequestHandler {
       ? await db.select().from(messages).where(and(eq(messages.id, body.data.replyToMessageId), eq(messages.roomId, context.room.id)))
       : [];
     if (body.data.replyToMessageId && !quote) { res.status(400).json({ error: "Quoted message is not in this room." }); return; }
-    const [saved] = await db.insert(messages).values({
-      id: randomUUID(), roomId: context.room.id, senderId: speaker.userId, senderName: speaker.displayName,
-      senderType: "student", channel, content: body.data.content.trim(), replyToMessageId: quote?.id ?? null,
-    }).returning();
-    let assistantMessage = null;
-    let aiPowered = false;
-    // This gate is intentionally before ANY AI work. Ordinary partner messages are only persisted.
-    if (channel === "ai" || explicitlyInvokesAi(saved.content, quote?.id)) {
-      const kind = quote ? null : requestedActivity(saved.content);
-      let content: string;
+    const invokesAi = channel === "ai" || explicitlyInvokesAi(body.data.content.trim(), quote?.id);
+    const send = async () => {
+      const prompt = body.data.content.trim();
+      let assistantMessage = null;
+      let aiPowered = false;
+      let content: string | null = null;
       let activityId: string | null = null;
-      if (kind) {
-        const result = await createActivity(context, kind, saved.content, res.locals.userId);
-        activityId = result.activity.id;
-        aiPowered = result.aiPowered;
-        content = /[\u0600-\u06ff]/.test(saved.content)
-          ? "أعددت نشاطاً مشتركاً لكما. افتحا تبويب الكويزات والمحاكيات للبدء."
-          : "I created a shared activity for you both. Open Quizzes & Simulators to begin.";
-      } else {
-        const result = await answerRoomQuestion(saved.content, await roomMemory(context), quote?.content);
-        content = result.answer;
-        aiPowered = result.aiPowered;
-        await recordAiUse(res.locals.userId, quote ? "verification" : "shared_chat", aiPowered, context.room.isDemo);
+      // Ordinary partner messages never enter the AI budget or load AI memory.
+      if (invokesAi) {
+        const kind = quote ? null : requestedActivity(prompt);
+        if (kind) {
+          const result = await createActivity(context, kind, prompt, res.locals.userId);
+          activityId = result.activity.id;
+          aiPowered = result.aiPowered;
+          content = /[\u0600-\u06ff]/.test(prompt)
+            ? "أعددت نشاطاً مشتركاً لكما. افتحا تبويب الكويزات والمحاكيات للبدء."
+            : "I created a shared activity for you both. Open Quizzes & Simulators to begin.";
+        } else {
+          const result = await answerRoomQuestion(prompt, await roomMemory(context), quote?.content);
+          content = result.answer;
+          aiPowered = result.aiPowered;
+          await recordAiUse(res.locals.userId, quote ? "verification" : "shared_chat", aiPowered, context.room.isDemo);
+        }
       }
-      const [response] = await db.insert(messages).values({
-        id: randomUUID(), roomId: context.room.id, senderId: null, senderName: "SkillSync AI",
-        senderType: "assistant", channel, content, activityId, replyToMessageId: quote?.id ?? saved.id,
+      // Save only after admission, including provider admission, so 429 retries do not duplicate messages.
+      const [saved] = await db.insert(messages).values({
+        id: randomUUID(), roomId: context.room.id, senderId: speaker.userId, senderName: speaker.displayName,
+        senderType: "student", channel, content: prompt, replyToMessageId: quote?.id ?? null,
       }).returning();
-      assistantMessage = messageDto(response);
+      if (content !== null) {
+        const [response] = await db.insert(messages).values({
+          id: randomUUID(), roomId: context.room.id, senderId: null, senderName: "SkillSync AI",
+          senderType: "assistant", channel, content, activityId, replyToMessageId: quote?.id ?? saved.id,
+        }).returning();
+        assistantMessage = messageDto(response);
+      }
+      res.status(201).json(SendSkillSyncMessageResponse.parse({ message: messageDto(saved), assistantMessage, aiPowered }));
+    };
+    if (invokesAi) {
+      await withAiBudget(send, { userId: res.locals.userId, roomId: context.room.id });
+    } else {
+      await send();
     }
-    res.status(201).json(SendSkillSyncMessageResponse.parse({ message: messageDto(saved), assistantMessage, aiPowered }));
   };
 }
 router.post("/skillsync/rooms/:roomId/messages", sendChat("partner"));
@@ -100,7 +113,10 @@ router.post("/skillsync/rooms/:roomId/activities", async (req, res) => {
   const context = await roomContext(String(req.params.roomId), res.locals.userId);
   if (!context) { res.status(404).json({ error: "Room not found." }); return; }
   if (context.room.status === "unmatched") { res.status(409).json({ error: "This room is read-only." }); return; }
-  const result = await createActivity(context, body.data.kind, body.data.prompt, res.locals.userId);
+  const result = await withAiBudget(
+    () => createActivity(context, body.data.kind, body.data.prompt, res.locals.userId),
+    { userId: res.locals.userId, roomId: context.room.id },
+  );
   res.status(201).json(GenerateSkillSyncActivityResponse.parse(result.activity));
 });
 router.post("/skillsync/rooms/:roomId/activities/:activityId/attempts", async (req, res) => {

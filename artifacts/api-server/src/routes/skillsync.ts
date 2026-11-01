@@ -48,6 +48,7 @@ import {
   type CandidateForMatch,
 } from "../lib/skillsync-ai";
 import { requireSkillSyncAuth } from "../lib/skillsync-access";
+import { aiRequestContext } from "../lib/skillsync-ai-limits";
 import { ensureDemoData } from "../lib/skillsync-demo";
 import roomInteractionRouter from "./skillsync-room-interactions";
 import adminRouter from "./skillsync-admin";
@@ -56,6 +57,7 @@ import { messageDto, roomActivities, recordAiUse, roomContext as sharedRoomConte
 const router: IRouter = Router();
 
 router.use("/skillsync", requireSkillSyncAuth);
+router.use("/skillsync", aiRequestContext);
 router.use(roomInteractionRouter);
 router.use(adminRouter);
 

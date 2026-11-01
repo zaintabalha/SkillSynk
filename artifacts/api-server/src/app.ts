@@ -10,6 +10,7 @@ import {
 } from "./middlewares/clerkProxyMiddleware";
 import router from "./routes";
 import { logger } from "./lib/logger";
+import { aiLimitErrorHandler } from "./lib/skillsync-ai-limits";
 
 const app: Express = express();
 
@@ -47,5 +48,6 @@ app.use(
 );
 
 app.use("/api", router);
+app.use(aiLimitErrorHandler);
 
 export default app;

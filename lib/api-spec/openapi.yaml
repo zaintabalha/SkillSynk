@@ -87,6 +87,8 @@ paths:
       tags: [skillsync]
       summary: Generate AI-powered complementary skill recommendations
       responses:
+        "429":
+          $ref: "#/components/responses/AiLimited"
         "200":
           description: Match recommendations
           content:
@@ -105,6 +107,8 @@ paths:
             schema:
               $ref: "#/components/schemas/ConnectInput"
       responses:
+        "429":
+          $ref: "#/components/responses/AiLimited"
         "201":
           description: Created learning room
           content:
@@ -161,6 +165,8 @@ paths:
             schema:
               $ref: "#/components/schemas/ChatMessageInput"
       responses:
+        "429":
+          $ref: "#/components/responses/AiLimited"
         "201":
           description: Saved partner message and optional explicitly requested SkillSync AI response
           content:
@@ -183,6 +189,8 @@ paths:
           application/json:
             schema: { $ref: "#/components/schemas/ChatMessageInput" }
       responses:
+        "429":
+          $ref: "#/components/responses/AiLimited"
         "201":
           description: Shared AI response
           content:
@@ -221,6 +229,8 @@ paths:
           application/json:
             schema: { $ref: "#/components/schemas/ActivityGenerationInput" }
       responses:
+        "429":
+          $ref: "#/components/responses/AiLimited"
         "201":
           description: Generated shared activity
           content:
@@ -269,6 +279,8 @@ paths:
             application/json:
               schema:
                 $ref: "#/components/schemas/DailyChallenge"
+        "429":
+          $ref: "#/components/responses/AiLimited"
   /skillsync/rooms/{roomId}/submissions:
     post:
       operationId: submitSkillSyncProject
@@ -287,6 +299,8 @@ paths:
             schema:
               $ref: "#/components/schemas/SubmissionInput"
       responses:
+        "429":
+          $ref: "#/components/responses/AiLimited"
         "201":
           description: Project evaluation
           content:
@@ -527,8 +541,30 @@ paths:
           content:
             application/json:
               schema: { $ref: "#/components/schemas/CurriculumRegeneration" }
+        "429":
+          $ref: "#/components/responses/AiLimited"
 components:
+  responses:
+    AiLimited:
+      description: AI rate or concurrency limit reached. Ordinary partner chat remains available.
+      headers:
+        Retry-After:
+          schema: { type: integer, minimum: 1 }
+          description: Seconds to wait before retrying.
+      content:
+        application/json:
+          schema:
+            $ref: "#/components/schemas/AiLimitResponse"
   schemas:
+    AiLimitResponse:
+      type: object
+      required: [error, code, retryAfterSeconds]
+      properties:
+        error:
+          type: string
+          description: Retry guidance in English and Arabic.
+        code: { type: string, enum: [AI_LIMIT_EXCEEDED] }
+        retryAfterSeconds: { type: integer, minimum: 1 }
     HealthStatus:
       type: object
       properties:

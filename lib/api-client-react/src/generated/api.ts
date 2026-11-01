@@ -34,6 +34,7 @@ import type {
   AdminReportDetail,
   AdminRoom,
   AdminUser,
+  AiLimitedResponse,
   ChatMessageInput,
   ChatSendResult,
   ConnectInput,
@@ -608,7 +609,7 @@ export const generateSkillSyncRecommendations = async ( options?: Parameters<typ
 
 export const getGenerateSkillSyncRecommendationsMutationKey = () => ['generateSkillSyncRecommendations'] as const;
 
-export const getGenerateSkillSyncRecommendationsMutationOptions = <TError = ErrorType<unknown>,
+export const getGenerateSkillSyncRecommendationsMutationOptions = <TError = ErrorType<AiLimitedResponse>,
     TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof generateSkillSyncRecommendations>>, TError,void, TContext>, request?: SecondParameter<typeof customFetch>}
 ): UseMutationOptions<Awaited<ReturnType<typeof generateSkillSyncRecommendations>>, TError,void, TContext> => {
 
@@ -637,13 +638,13 @@ const {mutation: mutationOptions, request: requestOptions} = options ?
 
     export type GenerateSkillSyncRecommendationsMutationResult = NonNullable<Awaited<ReturnType<typeof generateSkillSyncRecommendations>>>
 
-    export type GenerateSkillSyncRecommendationsMutationError = ErrorType<unknown>
+    export type GenerateSkillSyncRecommendationsMutationError = ErrorType<AiLimitedResponse>
 
 
     /**
  * @summary Generate AI-powered complementary skill recommendations
  */
-export const useGenerateSkillSyncRecommendations = <TError = ErrorType<unknown>,
+export const useGenerateSkillSyncRecommendations = <TError = ErrorType<AiLimitedResponse>,
     TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof generateSkillSyncRecommendations>>, TError,void, TContext>, request?: SecondParameter<typeof customFetch>}
  , queryClient?: QueryClient): UseMutationResult<
         Awaited<ReturnType<typeof generateSkillSyncRecommendations>>,
@@ -696,7 +697,7 @@ return customFetch<RoomSummary>(getConnectSkillSyncMatchUrl(),
 
 export const getConnectSkillSyncMatchMutationKey = () => ['connectSkillSyncMatch'] as const;
 
-export const getConnectSkillSyncMatchMutationOptions = <TError = ErrorType<unknown>,
+export const getConnectSkillSyncMatchMutationOptions = <TError = ErrorType<AiLimitedResponse>,
     TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof connectSkillSyncMatch>>, TError,ConnectSkillSyncMatchMutationVariables, TContext>, request?: SecondParameter<typeof customFetch>}
 ): UseMutationOptions<Awaited<ReturnType<typeof connectSkillSyncMatch>>, TError,ConnectSkillSyncMatchMutationVariables, TContext> => {
 
@@ -725,13 +726,13 @@ const {mutation: mutationOptions, request: requestOptions} = options ?
 
     export type ConnectSkillSyncMatchMutationResult = NonNullable<Awaited<ReturnType<typeof connectSkillSyncMatch>>>
     export type ConnectSkillSyncMatchMutationBody = BodyType<ConnectInput>
-    export type ConnectSkillSyncMatchMutationError = ErrorType<unknown>
+    export type ConnectSkillSyncMatchMutationError = ErrorType<AiLimitedResponse>
     export type ConnectSkillSyncMatchMutationVariables = {data: BodyType<ConnectInput>}
 
     /**
  * @summary Connect to a student and create a shared learning room
  */
-export const useConnectSkillSyncMatch = <TError = ErrorType<unknown>,
+export const useConnectSkillSyncMatch = <TError = ErrorType<AiLimitedResponse>,
     TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof connectSkillSyncMatch>>, TError,ConnectSkillSyncMatchMutationVariables, TContext>, request?: SecondParameter<typeof customFetch>}
  , queryClient?: QueryClient): UseMutationResult<
         Awaited<ReturnType<typeof connectSkillSyncMatch>>,
@@ -987,7 +988,7 @@ return customFetch<ChatSendResult>(getSendSkillSyncMessageUrl(roomId),
 
 export const getSendSkillSyncMessageMutationKey = () => ['sendSkillSyncMessage'] as const;
 
-export const getSendSkillSyncMessageMutationOptions = <TError = ErrorType<unknown>,
+export const getSendSkillSyncMessageMutationOptions = <TError = ErrorType<AiLimitedResponse>,
     TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof sendSkillSyncMessage>>, TError,SendSkillSyncMessageMutationVariables, TContext>, request?: SecondParameter<typeof customFetch>}
 ): UseMutationOptions<Awaited<ReturnType<typeof sendSkillSyncMessage>>, TError,SendSkillSyncMessageMutationVariables, TContext> => {
 
@@ -1016,13 +1017,13 @@ const {mutation: mutationOptions, request: requestOptions} = options ?
 
     export type SendSkillSyncMessageMutationResult = NonNullable<Awaited<ReturnType<typeof sendSkillSyncMessage>>>
     export type SendSkillSyncMessageMutationBody = BodyType<ChatMessageInput>
-    export type SendSkillSyncMessageMutationError = ErrorType<unknown>
+    export type SendSkillSyncMessageMutationError = ErrorType<AiLimitedResponse>
     export type SendSkillSyncMessageMutationVariables = {roomId: string;data: BodyType<ChatMessageInput>}
 
     /**
  * @summary Send a chat message and receive moderator guidance
  */
-export const useSendSkillSyncMessage = <TError = ErrorType<unknown>,
+export const useSendSkillSyncMessage = <TError = ErrorType<AiLimitedResponse>,
     TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof sendSkillSyncMessage>>, TError,SendSkillSyncMessageMutationVariables, TContext>, request?: SecondParameter<typeof customFetch>}
  , queryClient?: QueryClient): UseMutationResult<
         Awaited<ReturnType<typeof sendSkillSyncMessage>>,
@@ -1076,7 +1077,7 @@ return customFetch<ChatSendResult>(getSendSkillSyncAiMessageUrl(roomId),
 
 export const getSendSkillSyncAiMessageMutationKey = () => ['sendSkillSyncAiMessage'] as const;
 
-export const getSendSkillSyncAiMessageMutationOptions = <TError = ErrorType<unknown>,
+export const getSendSkillSyncAiMessageMutationOptions = <TError = ErrorType<AiLimitedResponse>,
     TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof sendSkillSyncAiMessage>>, TError,SendSkillSyncAiMessageMutationVariables, TContext>, request?: SecondParameter<typeof customFetch>}
 ): UseMutationOptions<Awaited<ReturnType<typeof sendSkillSyncAiMessage>>, TError,SendSkillSyncAiMessageMutationVariables, TContext> => {
 
@@ -1105,13 +1106,13 @@ const {mutation: mutationOptions, request: requestOptions} = options ?
 
     export type SendSkillSyncAiMessageMutationResult = NonNullable<Awaited<ReturnType<typeof sendSkillSyncAiMessage>>>
     export type SendSkillSyncAiMessageMutationBody = BodyType<ChatMessageInput>
-    export type SendSkillSyncAiMessageMutationError = ErrorType<unknown>
+    export type SendSkillSyncAiMessageMutationError = ErrorType<AiLimitedResponse>
     export type SendSkillSyncAiMessageMutationVariables = {roomId: string;data: BodyType<ChatMessageInput>}
 
     /**
  * @summary Send a prompt to the shared SkillSync AI workspace
  */
-export const useSendSkillSyncAiMessage = <TError = ErrorType<unknown>,
+export const useSendSkillSyncAiMessage = <TError = ErrorType<AiLimitedResponse>,
     TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof sendSkillSyncAiMessage>>, TError,SendSkillSyncAiMessageMutationVariables, TContext>, request?: SecondParameter<typeof customFetch>}
  , queryClient?: QueryClient): UseMutationResult<
         Awaited<ReturnType<typeof sendSkillSyncAiMessage>>,
@@ -1266,7 +1267,7 @@ return customFetch<SharedActivity>(getGenerateSkillSyncActivityUrl(roomId),
 
 export const getGenerateSkillSyncActivityMutationKey = () => ['generateSkillSyncActivity'] as const;
 
-export const getGenerateSkillSyncActivityMutationOptions = <TError = ErrorType<unknown>,
+export const getGenerateSkillSyncActivityMutationOptions = <TError = ErrorType<AiLimitedResponse>,
     TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof generateSkillSyncActivity>>, TError,GenerateSkillSyncActivityMutationVariables, TContext>, request?: SecondParameter<typeof customFetch>}
 ): UseMutationOptions<Awaited<ReturnType<typeof generateSkillSyncActivity>>, TError,GenerateSkillSyncActivityMutationVariables, TContext> => {
 
@@ -1295,13 +1296,13 @@ const {mutation: mutationOptions, request: requestOptions} = options ?
 
     export type GenerateSkillSyncActivityMutationResult = NonNullable<Awaited<ReturnType<typeof generateSkillSyncActivity>>>
     export type GenerateSkillSyncActivityMutationBody = BodyType<ActivityGenerationInput>
-    export type GenerateSkillSyncActivityMutationError = ErrorType<unknown>
+    export type GenerateSkillSyncActivityMutationError = ErrorType<AiLimitedResponse>
     export type GenerateSkillSyncActivityMutationVariables = {roomId: string;data: BodyType<ActivityGenerationInput>}
 
     /**
  * @summary Generate a shared learning activity from room context
  */
-export const useGenerateSkillSyncActivity = <TError = ErrorType<unknown>,
+export const useGenerateSkillSyncActivity = <TError = ErrorType<AiLimitedResponse>,
     TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof generateSkillSyncActivity>>, TError,GenerateSkillSyncActivityMutationVariables, TContext>, request?: SecondParameter<typeof customFetch>}
  , queryClient?: QueryClient): UseMutationResult<
         Awaited<ReturnType<typeof generateSkillSyncActivity>>,
@@ -1431,7 +1432,7 @@ export const generateSkillSyncDailyChallenge = async (roomId: string, options?: 
 
 export const getGenerateSkillSyncDailyChallengeMutationKey = () => ['generateSkillSyncDailyChallenge'] as const;
 
-export const getGenerateSkillSyncDailyChallengeMutationOptions = <TError = ErrorType<unknown>,
+export const getGenerateSkillSyncDailyChallengeMutationOptions = <TError = ErrorType<AiLimitedResponse>,
     TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof generateSkillSyncDailyChallenge>>, TError,GenerateSkillSyncDailyChallengeMutationVariables, TContext>, request?: SecondParameter<typeof customFetch>}
 ): UseMutationOptions<Awaited<ReturnType<typeof generateSkillSyncDailyChallenge>>, TError,GenerateSkillSyncDailyChallengeMutationVariables, TContext> => {
 
@@ -1460,13 +1461,13 @@ const {mutation: mutationOptions, request: requestOptions} = options ?
 
     export type GenerateSkillSyncDailyChallengeMutationResult = NonNullable<Awaited<ReturnType<typeof generateSkillSyncDailyChallenge>>>
 
-    export type GenerateSkillSyncDailyChallengeMutationError = ErrorType<unknown>
+    export type GenerateSkillSyncDailyChallengeMutationError = ErrorType<AiLimitedResponse>
     export type GenerateSkillSyncDailyChallengeMutationVariables = {roomId: string}
 
     /**
  * @summary Generate the room's next daily challenge
  */
-export const useGenerateSkillSyncDailyChallenge = <TError = ErrorType<unknown>,
+export const useGenerateSkillSyncDailyChallenge = <TError = ErrorType<AiLimitedResponse>,
     TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof generateSkillSyncDailyChallenge>>, TError,GenerateSkillSyncDailyChallengeMutationVariables, TContext>, request?: SecondParameter<typeof customFetch>}
  , queryClient?: QueryClient): UseMutationResult<
         Awaited<ReturnType<typeof generateSkillSyncDailyChallenge>>,
@@ -1520,7 +1521,7 @@ return customFetch<ProjectSubmission>(getSubmitSkillSyncProjectUrl(roomId),
 
 export const getSubmitSkillSyncProjectMutationKey = () => ['submitSkillSyncProject'] as const;
 
-export const getSubmitSkillSyncProjectMutationOptions = <TError = ErrorType<unknown>,
+export const getSubmitSkillSyncProjectMutationOptions = <TError = ErrorType<AiLimitedResponse>,
     TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof submitSkillSyncProject>>, TError,SubmitSkillSyncProjectMutationVariables, TContext>, request?: SecondParameter<typeof customFetch>}
 ): UseMutationOptions<Awaited<ReturnType<typeof submitSkillSyncProject>>, TError,SubmitSkillSyncProjectMutationVariables, TContext> => {
 
@@ -1549,13 +1550,13 @@ const {mutation: mutationOptions, request: requestOptions} = options ?
 
     export type SubmitSkillSyncProjectMutationResult = NonNullable<Awaited<ReturnType<typeof submitSkillSyncProject>>>
     export type SubmitSkillSyncProjectMutationBody = BodyType<SubmissionInput>
-    export type SubmitSkillSyncProjectMutationError = ErrorType<unknown>
+    export type SubmitSkillSyncProjectMutationError = ErrorType<AiLimitedResponse>
     export type SubmitSkillSyncProjectMutationVariables = {roomId: string;data: BodyType<SubmissionInput>}
 
     /**
  * @summary Submit a joint project for AI evaluation
  */
-export const useSubmitSkillSyncProject = <TError = ErrorType<unknown>,
+export const useSubmitSkillSyncProject = <TError = ErrorType<AiLimitedResponse>,
     TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof submitSkillSyncProject>>, TError,SubmitSkillSyncProjectMutationVariables, TContext>, request?: SecondParameter<typeof customFetch>}
  , queryClient?: QueryClient): UseMutationResult<
         Awaited<ReturnType<typeof submitSkillSyncProject>>,
@@ -2885,7 +2886,7 @@ export const regenerateSkillSyncAdminCurriculum = async (roomId: string, options
 
 export const getRegenerateSkillSyncAdminCurriculumMutationKey = () => ['regenerateSkillSyncAdminCurriculum'] as const;
 
-export const getRegenerateSkillSyncAdminCurriculumMutationOptions = <TError = ErrorType<unknown>,
+export const getRegenerateSkillSyncAdminCurriculumMutationOptions = <TError = ErrorType<AiLimitedResponse>,
     TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof regenerateSkillSyncAdminCurriculum>>, TError,RegenerateSkillSyncAdminCurriculumMutationVariables, TContext>, request?: SecondParameter<typeof customFetch>}
 ): UseMutationOptions<Awaited<ReturnType<typeof regenerateSkillSyncAdminCurriculum>>, TError,RegenerateSkillSyncAdminCurriculumMutationVariables, TContext> => {
 
@@ -2914,13 +2915,13 @@ const {mutation: mutationOptions, request: requestOptions} = options ?
 
     export type RegenerateSkillSyncAdminCurriculumMutationResult = NonNullable<Awaited<ReturnType<typeof regenerateSkillSyncAdminCurriculum>>>
 
-    export type RegenerateSkillSyncAdminCurriculumMutationError = ErrorType<unknown>
+    export type RegenerateSkillSyncAdminCurriculumMutationError = ErrorType<AiLimitedResponse>
     export type RegenerateSkillSyncAdminCurriculumMutationVariables = {roomId: string}
 
     /**
  * @summary Regenerate a room's curriculum
  */
-export const useRegenerateSkillSyncAdminCurriculum = <TError = ErrorType<unknown>,
+export const useRegenerateSkillSyncAdminCurriculum = <TError = ErrorType<AiLimitedResponse>,
     TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof regenerateSkillSyncAdminCurriculum>>, TError,RegenerateSkillSyncAdminCurriculumMutationVariables, TContext>, request?: SecondParameter<typeof customFetch>}
  , queryClient?: QueryClient): UseMutationResult<
         Awaited<ReturnType<typeof regenerateSkillSyncAdminCurriculum>>,

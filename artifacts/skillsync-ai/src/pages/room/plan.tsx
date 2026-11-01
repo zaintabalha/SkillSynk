@@ -1,3 +1,4 @@
+import { aiErrorMessage } from '@/lib/ai-error';
 import { useState, type FormEvent } from 'react';
 import { useQueryClient } from '@tanstack/react-query';
 import { Check, Flag, Lightbulb, LoaderCircle, Plus, RefreshCw, Route, Send } from 'lucide-react';
@@ -32,7 +33,7 @@ export function PlanTab({ room }: { room: LearningRoom }) {
       <div className="challenge-card plan-challenge">
         <div className="challenge-head"><span><Flag size={13} /> {t('dailyChallenge')}</span><button className="challenge-refresh" onClick={() => challenge.mutate({ roomId: room.roomId }, { onSuccess: refresh })} disabled={challenge.isPending} aria-label={t('newChallenge')} data-testid="button-new-challenge">{challenge.isPending ? <LoaderCircle size={13} className="spin" /> : <RefreshCw size={13} />}</button></div>
         {c ? <><div className="challenge-day">{t('day', { n: c.dayNumber })}{c.completed && <span><Check size={10} /> {t('done')}</span>}</div><p dir="auto">{c.prompt}</p><details><summary>{t('needHint')}</summary><span dir="auto">{c.hint}</span></details></> : <><p>{t('challengeReady')}</p><button className="challenge-generate" onClick={() => challenge.mutate({ roomId: room.roomId }, { onSuccess: refresh })} disabled={challenge.isPending}>{challenge.isPending ? t('thinkingChallenge') : t('createChallenge')} <Plus size={13} /></button></>}
-        {challenge.isError && <span className="challenge-error">{t('challengeError')}</span>}
+        {challenge.isError && <span className="challenge-error">{aiErrorMessage(challenge.error, t('challengeError'))}</span>}
       </div>
     </section>
     <section className="plan-eval project-view">
@@ -40,7 +41,7 @@ export function PlanTab({ room }: { room: LearningRoom }) {
       {open && <form className="submission-form" onSubmit={send}>
         <label className="field"><span>{t('projectTitle')}</span><input required maxLength={120} value={title} onChange={(e) => setTitle(e.target.value)} dir="auto" data-testid="input-project-title" /></label>
         <label className="field"><span>{t('whatMade')}</span><textarea required rows={6} maxLength={5000} value={content} onChange={(e) => setContent(e.target.value)} placeholder={t('whatMadePh')} dir="auto" data-testid="input-project-content" /></label>
-        {submit.isError && <p className="inline-error">{t('submitError')}</p>}
+        {submit.isError && <p className="inline-error">{aiErrorMessage(submit.error, t('submitError'))}</p>}
         <div className="submission-actions"><button type="button" className="quiet-link" onClick={() => setOpen(false)}>{t('cancel')}</button><button className="button" disabled={submit.isPending || !title.trim() || !content.trim()} data-testid="button-submit-project">{submit.isPending ? <LoaderCircle size={15} className="spin" /> : <Send size={15} className="flip-rtl" />}{submit.isPending ? t('sendingFeedback') : t('submitFeedback')}</button></div>
       </form>}
       {room.submissions.length ? <div className="submission-list">{room.submissions.map((s) => <article className="submission-card" key={s.id}>
