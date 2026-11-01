@@ -27,3 +27,5 @@ export * from "./skillsync-ai-usage";
 export * from "./skillsync-admin-actions";
 export * from "./skillsync-suspensions";
 export * from "./skillsync-user-notices";
+export * from "./skillsync-activities";
+export * from "./skillsync-activity-attempts";

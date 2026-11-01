@@ -79,6 +79,7 @@ export type RoomSummaryStatus = typeof RoomSummaryStatus[keyof typeof RoomSummar
 export const RoomSummaryStatus = {
   active: 'active',
   completed: 'completed',
+  unmatched: 'unmatched',
 } as const;
 
 export interface RoomSummary {
@@ -94,6 +95,7 @@ export interface RoomSummary {
   progress: number;
   /** @nullable */
   lastMessage: string | null;
+  isDemo: boolean;
   updatedAt: string;
 }
 
@@ -109,7 +111,16 @@ export type ChatMessageSenderType = typeof ChatMessageSenderType[keyof typeof Ch
 
 export const ChatMessageSenderType = {
   student: 'student',
+  assistant: 'assistant',
   moderator: 'moderator',
+} as const;
+
+export type ChatMessageChannel = typeof ChatMessageChannel[keyof typeof ChatMessageChannel];
+
+
+export const ChatMessageChannel = {
+  partner: 'partner',
+  ai: 'ai',
 } as const;
 
 export interface ChatMessage {
@@ -119,6 +130,11 @@ export interface ChatMessage {
   senderId: string | null;
   senderName: string;
   senderType: ChatMessageSenderType;
+  channel: ChatMessageChannel;
+  /** @nullable */
+  replyToMessageId: string | null;
+  /** @nullable */
+  activityId: string | null;
   content: string;
   createdAt: string;
 }
@@ -164,7 +180,81 @@ export type LearningRoomStatus = typeof LearningRoomStatus[keyof typeof Learning
 export const LearningRoomStatus = {
   active: 'active',
   completed: 'completed',
+  unmatched: 'unmatched',
 } as const;
+
+export type SharedActivityKind = typeof SharedActivityKind[keyof typeof SharedActivityKind];
+
+
+export const SharedActivityKind = {
+  quiz: 'quiz',
+  flashcards: 'flashcards',
+  simulator: 'simulator',
+} as const;
+
+export interface ActivityQuestion {
+  id: string;
+  prompt: string;
+  choices: string[];
+  /** @minimum 0 */
+  answerIndex: number;
+  explanation: string;
+}
+
+export interface ActivityFlashcard {
+  front: string;
+  back: string;
+}
+
+export type ActivitySimulatorMode = typeof ActivitySimulatorMode[keyof typeof ActivitySimulatorMode];
+
+
+export const ActivitySimulatorMode = {
+  coding: 'coding',
+  language: 'language',
+} as const;
+
+export interface ActivitySimulator {
+  mode: ActivitySimulatorMode;
+  scenario: string;
+  prompt: string;
+  starter: string;
+  expected: string;
+  hint: string;
+}
+
+export interface ActivityContent {
+  questions?: ActivityQuestion[];
+  flashcards?: ActivityFlashcard[];
+  simulator?: ActivitySimulator;
+}
+
+export interface ActivityAttempt {
+  id: string;
+  activityId: string;
+  userId: string;
+  displayName: string;
+  responses: string[];
+  /**
+     * @minimum 0
+     * @maximum 100
+     * @nullable
+     */
+  score: number | null;
+  createdAt: string;
+}
+
+export interface SharedActivity {
+  id: string;
+  roomId: string;
+  kind: SharedActivityKind;
+  title: string;
+  instructions: string;
+  content: ActivityContent;
+  isDemo: boolean;
+  createdAt: string;
+  attempts: ActivityAttempt[];
+}
 
 export interface LearningRoom {
   roomId: string;
@@ -177,10 +267,12 @@ export interface LearningRoom {
      * @maximum 100
      */
   progress: number;
+  isDemo: boolean;
   curriculum: Curriculum;
   challenge: Challenge | null;
   messages: ChatMessage[];
   submissions: ProjectSubmission[];
+  activities: SharedActivity[];
   updatedAt: string;
 }
 
@@ -212,11 +304,42 @@ export interface ChatMessageInput {
      * @maxLength 4000
      */
   content: string;
+  /** @nullable */
+  replyToMessageId?: string | null;
+  /** @nullable */
+  simulatedUserId?: string | null;
+}
+
+export type ActivityGenerationInputKind = typeof ActivityGenerationInputKind[keyof typeof ActivityGenerationInputKind];
+
+
+export const ActivityGenerationInputKind = {
+  quiz: 'quiz',
+  flashcards: 'flashcards',
+  simulator: 'simulator',
+} as const;
+
+export interface ActivityGenerationInput {
+  kind: ActivityGenerationInputKind;
+  /**
+     * @minLength 1
+     * @maxLength 1000
+     */
+  prompt: string;
+}
+
+export interface ActivityAttemptInput {
+  /**
+     * @minItems 1
+     * @maxItems 30
+     * @items.maxLength 4000
+     */
+  responses: string[];
 }
 
 export interface ChatSendResult {
   message: ChatMessage;
-  moderatorMessage: ChatMessage | null;
+  assistantMessage: ChatMessage | null;
   aiPowered: boolean;
 }
 
@@ -241,4 +364,251 @@ export interface SubmissionInput {
      */
   content: string;
 }
+
+export type ReportInputCategory = typeof ReportInputCategory[keyof typeof ReportInputCategory];
+
+
+export const ReportInputCategory = {
+  inactive_partner: 'inactive_partner',
+  inappropriate_behavior: 'inappropriate_behavior',
+  technical_issue: 'technical_issue',
+  other: 'other',
+} as const;
+
+export interface ReportInput {
+  category: ReportInputCategory;
+  /**
+     * @minLength 4
+     * @maxLength 120
+     */
+  summary: string;
+  /**
+     * @minLength 10
+     * @maxLength 2000
+     */
+  details: string;
+  /** @nullable */
+  reportedUserId?: string | null;
+  /** @nullable */
+  roomId?: string | null;
+}
+
+export type ReportTicketCategory = typeof ReportTicketCategory[keyof typeof ReportTicketCategory];
+
+
+export const ReportTicketCategory = {
+  inactive_partner: 'inactive_partner',
+  inappropriate_behavior: 'inappropriate_behavior',
+  technical_issue: 'technical_issue',
+  other: 'other',
+} as const;
+
+export type ReportTicketStatus = typeof ReportTicketStatus[keyof typeof ReportTicketStatus];
+
+
+export const ReportTicketStatus = {
+  pending: 'pending',
+  under_review: 'under_review',
+  resolved: 'resolved',
+} as const;
+
+export interface ReportTicket {
+  id: string;
+  reporterUserId: string;
+  reporterName: string;
+  /** @nullable */
+  reportedUserId: string | null;
+  /** @nullable */
+  reportedName: string | null;
+  /** @nullable */
+  roomId: string | null;
+  /** @nullable */
+  roomTitle: string | null;
+  category: ReportTicketCategory;
+  summary: string;
+  details: string;
+  status: ReportTicketStatus;
+  /** @nullable */
+  adminNotes: string | null;
+  isDemo: boolean;
+  createdAt: string;
+  updatedAt: string;
+}
+
+export type ReportUpdateInputStatus = typeof ReportUpdateInputStatus[keyof typeof ReportUpdateInputStatus];
+
+
+export const ReportUpdateInputStatus = {
+  pending: 'pending',
+  under_review: 'under_review',
+  resolved: 'resolved',
+} as const;
+
+export interface ReportUpdateInput {
+  status: ReportUpdateInputStatus;
+  /**
+     * @maxLength 2000
+     * @nullable
+     */
+  adminNotes?: string | null;
+}
+
+export type UserNoticeKind = typeof UserNoticeKind[keyof typeof UserNoticeKind];
+
+
+export const UserNoticeKind = {
+  warning: 'warning',
+} as const;
+
+export interface UserNotice {
+  id: string;
+  kind: UserNoticeKind;
+  message: string;
+  createdAt: string;
+}
+
+export interface AdminAccess {
+  isAdmin: boolean;
+  configured: boolean;
+}
+
+export interface SkillCount {
+  skill: string;
+  count: number;
+}
+
+export type ReportStatusCountStatus = typeof ReportStatusCountStatus[keyof typeof ReportStatusCountStatus];
+
+
+export const ReportStatusCountStatus = {
+  pending: 'pending',
+  under_review: 'under_review',
+  resolved: 'resolved',
+} as const;
+
+export interface ReportStatusCount {
+  status: ReportStatusCountStatus;
+  count: number;
+}
+
+export interface AdminOverviewStats {
+  totalStudents: number;
+  demoStudents: number;
+  activeRooms: number;
+  completedProjects: number;
+  openComplaints: number;
+  connectionsMade: number;
+  matchAttempts: number;
+  /**
+     * @minimum 0
+     * @maximum 100
+     */
+  matchSuccessRate: number;
+  aiActions: number;
+  geminiCalls: number;
+  fallbackCalls: number;
+}
+
+export interface AdminOverview {
+  stats: AdminOverviewStats;
+  skillDistribution: SkillCount[];
+  reportStatuses: ReportStatusCount[];
+  sampleDataIncluded: boolean;
+}
+
+export interface AdminReportDetail {
+  report: ReportTicket;
+  transcript: ChatMessage[];
+}
+
+export interface AdminUser {
+  userId: string;
+  displayName: string;
+  university: string;
+  teachSkill: string;
+  learnSkill: string;
+  isDemo: boolean;
+  isSuspended: boolean;
+  /** @nullable */
+  suspensionEndsAt: string | null;
+  roomCount: number;
+  warningCount: number;
+  createdAt: string;
+}
+
+export type AdminRoomStatus = typeof AdminRoomStatus[keyof typeof AdminRoomStatus];
+
+
+export const AdminRoomStatus = {
+  active: 'active',
+  completed: 'completed',
+  unmatched: 'unmatched',
+} as const;
+
+export interface AdminRoom {
+  roomId: string;
+  matchId: string;
+  partnerNames: string[];
+  projectTitle: string;
+  status: AdminRoomStatus;
+  /**
+     * @minimum 0
+     * @maximum 100
+     */
+  progress: number;
+  isDemo: boolean;
+  updatedAt: string;
+}
+
+export interface WarningInput {
+  /**
+     * @minLength 4
+     * @maxLength 1000
+     */
+  message: string;
+}
+
+export interface SuspensionInput {
+  /**
+     * @minLength 4
+     * @maxLength 1000
+     */
+  reason: string;
+  /**
+     * @minimum 1
+     * @maximum 3650
+     * @nullable
+     */
+  durationDays: number | null;
+}
+
+export interface AdminAction {
+  id: string;
+  action: string;
+  /** @nullable */
+  targetUserId: string | null;
+  /** @nullable */
+  roomId: string | null;
+  description: string;
+  createdAt: string;
+}
+
+export interface CurriculumRegeneration {
+  roomId: string;
+  curriculum: Curriculum;
+  aiPowered: boolean;
+}
+
+export type ListSkillSyncAdminReportsParams = {
+status?: ListSkillSyncAdminReportsStatus;
+};
+
+export type ListSkillSyncAdminReportsStatus = typeof ListSkillSyncAdminReportsStatus[keyof typeof ListSkillSyncAdminReportsStatus];
+
+
+export const ListSkillSyncAdminReportsStatus = {
+  pending: 'pending',
+  under_review: 'under_review',
+  resolved: 'resolved',
+} as const;
 

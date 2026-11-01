@@ -20,5 +20,6 @@ export interface RoomSummary {
   progress: number;
   /** @nullable */
   lastMessage: string | null;
+  isDemo: boolean;
   updatedAt: Date;
 }

@@ -10,6 +10,7 @@ import type { ChatMessage } from './chatMessage';
 import type { Curriculum } from './curriculum';
 import type { LearningRoomStatus } from './learningRoomStatus';
 import type { ProjectSubmission } from './projectSubmission';
+import type { SharedActivity } from './sharedActivity';
 
 export interface LearningRoom {
   roomId: string;
@@ -22,9 +23,11 @@ export interface LearningRoom {
      * @maximum 100
      */
   progress: number;
+  isDemo: boolean;
   curriculum: Curriculum;
   challenge: Challenge | null;
   messages: ChatMessage[];
   submissions: ProjectSubmission[];
+  activities: SharedActivity[];
   updatedAt: Date;
 }

@@ -162,11 +162,95 @@ paths:
               $ref: "#/components/schemas/ChatMessageInput"
       responses:
         "201":
-          description: Saved message and optional AI moderator response
+          description: Saved partner message and optional explicitly requested SkillSync AI response
           content:
             application/json:
               schema:
                 $ref: "#/components/schemas/ChatSendResult"
+  /skillsync/rooms/{roomId}/ai-messages:
+    post:
+      operationId: sendSkillSyncAiMessage
+      tags: [skillsync]
+      summary: Send a prompt to the shared SkillSync AI workspace
+      parameters:
+        - name: roomId
+          in: path
+          required: true
+          schema: { type: string }
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: "#/components/schemas/ChatMessageInput" }
+      responses:
+        "201":
+          description: Shared AI response
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/ChatSendResult" }
+  /skillsync/rooms/{roomId}/activities:
+    get:
+      operationId: listSkillSyncActivities
+      tags: [skillsync]
+      summary: List shared quizzes, flashcards, and simulators
+      parameters:
+        - name: roomId
+          in: path
+          required: true
+          schema: { type: string }
+      responses:
+        "200":
+          description: Shared room activities
+          content:
+            application/json:
+              schema:
+                type: array
+                items: { $ref: "#/components/schemas/SharedActivity" }
+    post:
+      operationId: generateSkillSyncActivity
+      tags: [skillsync]
+      summary: Generate a shared learning activity from room context
+      parameters:
+        - name: roomId
+          in: path
+          required: true
+          schema: { type: string }
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: "#/components/schemas/ActivityGenerationInput" }
+      responses:
+        "201":
+          description: Generated shared activity
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/SharedActivity" }
+  /skillsync/rooms/{roomId}/activities/{activityId}/attempts:
+    post:
+      operationId: submitSkillSyncActivityAttempt
+      tags: [skillsync]
+      summary: Submit a shared activity attempt
+      parameters:
+        - name: roomId
+          in: path
+          required: true
+          schema: { type: string }
+        - name: activityId
+          in: path
+          required: true
+          schema: { type: string }
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: "#/components/schemas/ActivityAttemptInput" }
+      responses:
+        "201":
+          description: Saved activity attempt
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/ActivityAttempt" }
   /skillsync/rooms/{roomId}/daily-challenge:
     post:
       operationId: generateSkillSyncDailyChallenge
@@ -508,7 +592,7 @@ components:
         partnerUserId: { type: string }
     RoomSummary:
       type: object
-      required: [roomId, partnerUserId, partnerName, projectTitle, status, progress, lastMessage, updatedAt]
+      required: [roomId, partnerUserId, partnerName, projectTitle, status, progress, lastMessage, isDemo, updatedAt]
       properties:
         roomId: { type: string }
         partnerUserId: { type: string }
@@ -517,6 +601,7 @@ components:
         status: { type: string, enum: [active, completed, unmatched] }
         progress: { type: integer, minimum: 0, maximum: 100 }
         lastMessage: { type: ["string", "null"] }
+        isDemo: { type: boolean }
         updatedAt: { type: string, format: date-time }
     Curriculum:
       type: object
@@ -530,13 +615,16 @@ components:
           items: { type: string }
     ChatMessage:
       type: object
-      required: [id, roomId, senderId, senderName, senderType, content, createdAt]
+      required: [id, roomId, senderId, senderName, senderType, channel, replyToMessageId, activityId, content, createdAt]
       properties:
         id: { type: string }
         roomId: { type: string }
         senderId: { type: ["string", "null"] }
         senderName: { type: string }
-        senderType: { type: string, enum: [student, moderator] }
+        senderType: { type: string, enum: [student, assistant, moderator] }
+        channel: { type: string, enum: [partner, ai] }
+        replyToMessageId: { type: ["string", "null"] }
+        activityId: { type: ["string", "null"] }
         content: { type: string }
         createdAt: { type: string, format: date-time }
     Challenge:
@@ -568,7 +656,7 @@ components:
         aiPowered: { type: boolean }
     LearningRoom:
       type: object
-      required: [roomId, partnerUserId, partnerName, projectTitle, status, progress, curriculum, challenge, messages, submissions, updatedAt]
+      required: [roomId, partnerUserId, partnerName, projectTitle, status, progress, isDemo, curriculum, challenge, messages, submissions, activities, updatedAt]
       properties:
         roomId: { type: string }
         partnerUserId: { type: string }
@@ -576,6 +664,7 @@ components:
         projectTitle: { type: string }
         status: { type: string, enum: [active, completed, unmatched] }
         progress: { type: integer, minimum: 0, maximum: 100 }
+        isDemo: { type: boolean }
         curriculum: { $ref: "#/components/schemas/Curriculum" }
         challenge:
           oneOf:
@@ -587,6 +676,9 @@ components:
         submissions:
           type: array
           items: { $ref: "#/components/schemas/ProjectSubmission" }
+        activities:
+          type: array
+          items: { $ref: "#/components/schemas/SharedActivity" }
         updatedAt: { type: string, format: date-time }
     DashboardStats:
       type: object
@@ -624,12 +716,94 @@ components:
       required: [content]
       properties:
         content: { type: string, minLength: 1, maxLength: 4000 }
+        replyToMessageId: { type: ["string", "null"] }
+        simulatedUserId: { type: ["string", "null"] }
+    ActivityQuestion:
+      type: object
+      required: [id, prompt, choices, answerIndex, explanation]
+      properties:
+        id: { type: string }
+        prompt: { type: string }
+        choices:
+          type: array
+          items: { type: string }
+        answerIndex: { type: integer, minimum: 0 }
+        explanation: { type: string }
+    ActivityFlashcard:
+      type: object
+      required: [front, back]
+      properties:
+        front: { type: string }
+        back: { type: string }
+    ActivitySimulator:
+      type: object
+      required: [mode, scenario, prompt, starter, expected, hint]
+      properties:
+        mode: { type: string, enum: [coding, language] }
+        scenario: { type: string }
+        prompt: { type: string }
+        starter: { type: string }
+        expected: { type: string }
+        hint: { type: string }
+    ActivityContent:
+      type: object
+      properties:
+        questions:
+          type: array
+          items: { $ref: "#/components/schemas/ActivityQuestion" }
+        flashcards:
+          type: array
+          items: { $ref: "#/components/schemas/ActivityFlashcard" }
+        simulator: { $ref: "#/components/schemas/ActivitySimulator" }
+    ActivityAttempt:
+      type: object
+      required: [id, activityId, userId, displayName, responses, score, createdAt]
+      properties:
+        id: { type: string }
+        activityId: { type: string }
+        userId: { type: string }
+        displayName: { type: string }
+        responses:
+          type: array
+          items: { type: string }
+        score: { type: ["integer", "null"], minimum: 0, maximum: 100 }
+        createdAt: { type: string, format: date-time }
+    SharedActivity:
+      type: object
+      required: [id, roomId, kind, title, instructions, content, isDemo, createdAt, attempts]
+      properties:
+        id: { type: string }
+        roomId: { type: string }
+        kind: { type: string, enum: [quiz, flashcards, simulator] }
+        title: { type: string }
+        instructions: { type: string }
+        content: { $ref: "#/components/schemas/ActivityContent" }
+        isDemo: { type: boolean }
+        createdAt: { type: string, format: date-time }
+        attempts:
+          type: array
+          items: { $ref: "#/components/schemas/ActivityAttempt" }
+    ActivityGenerationInput:
+      type: object
+      required: [kind, prompt]
+      properties:
+        kind: { type: string, enum: [quiz, flashcards, simulator] }
+        prompt: { type: string, minLength: 1, maxLength: 1000 }
+    ActivityAttemptInput:
+      type: object
+      required: [responses]
+      properties:
+        responses:
+          type: array
+          minItems: 1
+          maxItems: 30
+          items: { type: string, maxLength: 4000 }
     ChatSendResult:
       type: object
-      required: [message, moderatorMessage, aiPowered]
+      required: [message, assistantMessage, aiPowered]
       properties:
         message: { $ref: "#/components/schemas/ChatMessage" }
-        moderatorMessage:
+        assistantMessage:
           oneOf:
             - $ref: "#/components/schemas/ChatMessage"
             - type: "null"

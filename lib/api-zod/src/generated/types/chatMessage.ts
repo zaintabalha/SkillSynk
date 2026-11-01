@@ -5,6 +5,7 @@
  * API specification
  * OpenAPI spec version: 0.1.0
  */
+import type { ChatMessageChannel } from './chatMessageChannel';
 import type { ChatMessageSenderType } from './chatMessageSenderType';
 
 export interface ChatMessage {
@@ -14,6 +15,11 @@ export interface ChatMessage {
   senderId: string | null;
   senderName: string;
   senderType: ChatMessageSenderType;
+  channel: ChatMessageChannel;
+  /** @nullable */
+  replyToMessageId: string | null;
+  /** @nullable */
+  activityId: string | null;
   content: string;
   createdAt: Date;
 }

@@ -8,6 +8,9 @@ export const skillSyncMessagesTable = pgTable("skillsync_messages", {
   senderId: text("sender_id"),
   senderName: text("sender_name").notNull(),
   senderType: text("sender_type").notNull(),
+  channel: text("channel").notNull().default("partner"),
+  replyToMessageId: text("reply_to_message_id"),
+  activityId: text("activity_id"),
   content: text("content").notNull(),
   createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
 });

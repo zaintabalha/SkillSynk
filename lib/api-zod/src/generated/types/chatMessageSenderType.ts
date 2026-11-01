@@ -11,5 +11,6 @@ export type ChatMessageSenderType = typeof ChatMessageSenderType[keyof typeof Ch
 
 export const ChatMessageSenderType = {
   student: 'student',
+  assistant: 'assistant',
   moderator: 'moderator',
 } as const;

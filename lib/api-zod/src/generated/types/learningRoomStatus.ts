@@ -12,4 +12,5 @@ export type LearningRoomStatus = typeof LearningRoomStatus[keyof typeof Learning
 export const LearningRoomStatus = {
   active: 'active',
   completed: 'completed',
+  unmatched: 'unmatched',
 } as const;

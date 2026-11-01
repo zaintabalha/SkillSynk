@@ -25,21 +25,39 @@ import type {
 } from '@tanstack/react-query';
 
 import type {
+  ActivityAttempt,
+  ActivityAttemptInput,
+  ActivityGenerationInput,
+  AdminAccess,
+  AdminAction,
+  AdminOverview,
+  AdminReportDetail,
+  AdminRoom,
+  AdminUser,
   ChatMessageInput,
   ChatSendResult,
   ConnectInput,
+  CurriculumRegeneration,
   DailyChallenge,
   Dashboard,
   HealthStatus,
   LearningRoom,
+  ListSkillSyncAdminReportsParams,
   MatchCandidate,
   ProfileEnvelope,
   ProfileInput,
   ProjectSubmission,
   RecommendationResponse,
+  ReportInput,
+  ReportTicket,
+  ReportUpdateInput,
   RoomSummary,
+  SharedActivity,
   SubmissionInput,
-  UserProfile
+  SuspensionInput,
+  UserNotice,
+  UserProfile,
+  WarningInput
 } from './api.schemas';
 
 import { customFetch } from '../custom-fetch';
@@ -1015,6 +1033,376 @@ export const useSendSkillSyncMessage = <TError = ErrorType<unknown>,
       return useMutation(getSendSkillSyncMessageMutationOptions(options), queryClient);
     }
 
+export const getSendSkillSyncAiMessageUrl = (roomId: string,) => {
+
+
+
+
+  return `/api/skillsync/rooms/${roomId}/ai-messages`
+}
+
+/**
+ * @summary Send a prompt to the shared SkillSync AI workspace
+ */
+export const sendSkillSyncAiMessage = async (roomId: string,
+    chatMessageInput: ChatMessageInput, options?: Parameters<typeof customFetch>[1]): Promise<ChatSendResult> => {
+
+    const getHeaders = (h?: NonNullable<RequestInit['headers']>): Record<string, string | readonly string[]> => {
+    if (!h) return {};
+    if (h instanceof Headers) return Object.fromEntries(h.entries());
+    if (Symbol.iterator in h) {
+      return Object.fromEntries(
+        Array.from(h as Iterable<Iterable<string>>, (entry) => Array.from(entry) as [string, string]),
+      );
+    }
+    const headers: Record<string, string | readonly string[]> = {};
+    for (const [name, value] of Object.entries<string | readonly string[] | undefined>(h)) {
+      if (value !== undefined) headers[name] = value;
+    }
+    return headers;
+  };
+return customFetch<ChatSendResult>(getSendSkillSyncAiMessageUrl(roomId),
+  {
+    ...options,
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json', ...getHeaders(options?.headers) },
+    body: JSON.stringify(chatMessageInput)
+  }
+);}
+
+
+
+
+
+export const getSendSkillSyncAiMessageMutationKey = () => ['sendSkillSyncAiMessage'] as const;
+
+export const getSendSkillSyncAiMessageMutationOptions = <TError = ErrorType<unknown>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof sendSkillSyncAiMessage>>, TError,SendSkillSyncAiMessageMutationVariables, TContext>, request?: SecondParameter<typeof customFetch>}
+): UseMutationOptions<Awaited<ReturnType<typeof sendSkillSyncAiMessage>>, TError,SendSkillSyncAiMessageMutationVariables, TContext> => {
+
+const mutationKey = getSendSkillSyncAiMessageMutationKey();
+const {mutation: mutationOptions, request: requestOptions} = options ?
+      options.mutation && 'mutationKey' in options.mutation && options.mutation.mutationKey ?
+      options
+      : {...options, mutation: {...options.mutation, mutationKey}}
+      : {mutation: { mutationKey, }, request: undefined};
+
+
+
+
+      const mutationFn: MutationFunction<Awaited<ReturnType<typeof sendSkillSyncAiMessage>>, SendSkillSyncAiMessageMutationVariables> = (props) => {
+          const {roomId,data} = props ?? {};
+
+          return  sendSkillSyncAiMessage(roomId,data,requestOptions)
+        }
+
+
+
+
+
+
+  return  { mutationFn, ...mutationOptions }}
+
+    export type SendSkillSyncAiMessageMutationResult = NonNullable<Awaited<ReturnType<typeof sendSkillSyncAiMessage>>>
+    export type SendSkillSyncAiMessageMutationBody = BodyType<ChatMessageInput>
+    export type SendSkillSyncAiMessageMutationError = ErrorType<unknown>
+    export type SendSkillSyncAiMessageMutationVariables = {roomId: string;data: BodyType<ChatMessageInput>}
+
+    /**
+ * @summary Send a prompt to the shared SkillSync AI workspace
+ */
+export const useSendSkillSyncAiMessage = <TError = ErrorType<unknown>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof sendSkillSyncAiMessage>>, TError,SendSkillSyncAiMessageMutationVariables, TContext>, request?: SecondParameter<typeof customFetch>}
+ , queryClient?: QueryClient): UseMutationResult<
+        Awaited<ReturnType<typeof sendSkillSyncAiMessage>>,
+        TError,
+        SendSkillSyncAiMessageMutationVariables,
+        TContext
+      > => {
+      return useMutation(getSendSkillSyncAiMessageMutationOptions(options), queryClient);
+    }
+
+export const getListSkillSyncActivitiesUrl = (roomId: string,) => {
+
+
+
+
+  return `/api/skillsync/rooms/${roomId}/activities`
+}
+
+/**
+ * @summary List shared quizzes, flashcards, and simulators
+ */
+export const listSkillSyncActivities = async (roomId: string, options?: Parameters<typeof customFetch>[1]): Promise<SharedActivity[]> => {
+
+  return customFetch<SharedActivity[]>(getListSkillSyncActivitiesUrl(roomId),
+  {
+    ...options,
+    method: 'GET'
+
+
+  }
+);}
+
+
+
+
+
+export const getListSkillSyncActivitiesQueryKey = (roomId: string,) => {
+    return [
+    `/api/skillsync/rooms/${roomId}/activities`
+    ] as const;
+    }
+
+
+export const getListSkillSyncActivitiesQueryOptions = <TData = Awaited<ReturnType<typeof listSkillSyncActivities>>, TError = ErrorType<unknown>>(roomId: string, options?: { query?:Partial<UseQueryOptions<Awaited<ReturnType<typeof listSkillSyncActivities>>, TError, TData>>, request?: SecondParameter<typeof customFetch>}
+) => {
+
+const {query: queryOptions, request: requestOptions} = options ?? {};
+
+  const queryKey =  queryOptions?.queryKey ?? getListSkillSyncActivitiesQueryKey(roomId);
+
+
+
+    const queryFn: QueryFunction<Awaited<ReturnType<typeof listSkillSyncActivities>>> = ({ signal }) => listSkillSyncActivities(roomId, { signal, ...requestOptions });
+
+
+
+
+
+   return  { queryKey, queryFn, enabled: roomId !== null && roomId !== undefined, ...queryOptions} as UseQueryOptions<Awaited<ReturnType<typeof listSkillSyncActivities>>, TError, TData> & { queryKey: DataTag<QueryKey, TData, TError> }
+}
+
+export type ListSkillSyncActivitiesQueryResult = NonNullable<Awaited<ReturnType<typeof listSkillSyncActivities>>>
+export type ListSkillSyncActivitiesQueryError = ErrorType<unknown>
+
+
+export function useListSkillSyncActivities<TData = Awaited<ReturnType<typeof listSkillSyncActivities>>, TError = ErrorType<unknown>>(
+ roomId: string, options: { query:Partial<UseQueryOptions<Awaited<ReturnType<typeof listSkillSyncActivities>>, TError, TData>> & Pick<
+        DefinedInitialDataOptions<
+          Awaited<ReturnType<typeof listSkillSyncActivities>>,
+          TError,
+          Awaited<ReturnType<typeof listSkillSyncActivities>>
+        > , 'initialData'
+      >, request?: SecondParameter<typeof customFetch>}
+ , queryClient?: QueryClient
+  ):  DefinedUseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> }
+export function useListSkillSyncActivities<TData = Awaited<ReturnType<typeof listSkillSyncActivities>>, TError = ErrorType<unknown>>(
+ roomId: string, options?: { query?:Partial<UseQueryOptions<Awaited<ReturnType<typeof listSkillSyncActivities>>, TError, TData>> & Pick<
+        UndefinedInitialDataOptions<
+          Awaited<ReturnType<typeof listSkillSyncActivities>>,
+          TError,
+          Awaited<ReturnType<typeof listSkillSyncActivities>>
+        > , 'initialData'
+      >, request?: SecondParameter<typeof customFetch>}
+ , queryClient?: QueryClient
+  ):  UseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> }
+export function useListSkillSyncActivities<TData = Awaited<ReturnType<typeof listSkillSyncActivities>>, TError = ErrorType<unknown>>(
+ roomId: string, options?: { query?:Partial<UseQueryOptions<Awaited<ReturnType<typeof listSkillSyncActivities>>, TError, TData>>, request?: SecondParameter<typeof customFetch>}
+ , queryClient?: QueryClient
+  ):  UseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> }
+/**
+ * @summary List shared quizzes, flashcards, and simulators
+ */
+
+export function useListSkillSyncActivities<TData = Awaited<ReturnType<typeof listSkillSyncActivities>>, TError = ErrorType<unknown>>(
+ roomId: string, options?: { query?:Partial<UseQueryOptions<Awaited<ReturnType<typeof listSkillSyncActivities>>, TError, TData>>, request?: SecondParameter<typeof customFetch>}
+ , queryClient?: QueryClient
+ ):  UseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> } {
+
+  const queryOptions = getListSkillSyncActivitiesQueryOptions(roomId,options)
+
+  const query = useQuery(queryOptions, queryClient) as  UseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> };
+
+  return withQueryKey(query, queryOptions.queryKey);
+}
+
+
+
+
+
+
+
+export const getGenerateSkillSyncActivityUrl = (roomId: string,) => {
+
+
+
+
+  return `/api/skillsync/rooms/${roomId}/activities`
+}
+
+/**
+ * @summary Generate a shared learning activity from room context
+ */
+export const generateSkillSyncActivity = async (roomId: string,
+    activityGenerationInput: ActivityGenerationInput, options?: Parameters<typeof customFetch>[1]): Promise<SharedActivity> => {
+
+    const getHeaders = (h?: NonNullable<RequestInit['headers']>): Record<string, string | readonly string[]> => {
+    if (!h) return {};
+    if (h instanceof Headers) return Object.fromEntries(h.entries());
+    if (Symbol.iterator in h) {
+      return Object.fromEntries(
+        Array.from(h as Iterable<Iterable<string>>, (entry) => Array.from(entry) as [string, string]),
+      );
+    }
+    const headers: Record<string, string | readonly string[]> = {};
+    for (const [name, value] of Object.entries<string | readonly string[] | undefined>(h)) {
+      if (value !== undefined) headers[name] = value;
+    }
+    return headers;
+  };
+return customFetch<SharedActivity>(getGenerateSkillSyncActivityUrl(roomId),
+  {
+    ...options,
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json', ...getHeaders(options?.headers) },
+    body: JSON.stringify(activityGenerationInput)
+  }
+);}
+
+
+
+
+
+export const getGenerateSkillSyncActivityMutationKey = () => ['generateSkillSyncActivity'] as const;
+
+export const getGenerateSkillSyncActivityMutationOptions = <TError = ErrorType<unknown>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof generateSkillSyncActivity>>, TError,GenerateSkillSyncActivityMutationVariables, TContext>, request?: SecondParameter<typeof customFetch>}
+): UseMutationOptions<Awaited<ReturnType<typeof generateSkillSyncActivity>>, TError,GenerateSkillSyncActivityMutationVariables, TContext> => {
+
+const mutationKey = getGenerateSkillSyncActivityMutationKey();
+const {mutation: mutationOptions, request: requestOptions} = options ?
+      options.mutation && 'mutationKey' in options.mutation && options.mutation.mutationKey ?
+      options
+      : {...options, mutation: {...options.mutation, mutationKey}}
+      : {mutation: { mutationKey, }, request: undefined};
+
+
+
+
+      const mutationFn: MutationFunction<Awaited<ReturnType<typeof generateSkillSyncActivity>>, GenerateSkillSyncActivityMutationVariables> = (props) => {
+          const {roomId,data} = props ?? {};
+
+          return  generateSkillSyncActivity(roomId,data,requestOptions)
+        }
+
+
+
+
+
+
+  return  { mutationFn, ...mutationOptions }}
+
+    export type GenerateSkillSyncActivityMutationResult = NonNullable<Awaited<ReturnType<typeof generateSkillSyncActivity>>>
+    export type GenerateSkillSyncActivityMutationBody = BodyType<ActivityGenerationInput>
+    export type GenerateSkillSyncActivityMutationError = ErrorType<unknown>
+    export type GenerateSkillSyncActivityMutationVariables = {roomId: string;data: BodyType<ActivityGenerationInput>}
+
+    /**
+ * @summary Generate a shared learning activity from room context
+ */
+export const useGenerateSkillSyncActivity = <TError = ErrorType<unknown>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof generateSkillSyncActivity>>, TError,GenerateSkillSyncActivityMutationVariables, TContext>, request?: SecondParameter<typeof customFetch>}
+ , queryClient?: QueryClient): UseMutationResult<
+        Awaited<ReturnType<typeof generateSkillSyncActivity>>,
+        TError,
+        GenerateSkillSyncActivityMutationVariables,
+        TContext
+      > => {
+      return useMutation(getGenerateSkillSyncActivityMutationOptions(options), queryClient);
+    }
+
+export const getSubmitSkillSyncActivityAttemptUrl = (roomId: string,
+    activityId: string,) => {
+
+
+
+
+  return `/api/skillsync/rooms/${roomId}/activities/${activityId}/attempts`
+}
+
+/**
+ * @summary Submit a shared activity attempt
+ */
+export const submitSkillSyncActivityAttempt = async (roomId: string,
+    activityId: string,
+    activityAttemptInput: ActivityAttemptInput, options?: Parameters<typeof customFetch>[1]): Promise<ActivityAttempt> => {
+
+    const getHeaders = (h?: NonNullable<RequestInit['headers']>): Record<string, string | readonly string[]> => {
+    if (!h) return {};
+    if (h instanceof Headers) return Object.fromEntries(h.entries());
+    if (Symbol.iterator in h) {
+      return Object.fromEntries(
+        Array.from(h as Iterable<Iterable<string>>, (entry) => Array.from(entry) as [string, string]),
+      );
+    }
+    const headers: Record<string, string | readonly string[]> = {};
+    for (const [name, value] of Object.entries<string | readonly string[] | undefined>(h)) {
+      if (value !== undefined) headers[name] = value;
+    }
+    return headers;
+  };
+return customFetch<ActivityAttempt>(getSubmitSkillSyncActivityAttemptUrl(roomId,activityId),
+  {
+    ...options,
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json', ...getHeaders(options?.headers) },
+    body: JSON.stringify(activityAttemptInput)
+  }
+);}
+
+
+
+
+
+export const getSubmitSkillSyncActivityAttemptMutationKey = () => ['submitSkillSyncActivityAttempt'] as const;
+
+export const getSubmitSkillSyncActivityAttemptMutationOptions = <TError = ErrorType<unknown>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof submitSkillSyncActivityAttempt>>, TError,SubmitSkillSyncActivityAttemptMutationVariables, TContext>, request?: SecondParameter<typeof customFetch>}
+): UseMutationOptions<Awaited<ReturnType<typeof submitSkillSyncActivityAttempt>>, TError,SubmitSkillSyncActivityAttemptMutationVariables, TContext> => {
+
+const mutationKey = getSubmitSkillSyncActivityAttemptMutationKey();
+const {mutation: mutationOptions, request: requestOptions} = options ?
+      options.mutation && 'mutationKey' in options.mutation && options.mutation.mutationKey ?
+      options
+      : {...options, mutation: {...options.mutation, mutationKey}}
+      : {mutation: { mutationKey, }, request: undefined};
+
+
+
+
+      const mutationFn: MutationFunction<Awaited<ReturnType<typeof submitSkillSyncActivityAttempt>>, SubmitSkillSyncActivityAttemptMutationVariables> = (props) => {
+          const {roomId,activityId,data} = props ?? {};
+
+          return  submitSkillSyncActivityAttempt(roomId,activityId,data,requestOptions)
+        }
+
+
+
+
+
+
+  return  { mutationFn, ...mutationOptions }}
+
+    export type SubmitSkillSyncActivityAttemptMutationResult = NonNullable<Awaited<ReturnType<typeof submitSkillSyncActivityAttempt>>>
+    export type SubmitSkillSyncActivityAttemptMutationBody = BodyType<ActivityAttemptInput>
+    export type SubmitSkillSyncActivityAttemptMutationError = ErrorType<unknown>
+    export type SubmitSkillSyncActivityAttemptMutationVariables = {roomId: string;activityId: string;data: BodyType<ActivityAttemptInput>}
+
+    /**
+ * @summary Submit a shared activity attempt
+ */
+export const useSubmitSkillSyncActivityAttempt = <TError = ErrorType<unknown>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof submitSkillSyncActivityAttempt>>, TError,SubmitSkillSyncActivityAttemptMutationVariables, TContext>, request?: SecondParameter<typeof customFetch>}
+ , queryClient?: QueryClient): UseMutationResult<
+        Awaited<ReturnType<typeof submitSkillSyncActivityAttempt>>,
+        TError,
+        SubmitSkillSyncActivityAttemptMutationVariables,
+        TContext
+      > => {
+      return useMutation(getSubmitSkillSyncActivityAttemptMutationOptions(options), queryClient);
+    }
+
 export const getGenerateSkillSyncDailyChallengeUrl = (roomId: string,) => {
 
 
@@ -1176,5 +1564,1370 @@ export const useSubmitSkillSyncProject = <TError = ErrorType<unknown>,
         TContext
       > => {
       return useMutation(getSubmitSkillSyncProjectMutationOptions(options), queryClient);
+    }
+
+export const getSubmitSkillSyncReportUrl = () => {
+
+
+
+
+  return `/api/skillsync/reports`
+}
+
+/**
+ * @summary Submit a partner or technical complaint
+ */
+export const submitSkillSyncReport = async (reportInput: ReportInput, options?: Parameters<typeof customFetch>[1]): Promise<ReportTicket> => {
+
+    const getHeaders = (h?: NonNullable<RequestInit['headers']>): Record<string, string | readonly string[]> => {
+    if (!h) return {};
+    if (h instanceof Headers) return Object.fromEntries(h.entries());
+    if (Symbol.iterator in h) {
+      return Object.fromEntries(
+        Array.from(h as Iterable<Iterable<string>>, (entry) => Array.from(entry) as [string, string]),
+      );
+    }
+    const headers: Record<string, string | readonly string[]> = {};
+    for (const [name, value] of Object.entries<string | readonly string[] | undefined>(h)) {
+      if (value !== undefined) headers[name] = value;
+    }
+    return headers;
+  };
+return customFetch<ReportTicket>(getSubmitSkillSyncReportUrl(),
+  {
+    ...options,
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json', ...getHeaders(options?.headers) },
+    body: JSON.stringify(reportInput)
+  }
+);}
+
+
+
+
+
+export const getSubmitSkillSyncReportMutationKey = () => ['submitSkillSyncReport'] as const;
+
+export const getSubmitSkillSyncReportMutationOptions = <TError = ErrorType<unknown>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof submitSkillSyncReport>>, TError,SubmitSkillSyncReportMutationVariables, TContext>, request?: SecondParameter<typeof customFetch>}
+): UseMutationOptions<Awaited<ReturnType<typeof submitSkillSyncReport>>, TError,SubmitSkillSyncReportMutationVariables, TContext> => {
+
+const mutationKey = getSubmitSkillSyncReportMutationKey();
+const {mutation: mutationOptions, request: requestOptions} = options ?
+      options.mutation && 'mutationKey' in options.mutation && options.mutation.mutationKey ?
+      options
+      : {...options, mutation: {...options.mutation, mutationKey}}
+      : {mutation: { mutationKey, }, request: undefined};
+
+
+
+
+      const mutationFn: MutationFunction<Awaited<ReturnType<typeof submitSkillSyncReport>>, SubmitSkillSyncReportMutationVariables> = (props) => {
+          const {data} = props ?? {};
+
+          return  submitSkillSyncReport(data,requestOptions)
+        }
+
+
+
+
+
+
+  return  { mutationFn, ...mutationOptions }}
+
+    export type SubmitSkillSyncReportMutationResult = NonNullable<Awaited<ReturnType<typeof submitSkillSyncReport>>>
+    export type SubmitSkillSyncReportMutationBody = BodyType<ReportInput>
+    export type SubmitSkillSyncReportMutationError = ErrorType<unknown>
+    export type SubmitSkillSyncReportMutationVariables = {data: BodyType<ReportInput>}
+
+    /**
+ * @summary Submit a partner or technical complaint
+ */
+export const useSubmitSkillSyncReport = <TError = ErrorType<unknown>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof submitSkillSyncReport>>, TError,SubmitSkillSyncReportMutationVariables, TContext>, request?: SecondParameter<typeof customFetch>}
+ , queryClient?: QueryClient): UseMutationResult<
+        Awaited<ReturnType<typeof submitSkillSyncReport>>,
+        TError,
+        SubmitSkillSyncReportMutationVariables,
+        TContext
+      > => {
+      return useMutation(getSubmitSkillSyncReportMutationOptions(options), queryClient);
+    }
+
+export const getGetSkillSyncNoticesUrl = () => {
+
+
+
+
+  return `/api/skillsync/notices`
+}
+
+/**
+ * @summary Get unread account notices
+ */
+export const getSkillSyncNotices = async ( options?: Parameters<typeof customFetch>[1]): Promise<UserNotice[]> => {
+
+  return customFetch<UserNotice[]>(getGetSkillSyncNoticesUrl(),
+  {
+    ...options,
+    method: 'GET'
+
+
+  }
+);}
+
+
+
+
+
+export const getGetSkillSyncNoticesQueryKey = () => {
+    return [
+    `/api/skillsync/notices`
+    ] as const;
+    }
+
+
+export const getGetSkillSyncNoticesQueryOptions = <TData = Awaited<ReturnType<typeof getSkillSyncNotices>>, TError = ErrorType<unknown>>( options?: { query?:Partial<UseQueryOptions<Awaited<ReturnType<typeof getSkillSyncNotices>>, TError, TData>>, request?: SecondParameter<typeof customFetch>}
+) => {
+
+const {query: queryOptions, request: requestOptions} = options ?? {};
+
+  const queryKey =  queryOptions?.queryKey ?? getGetSkillSyncNoticesQueryKey();
+
+
+
+    const queryFn: QueryFunction<Awaited<ReturnType<typeof getSkillSyncNotices>>> = ({ signal }) => getSkillSyncNotices({ signal, ...requestOptions });
+
+
+
+
+
+   return  { queryKey, queryFn, ...queryOptions} as UseQueryOptions<Awaited<ReturnType<typeof getSkillSyncNotices>>, TError, TData> & { queryKey: DataTag<QueryKey, TData, TError> }
+}
+
+export type GetSkillSyncNoticesQueryResult = NonNullable<Awaited<ReturnType<typeof getSkillSyncNotices>>>
+export type GetSkillSyncNoticesQueryError = ErrorType<unknown>
+
+
+export function useGetSkillSyncNotices<TData = Awaited<ReturnType<typeof getSkillSyncNotices>>, TError = ErrorType<unknown>>(
+  options: { query:Partial<UseQueryOptions<Awaited<ReturnType<typeof getSkillSyncNotices>>, TError, TData>> & Pick<
+        DefinedInitialDataOptions<
+          Awaited<ReturnType<typeof getSkillSyncNotices>>,
+          TError,
+          Awaited<ReturnType<typeof getSkillSyncNotices>>
+        > , 'initialData'
+      >, request?: SecondParameter<typeof customFetch>}
+ , queryClient?: QueryClient
+  ):  DefinedUseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> }
+export function useGetSkillSyncNotices<TData = Awaited<ReturnType<typeof getSkillSyncNotices>>, TError = ErrorType<unknown>>(
+  options?: { query?:Partial<UseQueryOptions<Awaited<ReturnType<typeof getSkillSyncNotices>>, TError, TData>> & Pick<
+        UndefinedInitialDataOptions<
+          Awaited<ReturnType<typeof getSkillSyncNotices>>,
+          TError,
+          Awaited<ReturnType<typeof getSkillSyncNotices>>
+        > , 'initialData'
+      >, request?: SecondParameter<typeof customFetch>}
+ , queryClient?: QueryClient
+  ):  UseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> }
+export function useGetSkillSyncNotices<TData = Awaited<ReturnType<typeof getSkillSyncNotices>>, TError = ErrorType<unknown>>(
+  options?: { query?:Partial<UseQueryOptions<Awaited<ReturnType<typeof getSkillSyncNotices>>, TError, TData>>, request?: SecondParameter<typeof customFetch>}
+ , queryClient?: QueryClient
+  ):  UseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> }
+/**
+ * @summary Get unread account notices
+ */
+
+export function useGetSkillSyncNotices<TData = Awaited<ReturnType<typeof getSkillSyncNotices>>, TError = ErrorType<unknown>>(
+  options?: { query?:Partial<UseQueryOptions<Awaited<ReturnType<typeof getSkillSyncNotices>>, TError, TData>>, request?: SecondParameter<typeof customFetch>}
+ , queryClient?: QueryClient
+ ):  UseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> } {
+
+  const queryOptions = getGetSkillSyncNoticesQueryOptions(options)
+
+  const query = useQuery(queryOptions, queryClient) as  UseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> };
+
+  return withQueryKey(query, queryOptions.queryKey);
+}
+
+
+
+
+
+
+
+export const getMarkSkillSyncNoticeReadUrl = (noticeId: string,) => {
+
+
+
+
+  return `/api/skillsync/notices/${noticeId}/read`
+}
+
+/**
+ * @summary Mark an account notice as read
+ */
+export const markSkillSyncNoticeRead = async (noticeId: string, options?: Parameters<typeof customFetch>[1]): Promise<void> => {
+
+  return customFetch<void>(getMarkSkillSyncNoticeReadUrl(noticeId),
+  {
+    ...options,
+    method: 'POST'
+
+
+  }
+);}
+
+
+
+
+
+export const getMarkSkillSyncNoticeReadMutationKey = () => ['markSkillSyncNoticeRead'] as const;
+
+export const getMarkSkillSyncNoticeReadMutationOptions = <TError = ErrorType<unknown>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof markSkillSyncNoticeRead>>, TError,MarkSkillSyncNoticeReadMutationVariables, TContext>, request?: SecondParameter<typeof customFetch>}
+): UseMutationOptions<Awaited<ReturnType<typeof markSkillSyncNoticeRead>>, TError,MarkSkillSyncNoticeReadMutationVariables, TContext> => {
+
+const mutationKey = getMarkSkillSyncNoticeReadMutationKey();
+const {mutation: mutationOptions, request: requestOptions} = options ?
+      options.mutation && 'mutationKey' in options.mutation && options.mutation.mutationKey ?
+      options
+      : {...options, mutation: {...options.mutation, mutationKey}}
+      : {mutation: { mutationKey, }, request: undefined};
+
+
+
+
+      const mutationFn: MutationFunction<Awaited<ReturnType<typeof markSkillSyncNoticeRead>>, MarkSkillSyncNoticeReadMutationVariables> = (props) => {
+          const {noticeId} = props ?? {};
+
+          return  markSkillSyncNoticeRead(noticeId,requestOptions)
+        }
+
+
+
+
+
+
+  return  { mutationFn, ...mutationOptions }}
+
+    export type MarkSkillSyncNoticeReadMutationResult = NonNullable<Awaited<ReturnType<typeof markSkillSyncNoticeRead>>>
+
+    export type MarkSkillSyncNoticeReadMutationError = ErrorType<unknown>
+    export type MarkSkillSyncNoticeReadMutationVariables = {noticeId: string}
+
+    /**
+ * @summary Mark an account notice as read
+ */
+export const useMarkSkillSyncNoticeRead = <TError = ErrorType<unknown>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof markSkillSyncNoticeRead>>, TError,MarkSkillSyncNoticeReadMutationVariables, TContext>, request?: SecondParameter<typeof customFetch>}
+ , queryClient?: QueryClient): UseMutationResult<
+        Awaited<ReturnType<typeof markSkillSyncNoticeRead>>,
+        TError,
+        MarkSkillSyncNoticeReadMutationVariables,
+        TContext
+      > => {
+      return useMutation(getMarkSkillSyncNoticeReadMutationOptions(options), queryClient);
+    }
+
+export const getGetSkillSyncAdminAccessUrl = () => {
+
+
+
+
+  return `/api/skillsync/admin/access`
+}
+
+/**
+ * @summary Check whether the signed-in user is an administrator
+ */
+export const getSkillSyncAdminAccess = async ( options?: Parameters<typeof customFetch>[1]): Promise<AdminAccess> => {
+
+  return customFetch<AdminAccess>(getGetSkillSyncAdminAccessUrl(),
+  {
+    ...options,
+    method: 'GET'
+
+
+  }
+);}
+
+
+
+
+
+export const getGetSkillSyncAdminAccessQueryKey = () => {
+    return [
+    `/api/skillsync/admin/access`
+    ] as const;
+    }
+
+
+export const getGetSkillSyncAdminAccessQueryOptions = <TData = Awaited<ReturnType<typeof getSkillSyncAdminAccess>>, TError = ErrorType<unknown>>( options?: { query?:Partial<UseQueryOptions<Awaited<ReturnType<typeof getSkillSyncAdminAccess>>, TError, TData>>, request?: SecondParameter<typeof customFetch>}
+) => {
+
+const {query: queryOptions, request: requestOptions} = options ?? {};
+
+  const queryKey =  queryOptions?.queryKey ?? getGetSkillSyncAdminAccessQueryKey();
+
+
+
+    const queryFn: QueryFunction<Awaited<ReturnType<typeof getSkillSyncAdminAccess>>> = ({ signal }) => getSkillSyncAdminAccess({ signal, ...requestOptions });
+
+
+
+
+
+   return  { queryKey, queryFn, ...queryOptions} as UseQueryOptions<Awaited<ReturnType<typeof getSkillSyncAdminAccess>>, TError, TData> & { queryKey: DataTag<QueryKey, TData, TError> }
+}
+
+export type GetSkillSyncAdminAccessQueryResult = NonNullable<Awaited<ReturnType<typeof getSkillSyncAdminAccess>>>
+export type GetSkillSyncAdminAccessQueryError = ErrorType<unknown>
+
+
+export function useGetSkillSyncAdminAccess<TData = Awaited<ReturnType<typeof getSkillSyncAdminAccess>>, TError = ErrorType<unknown>>(
+  options: { query:Partial<UseQueryOptions<Awaited<ReturnType<typeof getSkillSyncAdminAccess>>, TError, TData>> & Pick<
+        DefinedInitialDataOptions<
+          Awaited<ReturnType<typeof getSkillSyncAdminAccess>>,
+          TError,
+          Awaited<ReturnType<typeof getSkillSyncAdminAccess>>
+        > , 'initialData'
+      >, request?: SecondParameter<typeof customFetch>}
+ , queryClient?: QueryClient
+  ):  DefinedUseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> }
+export function useGetSkillSyncAdminAccess<TData = Awaited<ReturnType<typeof getSkillSyncAdminAccess>>, TError = ErrorType<unknown>>(
+  options?: { query?:Partial<UseQueryOptions<Awaited<ReturnType<typeof getSkillSyncAdminAccess>>, TError, TData>> & Pick<
+        UndefinedInitialDataOptions<
+          Awaited<ReturnType<typeof getSkillSyncAdminAccess>>,
+          TError,
+          Awaited<ReturnType<typeof getSkillSyncAdminAccess>>
+        > , 'initialData'
+      >, request?: SecondParameter<typeof customFetch>}
+ , queryClient?: QueryClient
+  ):  UseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> }
+export function useGetSkillSyncAdminAccess<TData = Awaited<ReturnType<typeof getSkillSyncAdminAccess>>, TError = ErrorType<unknown>>(
+  options?: { query?:Partial<UseQueryOptions<Awaited<ReturnType<typeof getSkillSyncAdminAccess>>, TError, TData>>, request?: SecondParameter<typeof customFetch>}
+ , queryClient?: QueryClient
+  ):  UseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> }
+/**
+ * @summary Check whether the signed-in user is an administrator
+ */
+
+export function useGetSkillSyncAdminAccess<TData = Awaited<ReturnType<typeof getSkillSyncAdminAccess>>, TError = ErrorType<unknown>>(
+  options?: { query?:Partial<UseQueryOptions<Awaited<ReturnType<typeof getSkillSyncAdminAccess>>, TError, TData>>, request?: SecondParameter<typeof customFetch>}
+ , queryClient?: QueryClient
+ ):  UseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> } {
+
+  const queryOptions = getGetSkillSyncAdminAccessQueryOptions(options)
+
+  const query = useQuery(queryOptions, queryClient) as  UseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> };
+
+  return withQueryKey(query, queryOptions.queryKey);
+}
+
+
+
+
+
+
+
+export const getGetSkillSyncAdminOverviewUrl = () => {
+
+
+
+
+  return `/api/skillsync/admin/overview`
+}
+
+/**
+ * @summary Get platform analytics for administrators
+ */
+export const getSkillSyncAdminOverview = async ( options?: Parameters<typeof customFetch>[1]): Promise<AdminOverview> => {
+
+  return customFetch<AdminOverview>(getGetSkillSyncAdminOverviewUrl(),
+  {
+    ...options,
+    method: 'GET'
+
+
+  }
+);}
+
+
+
+
+
+export const getGetSkillSyncAdminOverviewQueryKey = () => {
+    return [
+    `/api/skillsync/admin/overview`
+    ] as const;
+    }
+
+
+export const getGetSkillSyncAdminOverviewQueryOptions = <TData = Awaited<ReturnType<typeof getSkillSyncAdminOverview>>, TError = ErrorType<unknown>>( options?: { query?:Partial<UseQueryOptions<Awaited<ReturnType<typeof getSkillSyncAdminOverview>>, TError, TData>>, request?: SecondParameter<typeof customFetch>}
+) => {
+
+const {query: queryOptions, request: requestOptions} = options ?? {};
+
+  const queryKey =  queryOptions?.queryKey ?? getGetSkillSyncAdminOverviewQueryKey();
+
+
+
+    const queryFn: QueryFunction<Awaited<ReturnType<typeof getSkillSyncAdminOverview>>> = ({ signal }) => getSkillSyncAdminOverview({ signal, ...requestOptions });
+
+
+
+
+
+   return  { queryKey, queryFn, ...queryOptions} as UseQueryOptions<Awaited<ReturnType<typeof getSkillSyncAdminOverview>>, TError, TData> & { queryKey: DataTag<QueryKey, TData, TError> }
+}
+
+export type GetSkillSyncAdminOverviewQueryResult = NonNullable<Awaited<ReturnType<typeof getSkillSyncAdminOverview>>>
+export type GetSkillSyncAdminOverviewQueryError = ErrorType<unknown>
+
+
+export function useGetSkillSyncAdminOverview<TData = Awaited<ReturnType<typeof getSkillSyncAdminOverview>>, TError = ErrorType<unknown>>(
+  options: { query:Partial<UseQueryOptions<Awaited<ReturnType<typeof getSkillSyncAdminOverview>>, TError, TData>> & Pick<
+        DefinedInitialDataOptions<
+          Awaited<ReturnType<typeof getSkillSyncAdminOverview>>,
+          TError,
+          Awaited<ReturnType<typeof getSkillSyncAdminOverview>>
+        > , 'initialData'
+      >, request?: SecondParameter<typeof customFetch>}
+ , queryClient?: QueryClient
+  ):  DefinedUseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> }
+export function useGetSkillSyncAdminOverview<TData = Awaited<ReturnType<typeof getSkillSyncAdminOverview>>, TError = ErrorType<unknown>>(
+  options?: { query?:Partial<UseQueryOptions<Awaited<ReturnType<typeof getSkillSyncAdminOverview>>, TError, TData>> & Pick<
+        UndefinedInitialDataOptions<
+          Awaited<ReturnType<typeof getSkillSyncAdminOverview>>,
+          TError,
+          Awaited<ReturnType<typeof getSkillSyncAdminOverview>>
+        > , 'initialData'
+      >, request?: SecondParameter<typeof customFetch>}
+ , queryClient?: QueryClient
+  ):  UseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> }
+export function useGetSkillSyncAdminOverview<TData = Awaited<ReturnType<typeof getSkillSyncAdminOverview>>, TError = ErrorType<unknown>>(
+  options?: { query?:Partial<UseQueryOptions<Awaited<ReturnType<typeof getSkillSyncAdminOverview>>, TError, TData>>, request?: SecondParameter<typeof customFetch>}
+ , queryClient?: QueryClient
+  ):  UseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> }
+/**
+ * @summary Get platform analytics for administrators
+ */
+
+export function useGetSkillSyncAdminOverview<TData = Awaited<ReturnType<typeof getSkillSyncAdminOverview>>, TError = ErrorType<unknown>>(
+  options?: { query?:Partial<UseQueryOptions<Awaited<ReturnType<typeof getSkillSyncAdminOverview>>, TError, TData>>, request?: SecondParameter<typeof customFetch>}
+ , queryClient?: QueryClient
+ ):  UseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> } {
+
+  const queryOptions = getGetSkillSyncAdminOverviewQueryOptions(options)
+
+  const query = useQuery(queryOptions, queryClient) as  UseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> };
+
+  return withQueryKey(query, queryOptions.queryKey);
+}
+
+
+
+
+
+
+
+export const getListSkillSyncAdminReportsUrl = (params?: ListSkillSyncAdminReportsParams,) => {
+  const normalizedParams = new URLSearchParams();
+
+  Object.entries(params || {}).forEach(([key, value]) => {
+
+    if (value !== undefined) {
+      normalizedParams.append(key, value === null ? 'null' : String(value))
+    }
+  });
+
+  const stringifiedParams = normalizedParams.toString();
+
+  return stringifiedParams.length > 0 ? `/api/skillsync/admin/reports?${stringifiedParams}` : `/api/skillsync/admin/reports`
+}
+
+/**
+ * @summary List and filter complaints
+ */
+export const listSkillSyncAdminReports = async (params?: ListSkillSyncAdminReportsParams, options?: Parameters<typeof customFetch>[1]): Promise<ReportTicket[]> => {
+
+  return customFetch<ReportTicket[]>(getListSkillSyncAdminReportsUrl(params),
+  {
+    ...options,
+    method: 'GET'
+
+
+  }
+);}
+
+
+
+
+
+export const getListSkillSyncAdminReportsQueryKey = (params?: ListSkillSyncAdminReportsParams,) => {
+    return [
+    `/api/skillsync/admin/reports`, ...(params ? [params] : [])
+    ] as const;
+    }
+
+
+export const getListSkillSyncAdminReportsQueryOptions = <TData = Awaited<ReturnType<typeof listSkillSyncAdminReports>>, TError = ErrorType<unknown>>(params?: ListSkillSyncAdminReportsParams, options?: { query?:Partial<UseQueryOptions<Awaited<ReturnType<typeof listSkillSyncAdminReports>>, TError, TData>>, request?: SecondParameter<typeof customFetch>}
+) => {
+
+const {query: queryOptions, request: requestOptions} = options ?? {};
+
+  const queryKey =  queryOptions?.queryKey ?? getListSkillSyncAdminReportsQueryKey(params);
+
+
+
+    const queryFn: QueryFunction<Awaited<ReturnType<typeof listSkillSyncAdminReports>>> = ({ signal }) => listSkillSyncAdminReports(params, { signal, ...requestOptions });
+
+
+
+
+
+   return  { queryKey, queryFn, ...queryOptions} as UseQueryOptions<Awaited<ReturnType<typeof listSkillSyncAdminReports>>, TError, TData> & { queryKey: DataTag<QueryKey, TData, TError> }
+}
+
+export type ListSkillSyncAdminReportsQueryResult = NonNullable<Awaited<ReturnType<typeof listSkillSyncAdminReports>>>
+export type ListSkillSyncAdminReportsQueryError = ErrorType<unknown>
+
+
+export function useListSkillSyncAdminReports<TData = Awaited<ReturnType<typeof listSkillSyncAdminReports>>, TError = ErrorType<unknown>>(
+ params: undefined |  ListSkillSyncAdminReportsParams, options: { query:Partial<UseQueryOptions<Awaited<ReturnType<typeof listSkillSyncAdminReports>>, TError, TData>> & Pick<
+        DefinedInitialDataOptions<
+          Awaited<ReturnType<typeof listSkillSyncAdminReports>>,
+          TError,
+          Awaited<ReturnType<typeof listSkillSyncAdminReports>>
+        > , 'initialData'
+      >, request?: SecondParameter<typeof customFetch>}
+ , queryClient?: QueryClient
+  ):  DefinedUseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> }
+export function useListSkillSyncAdminReports<TData = Awaited<ReturnType<typeof listSkillSyncAdminReports>>, TError = ErrorType<unknown>>(
+ params?: ListSkillSyncAdminReportsParams, options?: { query?:Partial<UseQueryOptions<Awaited<ReturnType<typeof listSkillSyncAdminReports>>, TError, TData>> & Pick<
+        UndefinedInitialDataOptions<
+          Awaited<ReturnType<typeof listSkillSyncAdminReports>>,
+          TError,
+          Awaited<ReturnType<typeof listSkillSyncAdminReports>>
+        > , 'initialData'
+      >, request?: SecondParameter<typeof customFetch>}
+ , queryClient?: QueryClient
+  ):  UseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> }
+export function useListSkillSyncAdminReports<TData = Awaited<ReturnType<typeof listSkillSyncAdminReports>>, TError = ErrorType<unknown>>(
+ params?: ListSkillSyncAdminReportsParams, options?: { query?:Partial<UseQueryOptions<Awaited<ReturnType<typeof listSkillSyncAdminReports>>, TError, TData>>, request?: SecondParameter<typeof customFetch>}
+ , queryClient?: QueryClient
+  ):  UseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> }
+/**
+ * @summary List and filter complaints
+ */
+
+export function useListSkillSyncAdminReports<TData = Awaited<ReturnType<typeof listSkillSyncAdminReports>>, TError = ErrorType<unknown>>(
+ params?: ListSkillSyncAdminReportsParams, options?: { query?:Partial<UseQueryOptions<Awaited<ReturnType<typeof listSkillSyncAdminReports>>, TError, TData>>, request?: SecondParameter<typeof customFetch>}
+ , queryClient?: QueryClient
+ ):  UseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> } {
+
+  const queryOptions = getListSkillSyncAdminReportsQueryOptions(params,options)
+
+  const query = useQuery(queryOptions, queryClient) as  UseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> };
+
+  return withQueryKey(query, queryOptions.queryKey);
+}
+
+
+
+
+
+
+
+export const getGetSkillSyncAdminReportUrl = (reportId: string,) => {
+
+
+
+
+  return `/api/skillsync/admin/reports/${reportId}`
+}
+
+/**
+ * @summary Inspect a complaint and its room transcript
+ */
+export const getSkillSyncAdminReport = async (reportId: string, options?: Parameters<typeof customFetch>[1]): Promise<AdminReportDetail> => {
+
+  return customFetch<AdminReportDetail>(getGetSkillSyncAdminReportUrl(reportId),
+  {
+    ...options,
+    method: 'GET'
+
+
+  }
+);}
+
+
+
+
+
+export const getGetSkillSyncAdminReportQueryKey = (reportId: string,) => {
+    return [
+    `/api/skillsync/admin/reports/${reportId}`
+    ] as const;
+    }
+
+
+export const getGetSkillSyncAdminReportQueryOptions = <TData = Awaited<ReturnType<typeof getSkillSyncAdminReport>>, TError = ErrorType<unknown>>(reportId: string, options?: { query?:Partial<UseQueryOptions<Awaited<ReturnType<typeof getSkillSyncAdminReport>>, TError, TData>>, request?: SecondParameter<typeof customFetch>}
+) => {
+
+const {query: queryOptions, request: requestOptions} = options ?? {};
+
+  const queryKey =  queryOptions?.queryKey ?? getGetSkillSyncAdminReportQueryKey(reportId);
+
+
+
+    const queryFn: QueryFunction<Awaited<ReturnType<typeof getSkillSyncAdminReport>>> = ({ signal }) => getSkillSyncAdminReport(reportId, { signal, ...requestOptions });
+
+
+
+
+
+   return  { queryKey, queryFn, enabled: reportId !== null && reportId !== undefined, ...queryOptions} as UseQueryOptions<Awaited<ReturnType<typeof getSkillSyncAdminReport>>, TError, TData> & { queryKey: DataTag<QueryKey, TData, TError> }
+}
+
+export type GetSkillSyncAdminReportQueryResult = NonNullable<Awaited<ReturnType<typeof getSkillSyncAdminReport>>>
+export type GetSkillSyncAdminReportQueryError = ErrorType<unknown>
+
+
+export function useGetSkillSyncAdminReport<TData = Awaited<ReturnType<typeof getSkillSyncAdminReport>>, TError = ErrorType<unknown>>(
+ reportId: string, options: { query:Partial<UseQueryOptions<Awaited<ReturnType<typeof getSkillSyncAdminReport>>, TError, TData>> & Pick<
+        DefinedInitialDataOptions<
+          Awaited<ReturnType<typeof getSkillSyncAdminReport>>,
+          TError,
+          Awaited<ReturnType<typeof getSkillSyncAdminReport>>
+        > , 'initialData'
+      >, request?: SecondParameter<typeof customFetch>}
+ , queryClient?: QueryClient
+  ):  DefinedUseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> }
+export function useGetSkillSyncAdminReport<TData = Awaited<ReturnType<typeof getSkillSyncAdminReport>>, TError = ErrorType<unknown>>(
+ reportId: string, options?: { query?:Partial<UseQueryOptions<Awaited<ReturnType<typeof getSkillSyncAdminReport>>, TError, TData>> & Pick<
+        UndefinedInitialDataOptions<
+          Awaited<ReturnType<typeof getSkillSyncAdminReport>>,
+          TError,
+          Awaited<ReturnType<typeof getSkillSyncAdminReport>>
+        > , 'initialData'
+      >, request?: SecondParameter<typeof customFetch>}
+ , queryClient?: QueryClient
+  ):  UseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> }
+export function useGetSkillSyncAdminReport<TData = Awaited<ReturnType<typeof getSkillSyncAdminReport>>, TError = ErrorType<unknown>>(
+ reportId: string, options?: { query?:Partial<UseQueryOptions<Awaited<ReturnType<typeof getSkillSyncAdminReport>>, TError, TData>>, request?: SecondParameter<typeof customFetch>}
+ , queryClient?: QueryClient
+  ):  UseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> }
+/**
+ * @summary Inspect a complaint and its room transcript
+ */
+
+export function useGetSkillSyncAdminReport<TData = Awaited<ReturnType<typeof getSkillSyncAdminReport>>, TError = ErrorType<unknown>>(
+ reportId: string, options?: { query?:Partial<UseQueryOptions<Awaited<ReturnType<typeof getSkillSyncAdminReport>>, TError, TData>>, request?: SecondParameter<typeof customFetch>}
+ , queryClient?: QueryClient
+ ):  UseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> } {
+
+  const queryOptions = getGetSkillSyncAdminReportQueryOptions(reportId,options)
+
+  const query = useQuery(queryOptions, queryClient) as  UseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> };
+
+  return withQueryKey(query, queryOptions.queryKey);
+}
+
+
+
+
+
+
+
+export const getUpdateSkillSyncAdminReportUrl = (reportId: string,) => {
+
+
+
+
+  return `/api/skillsync/admin/reports/${reportId}`
+}
+
+/**
+ * @summary Update complaint status and admin notes
+ */
+export const updateSkillSyncAdminReport = async (reportId: string,
+    reportUpdateInput: ReportUpdateInput, options?: Parameters<typeof customFetch>[1]): Promise<ReportTicket> => {
+
+    const getHeaders = (h?: NonNullable<RequestInit['headers']>): Record<string, string | readonly string[]> => {
+    if (!h) return {};
+    if (h instanceof Headers) return Object.fromEntries(h.entries());
+    if (Symbol.iterator in h) {
+      return Object.fromEntries(
+        Array.from(h as Iterable<Iterable<string>>, (entry) => Array.from(entry) as [string, string]),
+      );
+    }
+    const headers: Record<string, string | readonly string[]> = {};
+    for (const [name, value] of Object.entries<string | readonly string[] | undefined>(h)) {
+      if (value !== undefined) headers[name] = value;
+    }
+    return headers;
+  };
+return customFetch<ReportTicket>(getUpdateSkillSyncAdminReportUrl(reportId),
+  {
+    ...options,
+    method: 'PATCH',
+    headers: { 'Content-Type': 'application/json', ...getHeaders(options?.headers) },
+    body: JSON.stringify(reportUpdateInput)
+  }
+);}
+
+
+
+
+
+export const getUpdateSkillSyncAdminReportMutationKey = () => ['updateSkillSyncAdminReport'] as const;
+
+export const getUpdateSkillSyncAdminReportMutationOptions = <TError = ErrorType<unknown>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof updateSkillSyncAdminReport>>, TError,UpdateSkillSyncAdminReportMutationVariables, TContext>, request?: SecondParameter<typeof customFetch>}
+): UseMutationOptions<Awaited<ReturnType<typeof updateSkillSyncAdminReport>>, TError,UpdateSkillSyncAdminReportMutationVariables, TContext> => {
+
+const mutationKey = getUpdateSkillSyncAdminReportMutationKey();
+const {mutation: mutationOptions, request: requestOptions} = options ?
+      options.mutation && 'mutationKey' in options.mutation && options.mutation.mutationKey ?
+      options
+      : {...options, mutation: {...options.mutation, mutationKey}}
+      : {mutation: { mutationKey, }, request: undefined};
+
+
+
+
+      const mutationFn: MutationFunction<Awaited<ReturnType<typeof updateSkillSyncAdminReport>>, UpdateSkillSyncAdminReportMutationVariables> = (props) => {
+          const {reportId,data} = props ?? {};
+
+          return  updateSkillSyncAdminReport(reportId,data,requestOptions)
+        }
+
+
+
+
+
+
+  return  { mutationFn, ...mutationOptions }}
+
+    export type UpdateSkillSyncAdminReportMutationResult = NonNullable<Awaited<ReturnType<typeof updateSkillSyncAdminReport>>>
+    export type UpdateSkillSyncAdminReportMutationBody = BodyType<ReportUpdateInput>
+    export type UpdateSkillSyncAdminReportMutationError = ErrorType<unknown>
+    export type UpdateSkillSyncAdminReportMutationVariables = {reportId: string;data: BodyType<ReportUpdateInput>}
+
+    /**
+ * @summary Update complaint status and admin notes
+ */
+export const useUpdateSkillSyncAdminReport = <TError = ErrorType<unknown>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof updateSkillSyncAdminReport>>, TError,UpdateSkillSyncAdminReportMutationVariables, TContext>, request?: SecondParameter<typeof customFetch>}
+ , queryClient?: QueryClient): UseMutationResult<
+        Awaited<ReturnType<typeof updateSkillSyncAdminReport>>,
+        TError,
+        UpdateSkillSyncAdminReportMutationVariables,
+        TContext
+      > => {
+      return useMutation(getUpdateSkillSyncAdminReportMutationOptions(options), queryClient);
+    }
+
+export const getListSkillSyncAdminUsersUrl = () => {
+
+
+
+
+  return `/api/skillsync/admin/users`
+}
+
+/**
+ * @summary List student profiles and account status
+ */
+export const listSkillSyncAdminUsers = async ( options?: Parameters<typeof customFetch>[1]): Promise<AdminUser[]> => {
+
+  return customFetch<AdminUser[]>(getListSkillSyncAdminUsersUrl(),
+  {
+    ...options,
+    method: 'GET'
+
+
+  }
+);}
+
+
+
+
+
+export const getListSkillSyncAdminUsersQueryKey = () => {
+    return [
+    `/api/skillsync/admin/users`
+    ] as const;
+    }
+
+
+export const getListSkillSyncAdminUsersQueryOptions = <TData = Awaited<ReturnType<typeof listSkillSyncAdminUsers>>, TError = ErrorType<unknown>>( options?: { query?:Partial<UseQueryOptions<Awaited<ReturnType<typeof listSkillSyncAdminUsers>>, TError, TData>>, request?: SecondParameter<typeof customFetch>}
+) => {
+
+const {query: queryOptions, request: requestOptions} = options ?? {};
+
+  const queryKey =  queryOptions?.queryKey ?? getListSkillSyncAdminUsersQueryKey();
+
+
+
+    const queryFn: QueryFunction<Awaited<ReturnType<typeof listSkillSyncAdminUsers>>> = ({ signal }) => listSkillSyncAdminUsers({ signal, ...requestOptions });
+
+
+
+
+
+   return  { queryKey, queryFn, ...queryOptions} as UseQueryOptions<Awaited<ReturnType<typeof listSkillSyncAdminUsers>>, TError, TData> & { queryKey: DataTag<QueryKey, TData, TError> }
+}
+
+export type ListSkillSyncAdminUsersQueryResult = NonNullable<Awaited<ReturnType<typeof listSkillSyncAdminUsers>>>
+export type ListSkillSyncAdminUsersQueryError = ErrorType<unknown>
+
+
+export function useListSkillSyncAdminUsers<TData = Awaited<ReturnType<typeof listSkillSyncAdminUsers>>, TError = ErrorType<unknown>>(
+  options: { query:Partial<UseQueryOptions<Awaited<ReturnType<typeof listSkillSyncAdminUsers>>, TError, TData>> & Pick<
+        DefinedInitialDataOptions<
+          Awaited<ReturnType<typeof listSkillSyncAdminUsers>>,
+          TError,
+          Awaited<ReturnType<typeof listSkillSyncAdminUsers>>
+        > , 'initialData'
+      >, request?: SecondParameter<typeof customFetch>}
+ , queryClient?: QueryClient
+  ):  DefinedUseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> }
+export function useListSkillSyncAdminUsers<TData = Awaited<ReturnType<typeof listSkillSyncAdminUsers>>, TError = ErrorType<unknown>>(
+  options?: { query?:Partial<UseQueryOptions<Awaited<ReturnType<typeof listSkillSyncAdminUsers>>, TError, TData>> & Pick<
+        UndefinedInitialDataOptions<
+          Awaited<ReturnType<typeof listSkillSyncAdminUsers>>,
+          TError,
+          Awaited<ReturnType<typeof listSkillSyncAdminUsers>>
+        > , 'initialData'
+      >, request?: SecondParameter<typeof customFetch>}
+ , queryClient?: QueryClient
+  ):  UseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> }
+export function useListSkillSyncAdminUsers<TData = Awaited<ReturnType<typeof listSkillSyncAdminUsers>>, TError = ErrorType<unknown>>(
+  options?: { query?:Partial<UseQueryOptions<Awaited<ReturnType<typeof listSkillSyncAdminUsers>>, TError, TData>>, request?: SecondParameter<typeof customFetch>}
+ , queryClient?: QueryClient
+  ):  UseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> }
+/**
+ * @summary List student profiles and account status
+ */
+
+export function useListSkillSyncAdminUsers<TData = Awaited<ReturnType<typeof listSkillSyncAdminUsers>>, TError = ErrorType<unknown>>(
+  options?: { query?:Partial<UseQueryOptions<Awaited<ReturnType<typeof listSkillSyncAdminUsers>>, TError, TData>>, request?: SecondParameter<typeof customFetch>}
+ , queryClient?: QueryClient
+ ):  UseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> } {
+
+  const queryOptions = getListSkillSyncAdminUsersQueryOptions(options)
+
+  const query = useQuery(queryOptions, queryClient) as  UseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> };
+
+  return withQueryKey(query, queryOptions.queryKey);
+}
+
+
+
+
+
+
+
+export const getListSkillSyncAdminRoomsUrl = () => {
+
+
+
+
+  return `/api/skillsync/admin/rooms`
+}
+
+/**
+ * @summary List all co-learning rooms
+ */
+export const listSkillSyncAdminRooms = async ( options?: Parameters<typeof customFetch>[1]): Promise<AdminRoom[]> => {
+
+  return customFetch<AdminRoom[]>(getListSkillSyncAdminRoomsUrl(),
+  {
+    ...options,
+    method: 'GET'
+
+
+  }
+);}
+
+
+
+
+
+export const getListSkillSyncAdminRoomsQueryKey = () => {
+    return [
+    `/api/skillsync/admin/rooms`
+    ] as const;
+    }
+
+
+export const getListSkillSyncAdminRoomsQueryOptions = <TData = Awaited<ReturnType<typeof listSkillSyncAdminRooms>>, TError = ErrorType<unknown>>( options?: { query?:Partial<UseQueryOptions<Awaited<ReturnType<typeof listSkillSyncAdminRooms>>, TError, TData>>, request?: SecondParameter<typeof customFetch>}
+) => {
+
+const {query: queryOptions, request: requestOptions} = options ?? {};
+
+  const queryKey =  queryOptions?.queryKey ?? getListSkillSyncAdminRoomsQueryKey();
+
+
+
+    const queryFn: QueryFunction<Awaited<ReturnType<typeof listSkillSyncAdminRooms>>> = ({ signal }) => listSkillSyncAdminRooms({ signal, ...requestOptions });
+
+
+
+
+
+   return  { queryKey, queryFn, ...queryOptions} as UseQueryOptions<Awaited<ReturnType<typeof listSkillSyncAdminRooms>>, TError, TData> & { queryKey: DataTag<QueryKey, TData, TError> }
+}
+
+export type ListSkillSyncAdminRoomsQueryResult = NonNullable<Awaited<ReturnType<typeof listSkillSyncAdminRooms>>>
+export type ListSkillSyncAdminRoomsQueryError = ErrorType<unknown>
+
+
+export function useListSkillSyncAdminRooms<TData = Awaited<ReturnType<typeof listSkillSyncAdminRooms>>, TError = ErrorType<unknown>>(
+  options: { query:Partial<UseQueryOptions<Awaited<ReturnType<typeof listSkillSyncAdminRooms>>, TError, TData>> & Pick<
+        DefinedInitialDataOptions<
+          Awaited<ReturnType<typeof listSkillSyncAdminRooms>>,
+          TError,
+          Awaited<ReturnType<typeof listSkillSyncAdminRooms>>
+        > , 'initialData'
+      >, request?: SecondParameter<typeof customFetch>}
+ , queryClient?: QueryClient
+  ):  DefinedUseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> }
+export function useListSkillSyncAdminRooms<TData = Awaited<ReturnType<typeof listSkillSyncAdminRooms>>, TError = ErrorType<unknown>>(
+  options?: { query?:Partial<UseQueryOptions<Awaited<ReturnType<typeof listSkillSyncAdminRooms>>, TError, TData>> & Pick<
+        UndefinedInitialDataOptions<
+          Awaited<ReturnType<typeof listSkillSyncAdminRooms>>,
+          TError,
+          Awaited<ReturnType<typeof listSkillSyncAdminRooms>>
+        > , 'initialData'
+      >, request?: SecondParameter<typeof customFetch>}
+ , queryClient?: QueryClient
+  ):  UseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> }
+export function useListSkillSyncAdminRooms<TData = Awaited<ReturnType<typeof listSkillSyncAdminRooms>>, TError = ErrorType<unknown>>(
+  options?: { query?:Partial<UseQueryOptions<Awaited<ReturnType<typeof listSkillSyncAdminRooms>>, TError, TData>>, request?: SecondParameter<typeof customFetch>}
+ , queryClient?: QueryClient
+  ):  UseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> }
+/**
+ * @summary List all co-learning rooms
+ */
+
+export function useListSkillSyncAdminRooms<TData = Awaited<ReturnType<typeof listSkillSyncAdminRooms>>, TError = ErrorType<unknown>>(
+  options?: { query?:Partial<UseQueryOptions<Awaited<ReturnType<typeof listSkillSyncAdminRooms>>, TError, TData>>, request?: SecondParameter<typeof customFetch>}
+ , queryClient?: QueryClient
+ ):  UseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> } {
+
+  const queryOptions = getListSkillSyncAdminRoomsQueryOptions(options)
+
+  const query = useQuery(queryOptions, queryClient) as  UseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> };
+
+  return withQueryKey(query, queryOptions.queryKey);
+}
+
+
+
+
+
+
+
+export const getWarnSkillSyncAdminUserUrl = (userId: string,) => {
+
+
+
+
+  return `/api/skillsync/admin/users/${userId}/warning`
+}
+
+/**
+ * @summary Send a documented warning to a student
+ */
+export const warnSkillSyncAdminUser = async (userId: string,
+    warningInput: WarningInput, options?: Parameters<typeof customFetch>[1]): Promise<AdminAction> => {
+
+    const getHeaders = (h?: NonNullable<RequestInit['headers']>): Record<string, string | readonly string[]> => {
+    if (!h) return {};
+    if (h instanceof Headers) return Object.fromEntries(h.entries());
+    if (Symbol.iterator in h) {
+      return Object.fromEntries(
+        Array.from(h as Iterable<Iterable<string>>, (entry) => Array.from(entry) as [string, string]),
+      );
+    }
+    const headers: Record<string, string | readonly string[]> = {};
+    for (const [name, value] of Object.entries<string | readonly string[] | undefined>(h)) {
+      if (value !== undefined) headers[name] = value;
+    }
+    return headers;
+  };
+return customFetch<AdminAction>(getWarnSkillSyncAdminUserUrl(userId),
+  {
+    ...options,
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json', ...getHeaders(options?.headers) },
+    body: JSON.stringify(warningInput)
+  }
+);}
+
+
+
+
+
+export const getWarnSkillSyncAdminUserMutationKey = () => ['warnSkillSyncAdminUser'] as const;
+
+export const getWarnSkillSyncAdminUserMutationOptions = <TError = ErrorType<unknown>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof warnSkillSyncAdminUser>>, TError,WarnSkillSyncAdminUserMutationVariables, TContext>, request?: SecondParameter<typeof customFetch>}
+): UseMutationOptions<Awaited<ReturnType<typeof warnSkillSyncAdminUser>>, TError,WarnSkillSyncAdminUserMutationVariables, TContext> => {
+
+const mutationKey = getWarnSkillSyncAdminUserMutationKey();
+const {mutation: mutationOptions, request: requestOptions} = options ?
+      options.mutation && 'mutationKey' in options.mutation && options.mutation.mutationKey ?
+      options
+      : {...options, mutation: {...options.mutation, mutationKey}}
+      : {mutation: { mutationKey, }, request: undefined};
+
+
+
+
+      const mutationFn: MutationFunction<Awaited<ReturnType<typeof warnSkillSyncAdminUser>>, WarnSkillSyncAdminUserMutationVariables> = (props) => {
+          const {userId,data} = props ?? {};
+
+          return  warnSkillSyncAdminUser(userId,data,requestOptions)
+        }
+
+
+
+
+
+
+  return  { mutationFn, ...mutationOptions }}
+
+    export type WarnSkillSyncAdminUserMutationResult = NonNullable<Awaited<ReturnType<typeof warnSkillSyncAdminUser>>>
+    export type WarnSkillSyncAdminUserMutationBody = BodyType<WarningInput>
+    export type WarnSkillSyncAdminUserMutationError = ErrorType<unknown>
+    export type WarnSkillSyncAdminUserMutationVariables = {userId: string;data: BodyType<WarningInput>}
+
+    /**
+ * @summary Send a documented warning to a student
+ */
+export const useWarnSkillSyncAdminUser = <TError = ErrorType<unknown>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof warnSkillSyncAdminUser>>, TError,WarnSkillSyncAdminUserMutationVariables, TContext>, request?: SecondParameter<typeof customFetch>}
+ , queryClient?: QueryClient): UseMutationResult<
+        Awaited<ReturnType<typeof warnSkillSyncAdminUser>>,
+        TError,
+        WarnSkillSyncAdminUserMutationVariables,
+        TContext
+      > => {
+      return useMutation(getWarnSkillSyncAdminUserMutationOptions(options), queryClient);
+    }
+
+export const getSuspendSkillSyncAdminUserUrl = (userId: string,) => {
+
+
+
+
+  return `/api/skillsync/admin/users/${userId}/suspension`
+}
+
+/**
+ * @summary Suspend a student account
+ */
+export const suspendSkillSyncAdminUser = async (userId: string,
+    suspensionInput: SuspensionInput, options?: Parameters<typeof customFetch>[1]): Promise<AdminAction> => {
+
+    const getHeaders = (h?: NonNullable<RequestInit['headers']>): Record<string, string | readonly string[]> => {
+    if (!h) return {};
+    if (h instanceof Headers) return Object.fromEntries(h.entries());
+    if (Symbol.iterator in h) {
+      return Object.fromEntries(
+        Array.from(h as Iterable<Iterable<string>>, (entry) => Array.from(entry) as [string, string]),
+      );
+    }
+    const headers: Record<string, string | readonly string[]> = {};
+    for (const [name, value] of Object.entries<string | readonly string[] | undefined>(h)) {
+      if (value !== undefined) headers[name] = value;
+    }
+    return headers;
+  };
+return customFetch<AdminAction>(getSuspendSkillSyncAdminUserUrl(userId),
+  {
+    ...options,
+    method: 'PUT',
+    headers: { 'Content-Type': 'application/json', ...getHeaders(options?.headers) },
+    body: JSON.stringify(suspensionInput)
+  }
+);}
+
+
+
+
+
+export const getSuspendSkillSyncAdminUserMutationKey = () => ['suspendSkillSyncAdminUser'] as const;
+
+export const getSuspendSkillSyncAdminUserMutationOptions = <TError = ErrorType<unknown>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof suspendSkillSyncAdminUser>>, TError,SuspendSkillSyncAdminUserMutationVariables, TContext>, request?: SecondParameter<typeof customFetch>}
+): UseMutationOptions<Awaited<ReturnType<typeof suspendSkillSyncAdminUser>>, TError,SuspendSkillSyncAdminUserMutationVariables, TContext> => {
+
+const mutationKey = getSuspendSkillSyncAdminUserMutationKey();
+const {mutation: mutationOptions, request: requestOptions} = options ?
+      options.mutation && 'mutationKey' in options.mutation && options.mutation.mutationKey ?
+      options
+      : {...options, mutation: {...options.mutation, mutationKey}}
+      : {mutation: { mutationKey, }, request: undefined};
+
+
+
+
+      const mutationFn: MutationFunction<Awaited<ReturnType<typeof suspendSkillSyncAdminUser>>, SuspendSkillSyncAdminUserMutationVariables> = (props) => {
+          const {userId,data} = props ?? {};
+
+          return  suspendSkillSyncAdminUser(userId,data,requestOptions)
+        }
+
+
+
+
+
+
+  return  { mutationFn, ...mutationOptions }}
+
+    export type SuspendSkillSyncAdminUserMutationResult = NonNullable<Awaited<ReturnType<typeof suspendSkillSyncAdminUser>>>
+    export type SuspendSkillSyncAdminUserMutationBody = BodyType<SuspensionInput>
+    export type SuspendSkillSyncAdminUserMutationError = ErrorType<unknown>
+    export type SuspendSkillSyncAdminUserMutationVariables = {userId: string;data: BodyType<SuspensionInput>}
+
+    /**
+ * @summary Suspend a student account
+ */
+export const useSuspendSkillSyncAdminUser = <TError = ErrorType<unknown>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof suspendSkillSyncAdminUser>>, TError,SuspendSkillSyncAdminUserMutationVariables, TContext>, request?: SecondParameter<typeof customFetch>}
+ , queryClient?: QueryClient): UseMutationResult<
+        Awaited<ReturnType<typeof suspendSkillSyncAdminUser>>,
+        TError,
+        SuspendSkillSyncAdminUserMutationVariables,
+        TContext
+      > => {
+      return useMutation(getSuspendSkillSyncAdminUserMutationOptions(options), queryClient);
+    }
+
+export const getUnsuspendSkillSyncAdminUserUrl = (userId: string,) => {
+
+
+
+
+  return `/api/skillsync/admin/users/${userId}/suspension`
+}
+
+/**
+ * @summary Restore a suspended account
+ */
+export const unsuspendSkillSyncAdminUser = async (userId: string, options?: Parameters<typeof customFetch>[1]): Promise<void> => {
+
+  return customFetch<void>(getUnsuspendSkillSyncAdminUserUrl(userId),
+  {
+    ...options,
+    method: 'DELETE'
+
+
+  }
+);}
+
+
+
+
+
+export const getUnsuspendSkillSyncAdminUserMutationKey = () => ['unsuspendSkillSyncAdminUser'] as const;
+
+export const getUnsuspendSkillSyncAdminUserMutationOptions = <TError = ErrorType<unknown>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof unsuspendSkillSyncAdminUser>>, TError,UnsuspendSkillSyncAdminUserMutationVariables, TContext>, request?: SecondParameter<typeof customFetch>}
+): UseMutationOptions<Awaited<ReturnType<typeof unsuspendSkillSyncAdminUser>>, TError,UnsuspendSkillSyncAdminUserMutationVariables, TContext> => {
+
+const mutationKey = getUnsuspendSkillSyncAdminUserMutationKey();
+const {mutation: mutationOptions, request: requestOptions} = options ?
+      options.mutation && 'mutationKey' in options.mutation && options.mutation.mutationKey ?
+      options
+      : {...options, mutation: {...options.mutation, mutationKey}}
+      : {mutation: { mutationKey, }, request: undefined};
+
+
+
+
+      const mutationFn: MutationFunction<Awaited<ReturnType<typeof unsuspendSkillSyncAdminUser>>, UnsuspendSkillSyncAdminUserMutationVariables> = (props) => {
+          const {userId} = props ?? {};
+
+          return  unsuspendSkillSyncAdminUser(userId,requestOptions)
+        }
+
+
+
+
+
+
+  return  { mutationFn, ...mutationOptions }}
+
+    export type UnsuspendSkillSyncAdminUserMutationResult = NonNullable<Awaited<ReturnType<typeof unsuspendSkillSyncAdminUser>>>
+
+    export type UnsuspendSkillSyncAdminUserMutationError = ErrorType<unknown>
+    export type UnsuspendSkillSyncAdminUserMutationVariables = {userId: string}
+
+    /**
+ * @summary Restore a suspended account
+ */
+export const useUnsuspendSkillSyncAdminUser = <TError = ErrorType<unknown>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof unsuspendSkillSyncAdminUser>>, TError,UnsuspendSkillSyncAdminUserMutationVariables, TContext>, request?: SecondParameter<typeof customFetch>}
+ , queryClient?: QueryClient): UseMutationResult<
+        Awaited<ReturnType<typeof unsuspendSkillSyncAdminUser>>,
+        TError,
+        UnsuspendSkillSyncAdminUserMutationVariables,
+        TContext
+      > => {
+      return useMutation(getUnsuspendSkillSyncAdminUserMutationOptions(options), queryClient);
+    }
+
+export const getUnmatchSkillSyncAdminRoomUrl = (roomId: string,) => {
+
+
+
+
+  return `/api/skillsync/admin/rooms/${roomId}/unmatch`
+}
+
+/**
+ * @summary Unmatch a pair and preserve its transcript
+ */
+export const unmatchSkillSyncAdminRoom = async (roomId: string, options?: Parameters<typeof customFetch>[1]): Promise<AdminAction> => {
+
+  return customFetch<AdminAction>(getUnmatchSkillSyncAdminRoomUrl(roomId),
+  {
+    ...options,
+    method: 'POST'
+
+
+  }
+);}
+
+
+
+
+
+export const getUnmatchSkillSyncAdminRoomMutationKey = () => ['unmatchSkillSyncAdminRoom'] as const;
+
+export const getUnmatchSkillSyncAdminRoomMutationOptions = <TError = ErrorType<unknown>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof unmatchSkillSyncAdminRoom>>, TError,UnmatchSkillSyncAdminRoomMutationVariables, TContext>, request?: SecondParameter<typeof customFetch>}
+): UseMutationOptions<Awaited<ReturnType<typeof unmatchSkillSyncAdminRoom>>, TError,UnmatchSkillSyncAdminRoomMutationVariables, TContext> => {
+
+const mutationKey = getUnmatchSkillSyncAdminRoomMutationKey();
+const {mutation: mutationOptions, request: requestOptions} = options ?
+      options.mutation && 'mutationKey' in options.mutation && options.mutation.mutationKey ?
+      options
+      : {...options, mutation: {...options.mutation, mutationKey}}
+      : {mutation: { mutationKey, }, request: undefined};
+
+
+
+
+      const mutationFn: MutationFunction<Awaited<ReturnType<typeof unmatchSkillSyncAdminRoom>>, UnmatchSkillSyncAdminRoomMutationVariables> = (props) => {
+          const {roomId} = props ?? {};
+
+          return  unmatchSkillSyncAdminRoom(roomId,requestOptions)
+        }
+
+
+
+
+
+
+  return  { mutationFn, ...mutationOptions }}
+
+    export type UnmatchSkillSyncAdminRoomMutationResult = NonNullable<Awaited<ReturnType<typeof unmatchSkillSyncAdminRoom>>>
+
+    export type UnmatchSkillSyncAdminRoomMutationError = ErrorType<unknown>
+    export type UnmatchSkillSyncAdminRoomMutationVariables = {roomId: string}
+
+    /**
+ * @summary Unmatch a pair and preserve its transcript
+ */
+export const useUnmatchSkillSyncAdminRoom = <TError = ErrorType<unknown>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof unmatchSkillSyncAdminRoom>>, TError,UnmatchSkillSyncAdminRoomMutationVariables, TContext>, request?: SecondParameter<typeof customFetch>}
+ , queryClient?: QueryClient): UseMutationResult<
+        Awaited<ReturnType<typeof unmatchSkillSyncAdminRoom>>,
+        TError,
+        UnmatchSkillSyncAdminRoomMutationVariables,
+        TContext
+      > => {
+      return useMutation(getUnmatchSkillSyncAdminRoomMutationOptions(options), queryClient);
+    }
+
+export const getRegenerateSkillSyncAdminCurriculumUrl = (roomId: string,) => {
+
+
+
+
+  return `/api/skillsync/admin/rooms/${roomId}/regenerate-curriculum`
+}
+
+/**
+ * @summary Regenerate a room's curriculum
+ */
+export const regenerateSkillSyncAdminCurriculum = async (roomId: string, options?: Parameters<typeof customFetch>[1]): Promise<CurriculumRegeneration> => {
+
+  return customFetch<CurriculumRegeneration>(getRegenerateSkillSyncAdminCurriculumUrl(roomId),
+  {
+    ...options,
+    method: 'POST'
+
+
+  }
+);}
+
+
+
+
+
+export const getRegenerateSkillSyncAdminCurriculumMutationKey = () => ['regenerateSkillSyncAdminCurriculum'] as const;
+
+export const getRegenerateSkillSyncAdminCurriculumMutationOptions = <TError = ErrorType<unknown>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof regenerateSkillSyncAdminCurriculum>>, TError,RegenerateSkillSyncAdminCurriculumMutationVariables, TContext>, request?: SecondParameter<typeof customFetch>}
+): UseMutationOptions<Awaited<ReturnType<typeof regenerateSkillSyncAdminCurriculum>>, TError,RegenerateSkillSyncAdminCurriculumMutationVariables, TContext> => {
+
+const mutationKey = getRegenerateSkillSyncAdminCurriculumMutationKey();
+const {mutation: mutationOptions, request: requestOptions} = options ?
+      options.mutation && 'mutationKey' in options.mutation && options.mutation.mutationKey ?
+      options
+      : {...options, mutation: {...options.mutation, mutationKey}}
+      : {mutation: { mutationKey, }, request: undefined};
+
+
+
+
+      const mutationFn: MutationFunction<Awaited<ReturnType<typeof regenerateSkillSyncAdminCurriculum>>, RegenerateSkillSyncAdminCurriculumMutationVariables> = (props) => {
+          const {roomId} = props ?? {};
+
+          return  regenerateSkillSyncAdminCurriculum(roomId,requestOptions)
+        }
+
+
+
+
+
+
+  return  { mutationFn, ...mutationOptions }}
+
+    export type RegenerateSkillSyncAdminCurriculumMutationResult = NonNullable<Awaited<ReturnType<typeof regenerateSkillSyncAdminCurriculum>>>
+
+    export type RegenerateSkillSyncAdminCurriculumMutationError = ErrorType<unknown>
+    export type RegenerateSkillSyncAdminCurriculumMutationVariables = {roomId: string}
+
+    /**
+ * @summary Regenerate a room's curriculum
+ */
+export const useRegenerateSkillSyncAdminCurriculum = <TError = ErrorType<unknown>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof regenerateSkillSyncAdminCurriculum>>, TError,RegenerateSkillSyncAdminCurriculumMutationVariables, TContext>, request?: SecondParameter<typeof customFetch>}
+ , queryClient?: QueryClient): UseMutationResult<
+        Awaited<ReturnType<typeof regenerateSkillSyncAdminCurriculum>>,
+        TError,
+        RegenerateSkillSyncAdminCurriculumMutationVariables,
+        TContext
+      > => {
+      return useMutation(getRegenerateSkillSyncAdminCurriculumMutationOptions(options), queryClient);
     }
 

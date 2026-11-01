@@ -9,6 +9,6 @@ import type { ChatMessage } from './chatMessage';
 
 export interface ChatSendResult {
   message: ChatMessage;
-  moderatorMessage: ChatMessage | null;
+  assistantMessage: ChatMessage | null;
   aiPowered: boolean;
 }

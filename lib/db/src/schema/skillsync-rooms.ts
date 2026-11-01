@@ -1,4 +1,4 @@
-import { integer, jsonb, pgTable, text, timestamp } from "drizzle-orm/pg-core";
+import { boolean, integer, jsonb, pgTable, text, timestamp } from "drizzle-orm/pg-core";
 import { createInsertSchema } from "drizzle-zod";
 import { z } from "zod/v4";
 
@@ -24,6 +24,7 @@ export const skillSyncRoomsTable = pgTable("skillsync_rooms", {
   projectTitle: text("project_title").notNull(),
   status: text("status").notNull().default("active"),
   progress: integer("progress").notNull().default(8),
+  isDemo: boolean("is_demo").notNull().default(false),
   curriculum: jsonb("curriculum").$type<SkillSyncCurriculum>().notNull(),
   challenge: jsonb("challenge").$type<SkillSyncChallenge | null>(),
   challengeDay: integer("challenge_day").notNull().default(1),

@@ -51,9 +51,10 @@ export const GetSkillSyncDashboardResponse = zod.object({
   "partnerUserId": zod.string(),
   "partnerName": zod.string(),
   "projectTitle": zod.string(),
-  "status": zod.enum(['active', 'completed']),
+  "status": zod.enum(['active', 'completed', 'unmatched']),
   "progress": zod.number().int().min(getSkillSyncDashboardResponseRoomsItemProgressMin).max(getSkillSyncDashboardResponseRoomsItemProgressMax),
   "lastMessage": zod.string().nullable(),
+  "isDemo": zod.boolean(),
   "updatedAt": zod.coerce.date()
 })),
   "recentActivity": zod.array(zod.object({
@@ -178,9 +179,10 @@ export const ConnectSkillSyncMatchResponse = zod.object({
   "partnerUserId": zod.string(),
   "partnerName": zod.string(),
   "projectTitle": zod.string(),
-  "status": zod.enum(['active', 'completed']),
+  "status": zod.enum(['active', 'completed', 'unmatched']),
   "progress": zod.number().int().min(connectSkillSyncMatchResponseProgressMin).max(connectSkillSyncMatchResponseProgressMax),
   "lastMessage": zod.string().nullable(),
+  "isDemo": zod.boolean(),
   "updatedAt": zod.coerce.date()
 })
 
@@ -198,9 +200,10 @@ export const GetSkillSyncRoomsResponseItem = zod.object({
   "partnerUserId": zod.string(),
   "partnerName": zod.string(),
   "projectTitle": zod.string(),
-  "status": zod.enum(['active', 'completed']),
+  "status": zod.enum(['active', 'completed', 'unmatched']),
   "progress": zod.number().int().min(getSkillSyncRoomsResponseProgressMin).max(getSkillSyncRoomsResponseProgressMax),
   "lastMessage": zod.string().nullable(),
+  "isDemo": zod.boolean(),
   "updatedAt": zod.coerce.date()
 })
 export const GetSkillSyncRoomsResponse = zod.array(GetSkillSyncRoomsResponseItem)
@@ -225,6 +228,11 @@ export const getSkillSyncRoomResponseSubmissionsItemCommunicationScoreMax = 100;
 export const getSkillSyncRoomResponseSubmissionsItemOverallScoreMin = 0;
 export const getSkillSyncRoomResponseSubmissionsItemOverallScoreMax = 100;
 
+export const getSkillSyncRoomResponseActivitiesItemContentQuestionsItemAnswerIndexMin = 0;
+
+export const getSkillSyncRoomResponseActivitiesItemAttemptsItemScoreMin = 0;
+export const getSkillSyncRoomResponseActivitiesItemAttemptsItemScoreMax = 100;
+
 
 
 export const GetSkillSyncRoomResponse = zod.object({
@@ -232,8 +240,9 @@ export const GetSkillSyncRoomResponse = zod.object({
   "partnerUserId": zod.string(),
   "partnerName": zod.string(),
   "projectTitle": zod.string(),
-  "status": zod.enum(['active', 'completed']),
+  "status": zod.enum(['active', 'completed', 'unmatched']),
   "progress": zod.number().int().min(getSkillSyncRoomResponseProgressMin).max(getSkillSyncRoomResponseProgressMax),
+  "isDemo": zod.boolean(),
   "curriculum": zod.object({
   "title": zod.string(),
   "description": zod.string(),
@@ -253,7 +262,10 @@ export const GetSkillSyncRoomResponse = zod.object({
   "roomId": zod.string(),
   "senderId": zod.string().nullable(),
   "senderName": zod.string(),
-  "senderType": zod.enum(['student', 'moderator']),
+  "senderType": zod.enum(['student', 'assistant', 'moderator']),
+  "channel": zod.enum(['partner', 'ai']),
+  "replyToMessageId": zod.string().nullable(),
+  "activityId": zod.string().nullable(),
   "content": zod.string(),
   "createdAt": zod.coerce.date()
 })),
@@ -269,6 +281,45 @@ export const GetSkillSyncRoomResponse = zod.object({
   "nextSteps": zod.array(zod.string()),
   "submittedAt": zod.coerce.date(),
   "aiPowered": zod.boolean()
+})),
+  "activities": zod.array(zod.object({
+  "id": zod.string(),
+  "roomId": zod.string(),
+  "kind": zod.enum(['quiz', 'flashcards', 'simulator']),
+  "title": zod.string(),
+  "instructions": zod.string(),
+  "content": zod.object({
+  "questions": zod.array(zod.object({
+  "id": zod.string(),
+  "prompt": zod.string(),
+  "choices": zod.array(zod.string()),
+  "answerIndex": zod.number().int().min(getSkillSyncRoomResponseActivitiesItemContentQuestionsItemAnswerIndexMin),
+  "explanation": zod.string()
+})).optional(),
+  "flashcards": zod.array(zod.object({
+  "front": zod.string(),
+  "back": zod.string()
+})).optional(),
+  "simulator": zod.object({
+  "mode": zod.enum(['coding', 'language']),
+  "scenario": zod.string(),
+  "prompt": zod.string(),
+  "starter": zod.string(),
+  "expected": zod.string(),
+  "hint": zod.string()
+}).optional()
+}),
+  "isDemo": zod.boolean(),
+  "createdAt": zod.coerce.date(),
+  "attempts": zod.array(zod.object({
+  "id": zod.string(),
+  "activityId": zod.string(),
+  "userId": zod.string(),
+  "displayName": zod.string(),
+  "responses": zod.array(zod.string()),
+  "score": zod.number().int().min(getSkillSyncRoomResponseActivitiesItemAttemptsItemScoreMin).max(getSkillSyncRoomResponseActivitiesItemAttemptsItemScoreMax).nullable(),
+  "createdAt": zod.coerce.date()
+}))
 })),
   "updatedAt": zod.coerce.date()
 })
@@ -286,7 +337,9 @@ export const sendSkillSyncMessageBodyContentMax = 4000;
 
 
 export const SendSkillSyncMessageBody = zod.object({
-  "content": zod.string().min(1).max(sendSkillSyncMessageBodyContentMax)
+  "content": zod.string().min(1).max(sendSkillSyncMessageBodyContentMax),
+  "replyToMessageId": zod.string().nullish(),
+  "simulatedUserId": zod.string().nullish()
 })
 
 export const SendSkillSyncMessageResponse = zod.object({
@@ -295,20 +348,226 @@ export const SendSkillSyncMessageResponse = zod.object({
   "roomId": zod.string(),
   "senderId": zod.string().nullable(),
   "senderName": zod.string(),
-  "senderType": zod.enum(['student', 'moderator']),
+  "senderType": zod.enum(['student', 'assistant', 'moderator']),
+  "channel": zod.enum(['partner', 'ai']),
+  "replyToMessageId": zod.string().nullable(),
+  "activityId": zod.string().nullable(),
   "content": zod.string(),
   "createdAt": zod.coerce.date()
 }),
-  "moderatorMessage": zod.union([zod.object({
+  "assistantMessage": zod.union([zod.object({
   "id": zod.string(),
   "roomId": zod.string(),
   "senderId": zod.string().nullable(),
   "senderName": zod.string(),
-  "senderType": zod.enum(['student', 'moderator']),
+  "senderType": zod.enum(['student', 'assistant', 'moderator']),
+  "channel": zod.enum(['partner', 'ai']),
+  "replyToMessageId": zod.string().nullable(),
+  "activityId": zod.string().nullable(),
   "content": zod.string(),
   "createdAt": zod.coerce.date()
 }),zod.null()]),
   "aiPowered": zod.boolean()
+})
+
+
+/**
+ * @summary Send a prompt to the shared SkillSync AI workspace
+ */
+export const SendSkillSyncAiMessageParams = zod.object({
+  "roomId": zod.coerce.string()
+})
+
+export const sendSkillSyncAiMessageBodyContentMax = 4000;
+
+
+
+export const SendSkillSyncAiMessageBody = zod.object({
+  "content": zod.string().min(1).max(sendSkillSyncAiMessageBodyContentMax),
+  "replyToMessageId": zod.string().nullish(),
+  "simulatedUserId": zod.string().nullish()
+})
+
+export const SendSkillSyncAiMessageResponse = zod.object({
+  "message": zod.object({
+  "id": zod.string(),
+  "roomId": zod.string(),
+  "senderId": zod.string().nullable(),
+  "senderName": zod.string(),
+  "senderType": zod.enum(['student', 'assistant', 'moderator']),
+  "channel": zod.enum(['partner', 'ai']),
+  "replyToMessageId": zod.string().nullable(),
+  "activityId": zod.string().nullable(),
+  "content": zod.string(),
+  "createdAt": zod.coerce.date()
+}),
+  "assistantMessage": zod.union([zod.object({
+  "id": zod.string(),
+  "roomId": zod.string(),
+  "senderId": zod.string().nullable(),
+  "senderName": zod.string(),
+  "senderType": zod.enum(['student', 'assistant', 'moderator']),
+  "channel": zod.enum(['partner', 'ai']),
+  "replyToMessageId": zod.string().nullable(),
+  "activityId": zod.string().nullable(),
+  "content": zod.string(),
+  "createdAt": zod.coerce.date()
+}),zod.null()]),
+  "aiPowered": zod.boolean()
+})
+
+
+/**
+ * @summary List shared quizzes, flashcards, and simulators
+ */
+export const ListSkillSyncActivitiesParams = zod.object({
+  "roomId": zod.coerce.string()
+})
+
+export const listSkillSyncActivitiesResponseContentQuestionsItemAnswerIndexMin = 0;
+
+export const listSkillSyncActivitiesResponseAttemptsItemScoreMin = 0;
+export const listSkillSyncActivitiesResponseAttemptsItemScoreMax = 100;
+
+
+
+export const ListSkillSyncActivitiesResponseItem = zod.object({
+  "id": zod.string(),
+  "roomId": zod.string(),
+  "kind": zod.enum(['quiz', 'flashcards', 'simulator']),
+  "title": zod.string(),
+  "instructions": zod.string(),
+  "content": zod.object({
+  "questions": zod.array(zod.object({
+  "id": zod.string(),
+  "prompt": zod.string(),
+  "choices": zod.array(zod.string()),
+  "answerIndex": zod.number().int().min(listSkillSyncActivitiesResponseContentQuestionsItemAnswerIndexMin),
+  "explanation": zod.string()
+})).optional(),
+  "flashcards": zod.array(zod.object({
+  "front": zod.string(),
+  "back": zod.string()
+})).optional(),
+  "simulator": zod.object({
+  "mode": zod.enum(['coding', 'language']),
+  "scenario": zod.string(),
+  "prompt": zod.string(),
+  "starter": zod.string(),
+  "expected": zod.string(),
+  "hint": zod.string()
+}).optional()
+}),
+  "isDemo": zod.boolean(),
+  "createdAt": zod.coerce.date(),
+  "attempts": zod.array(zod.object({
+  "id": zod.string(),
+  "activityId": zod.string(),
+  "userId": zod.string(),
+  "displayName": zod.string(),
+  "responses": zod.array(zod.string()),
+  "score": zod.number().int().min(listSkillSyncActivitiesResponseAttemptsItemScoreMin).max(listSkillSyncActivitiesResponseAttemptsItemScoreMax).nullable(),
+  "createdAt": zod.coerce.date()
+}))
+})
+export const ListSkillSyncActivitiesResponse = zod.array(ListSkillSyncActivitiesResponseItem)
+
+
+/**
+ * @summary Generate a shared learning activity from room context
+ */
+export const GenerateSkillSyncActivityParams = zod.object({
+  "roomId": zod.coerce.string()
+})
+
+export const generateSkillSyncActivityBodyPromptMax = 1000;
+
+
+
+export const GenerateSkillSyncActivityBody = zod.object({
+  "kind": zod.enum(['quiz', 'flashcards', 'simulator']),
+  "prompt": zod.string().min(1).max(generateSkillSyncActivityBodyPromptMax)
+})
+
+export const generateSkillSyncActivityResponseContentQuestionsItemAnswerIndexMin = 0;
+
+export const generateSkillSyncActivityResponseAttemptsItemScoreMin = 0;
+export const generateSkillSyncActivityResponseAttemptsItemScoreMax = 100;
+
+
+
+export const GenerateSkillSyncActivityResponse = zod.object({
+  "id": zod.string(),
+  "roomId": zod.string(),
+  "kind": zod.enum(['quiz', 'flashcards', 'simulator']),
+  "title": zod.string(),
+  "instructions": zod.string(),
+  "content": zod.object({
+  "questions": zod.array(zod.object({
+  "id": zod.string(),
+  "prompt": zod.string(),
+  "choices": zod.array(zod.string()),
+  "answerIndex": zod.number().int().min(generateSkillSyncActivityResponseContentQuestionsItemAnswerIndexMin),
+  "explanation": zod.string()
+})).optional(),
+  "flashcards": zod.array(zod.object({
+  "front": zod.string(),
+  "back": zod.string()
+})).optional(),
+  "simulator": zod.object({
+  "mode": zod.enum(['coding', 'language']),
+  "scenario": zod.string(),
+  "prompt": zod.string(),
+  "starter": zod.string(),
+  "expected": zod.string(),
+  "hint": zod.string()
+}).optional()
+}),
+  "isDemo": zod.boolean(),
+  "createdAt": zod.coerce.date(),
+  "attempts": zod.array(zod.object({
+  "id": zod.string(),
+  "activityId": zod.string(),
+  "userId": zod.string(),
+  "displayName": zod.string(),
+  "responses": zod.array(zod.string()),
+  "score": zod.number().int().min(generateSkillSyncActivityResponseAttemptsItemScoreMin).max(generateSkillSyncActivityResponseAttemptsItemScoreMax).nullable(),
+  "createdAt": zod.coerce.date()
+}))
+})
+
+
+/**
+ * @summary Submit a shared activity attempt
+ */
+export const SubmitSkillSyncActivityAttemptParams = zod.object({
+  "roomId": zod.coerce.string(),
+  "activityId": zod.coerce.string()
+})
+
+export const submitSkillSyncActivityAttemptBodyResponsesItemMax = 4000;
+
+export const submitSkillSyncActivityAttemptBodyResponsesMax = 30;
+
+
+
+export const SubmitSkillSyncActivityAttemptBody = zod.object({
+  "responses": zod.array(zod.string().max(submitSkillSyncActivityAttemptBodyResponsesItemMax)).min(1).max(submitSkillSyncActivityAttemptBodyResponsesMax)
+})
+
+export const submitSkillSyncActivityAttemptResponseScoreMin = 0;
+export const submitSkillSyncActivityAttemptResponseScoreMax = 100;
+
+
+
+export const SubmitSkillSyncActivityAttemptResponse = zod.object({
+  "id": zod.string(),
+  "activityId": zod.string(),
+  "userId": zod.string(),
+  "displayName": zod.string(),
+  "responses": zod.array(zod.string()),
+  "score": zod.number().int().min(submitSkillSyncActivityAttemptResponseScoreMin).max(submitSkillSyncActivityAttemptResponseScoreMax).nullable(),
+  "createdAt": zod.coerce.date()
 })
 
 
@@ -369,6 +628,352 @@ export const SubmitSkillSyncProjectResponse = zod.object({
   "communicationFeedback": zod.string(),
   "nextSteps": zod.array(zod.string()),
   "submittedAt": zod.coerce.date(),
+  "aiPowered": zod.boolean()
+})
+
+
+/**
+ * @summary Submit a partner or technical complaint
+ */
+export const submitSkillSyncReportBodySummaryMin = 4;
+export const submitSkillSyncReportBodySummaryMax = 120;
+
+export const submitSkillSyncReportBodyDetailsMin = 10;
+export const submitSkillSyncReportBodyDetailsMax = 2000;
+
+
+
+export const SubmitSkillSyncReportBody = zod.object({
+  "category": zod.enum(['inactive_partner', 'inappropriate_behavior', 'technical_issue', 'other']),
+  "summary": zod.string().min(submitSkillSyncReportBodySummaryMin).max(submitSkillSyncReportBodySummaryMax),
+  "details": zod.string().min(submitSkillSyncReportBodyDetailsMin).max(submitSkillSyncReportBodyDetailsMax),
+  "reportedUserId": zod.string().nullish(),
+  "roomId": zod.string().nullish()
+})
+
+export const SubmitSkillSyncReportResponse = zod.object({
+  "id": zod.string(),
+  "reporterUserId": zod.string(),
+  "reporterName": zod.string(),
+  "reportedUserId": zod.string().nullable(),
+  "reportedName": zod.string().nullable(),
+  "roomId": zod.string().nullable(),
+  "roomTitle": zod.string().nullable(),
+  "category": zod.enum(['inactive_partner', 'inappropriate_behavior', 'technical_issue', 'other']),
+  "summary": zod.string(),
+  "details": zod.string(),
+  "status": zod.enum(['pending', 'under_review', 'resolved']),
+  "adminNotes": zod.string().nullable(),
+  "isDemo": zod.boolean(),
+  "createdAt": zod.coerce.date(),
+  "updatedAt": zod.coerce.date()
+})
+
+
+/**
+ * @summary Get unread account notices
+ */
+export const GetSkillSyncNoticesResponseItem = zod.object({
+  "id": zod.string(),
+  "kind": zod.enum(['warning']),
+  "message": zod.string(),
+  "createdAt": zod.coerce.date()
+})
+export const GetSkillSyncNoticesResponse = zod.array(GetSkillSyncNoticesResponseItem)
+
+
+/**
+ * @summary Mark an account notice as read
+ */
+export const MarkSkillSyncNoticeReadParams = zod.object({
+  "noticeId": zod.coerce.string()
+})
+
+export const MarkSkillSyncNoticeReadResponse = zod.void()
+
+
+/**
+ * @summary Check whether the signed-in user is an administrator
+ */
+export const GetSkillSyncAdminAccessResponse = zod.object({
+  "isAdmin": zod.boolean(),
+  "configured": zod.boolean()
+})
+
+
+/**
+ * @summary Get platform analytics for administrators
+ */
+export const getSkillSyncAdminOverviewResponseStatsMatchSuccessRateMin = 0;
+export const getSkillSyncAdminOverviewResponseStatsMatchSuccessRateMax = 100;
+
+
+
+export const GetSkillSyncAdminOverviewResponse = zod.object({
+  "stats": zod.object({
+  "totalStudents": zod.number().int(),
+  "demoStudents": zod.number().int(),
+  "activeRooms": zod.number().int(),
+  "completedProjects": zod.number().int(),
+  "openComplaints": zod.number().int(),
+  "connectionsMade": zod.number().int(),
+  "matchAttempts": zod.number().int(),
+  "matchSuccessRate": zod.number().min(getSkillSyncAdminOverviewResponseStatsMatchSuccessRateMin).max(getSkillSyncAdminOverviewResponseStatsMatchSuccessRateMax),
+  "aiActions": zod.number().int(),
+  "geminiCalls": zod.number().int(),
+  "fallbackCalls": zod.number().int()
+}),
+  "skillDistribution": zod.array(zod.object({
+  "skill": zod.string(),
+  "count": zod.number().int()
+})),
+  "reportStatuses": zod.array(zod.object({
+  "status": zod.enum(['pending', 'under_review', 'resolved']),
+  "count": zod.number().int()
+})),
+  "sampleDataIncluded": zod.boolean()
+})
+
+
+/**
+ * @summary List and filter complaints
+ */
+export const ListSkillSyncAdminReportsQueryParams = zod.object({
+  "status": zod.enum(['pending', 'under_review', 'resolved']).optional()
+})
+
+export const ListSkillSyncAdminReportsResponseItem = zod.object({
+  "id": zod.string(),
+  "reporterUserId": zod.string(),
+  "reporterName": zod.string(),
+  "reportedUserId": zod.string().nullable(),
+  "reportedName": zod.string().nullable(),
+  "roomId": zod.string().nullable(),
+  "roomTitle": zod.string().nullable(),
+  "category": zod.enum(['inactive_partner', 'inappropriate_behavior', 'technical_issue', 'other']),
+  "summary": zod.string(),
+  "details": zod.string(),
+  "status": zod.enum(['pending', 'under_review', 'resolved']),
+  "adminNotes": zod.string().nullable(),
+  "isDemo": zod.boolean(),
+  "createdAt": zod.coerce.date(),
+  "updatedAt": zod.coerce.date()
+})
+export const ListSkillSyncAdminReportsResponse = zod.array(ListSkillSyncAdminReportsResponseItem)
+
+
+/**
+ * @summary Inspect a complaint and its room transcript
+ */
+export const GetSkillSyncAdminReportParams = zod.object({
+  "reportId": zod.coerce.string()
+})
+
+export const GetSkillSyncAdminReportResponse = zod.object({
+  "report": zod.object({
+  "id": zod.string(),
+  "reporterUserId": zod.string(),
+  "reporterName": zod.string(),
+  "reportedUserId": zod.string().nullable(),
+  "reportedName": zod.string().nullable(),
+  "roomId": zod.string().nullable(),
+  "roomTitle": zod.string().nullable(),
+  "category": zod.enum(['inactive_partner', 'inappropriate_behavior', 'technical_issue', 'other']),
+  "summary": zod.string(),
+  "details": zod.string(),
+  "status": zod.enum(['pending', 'under_review', 'resolved']),
+  "adminNotes": zod.string().nullable(),
+  "isDemo": zod.boolean(),
+  "createdAt": zod.coerce.date(),
+  "updatedAt": zod.coerce.date()
+}),
+  "transcript": zod.array(zod.object({
+  "id": zod.string(),
+  "roomId": zod.string(),
+  "senderId": zod.string().nullable(),
+  "senderName": zod.string(),
+  "senderType": zod.enum(['student', 'assistant', 'moderator']),
+  "channel": zod.enum(['partner', 'ai']),
+  "replyToMessageId": zod.string().nullable(),
+  "activityId": zod.string().nullable(),
+  "content": zod.string(),
+  "createdAt": zod.coerce.date()
+}))
+})
+
+
+/**
+ * @summary Update complaint status and admin notes
+ */
+export const UpdateSkillSyncAdminReportParams = zod.object({
+  "reportId": zod.coerce.string()
+})
+
+export const updateSkillSyncAdminReportBodyAdminNotesMax = 2000;
+
+
+
+export const UpdateSkillSyncAdminReportBody = zod.object({
+  "status": zod.enum(['pending', 'under_review', 'resolved']),
+  "adminNotes": zod.string().max(updateSkillSyncAdminReportBodyAdminNotesMax).nullish()
+})
+
+export const UpdateSkillSyncAdminReportResponse = zod.object({
+  "id": zod.string(),
+  "reporterUserId": zod.string(),
+  "reporterName": zod.string(),
+  "reportedUserId": zod.string().nullable(),
+  "reportedName": zod.string().nullable(),
+  "roomId": zod.string().nullable(),
+  "roomTitle": zod.string().nullable(),
+  "category": zod.enum(['inactive_partner', 'inappropriate_behavior', 'technical_issue', 'other']),
+  "summary": zod.string(),
+  "details": zod.string(),
+  "status": zod.enum(['pending', 'under_review', 'resolved']),
+  "adminNotes": zod.string().nullable(),
+  "isDemo": zod.boolean(),
+  "createdAt": zod.coerce.date(),
+  "updatedAt": zod.coerce.date()
+})
+
+
+/**
+ * @summary List student profiles and account status
+ */
+export const ListSkillSyncAdminUsersResponseItem = zod.object({
+  "userId": zod.string(),
+  "displayName": zod.string(),
+  "university": zod.string(),
+  "teachSkill": zod.string(),
+  "learnSkill": zod.string(),
+  "isDemo": zod.boolean(),
+  "isSuspended": zod.boolean(),
+  "suspensionEndsAt": zod.coerce.date().nullable(),
+  "roomCount": zod.number().int(),
+  "warningCount": zod.number().int(),
+  "createdAt": zod.coerce.date()
+})
+export const ListSkillSyncAdminUsersResponse = zod.array(ListSkillSyncAdminUsersResponseItem)
+
+
+/**
+ * @summary List all co-learning rooms
+ */
+export const listSkillSyncAdminRoomsResponseProgressMin = 0;
+export const listSkillSyncAdminRoomsResponseProgressMax = 100;
+
+
+
+export const ListSkillSyncAdminRoomsResponseItem = zod.object({
+  "roomId": zod.string(),
+  "matchId": zod.string(),
+  "partnerNames": zod.array(zod.string()),
+  "projectTitle": zod.string(),
+  "status": zod.enum(['active', 'completed', 'unmatched']),
+  "progress": zod.number().int().min(listSkillSyncAdminRoomsResponseProgressMin).max(listSkillSyncAdminRoomsResponseProgressMax),
+  "isDemo": zod.boolean(),
+  "updatedAt": zod.coerce.date()
+})
+export const ListSkillSyncAdminRoomsResponse = zod.array(ListSkillSyncAdminRoomsResponseItem)
+
+
+/**
+ * @summary Send a documented warning to a student
+ */
+export const WarnSkillSyncAdminUserParams = zod.object({
+  "userId": zod.coerce.string()
+})
+
+export const warnSkillSyncAdminUserBodyMessageMin = 4;
+export const warnSkillSyncAdminUserBodyMessageMax = 1000;
+
+
+
+export const WarnSkillSyncAdminUserBody = zod.object({
+  "message": zod.string().min(warnSkillSyncAdminUserBodyMessageMin).max(warnSkillSyncAdminUserBodyMessageMax)
+})
+
+export const WarnSkillSyncAdminUserResponse = zod.object({
+  "id": zod.string(),
+  "action": zod.string(),
+  "targetUserId": zod.string().nullable(),
+  "roomId": zod.string().nullable(),
+  "description": zod.string(),
+  "createdAt": zod.coerce.date()
+})
+
+
+/**
+ * @summary Suspend a student account
+ */
+export const SuspendSkillSyncAdminUserParams = zod.object({
+  "userId": zod.coerce.string()
+})
+
+export const suspendSkillSyncAdminUserBodyReasonMin = 4;
+export const suspendSkillSyncAdminUserBodyReasonMax = 1000;
+
+export const suspendSkillSyncAdminUserBodyDurationDaysMax = 3650;
+
+
+
+export const SuspendSkillSyncAdminUserBody = zod.object({
+  "reason": zod.string().min(suspendSkillSyncAdminUserBodyReasonMin).max(suspendSkillSyncAdminUserBodyReasonMax),
+  "durationDays": zod.number().int().min(1).max(suspendSkillSyncAdminUserBodyDurationDaysMax).nullable()
+})
+
+export const SuspendSkillSyncAdminUserResponse = zod.object({
+  "id": zod.string(),
+  "action": zod.string(),
+  "targetUserId": zod.string().nullable(),
+  "roomId": zod.string().nullable(),
+  "description": zod.string(),
+  "createdAt": zod.coerce.date()
+})
+
+
+/**
+ * @summary Restore a suspended account
+ */
+export const UnsuspendSkillSyncAdminUserParams = zod.object({
+  "userId": zod.coerce.string()
+})
+
+export const UnsuspendSkillSyncAdminUserResponse = zod.void()
+
+
+/**
+ * @summary Unmatch a pair and preserve its transcript
+ */
+export const UnmatchSkillSyncAdminRoomParams = zod.object({
+  "roomId": zod.coerce.string()
+})
+
+export const UnmatchSkillSyncAdminRoomResponse = zod.object({
+  "id": zod.string(),
+  "action": zod.string(),
+  "targetUserId": zod.string().nullable(),
+  "roomId": zod.string().nullable(),
+  "description": zod.string(),
+  "createdAt": zod.coerce.date()
+})
+
+
+/**
+ * @summary Regenerate a room's curriculum
+ */
+export const RegenerateSkillSyncAdminCurriculumParams = zod.object({
+  "roomId": zod.coerce.string()
+})
+
+export const RegenerateSkillSyncAdminCurriculumResponse = zod.object({
+  "roomId": zod.string(),
+  "curriculum": zod.object({
+  "title": zod.string(),
+  "description": zod.string(),
+  "goal": zod.string(),
+  "stages": zod.array(zod.string())
+}),
   "aiPowered": zod.boolean()
 })
 

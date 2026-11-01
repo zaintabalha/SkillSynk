@@ -12,4 +12,8 @@ export interface ChatMessageInput {
      * @maxLength 4000
      */
   content: string;
+  /** @nullable */
+  replyToMessageId?: string | null;
+  /** @nullable */
+  simulatedUserId?: string | null;
 }

@@ -12,4 +12,5 @@ export type RoomSummaryStatus = typeof RoomSummaryStatus[keyof typeof RoomSummar
 export const RoomSummaryStatus = {
   active: 'active',
   completed: 'completed',
+  unmatched: 'unmatched',
 } as const;
