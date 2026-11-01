@@ -1,0 +1,96 @@
+import { test } from "node:test";
+import assert from "node:assert/strict";
+import express from "express";
+import { randomUUID } from "node:crypto";
+import { eq, inArray } from "drizzle-orm";
+import {
+  db, pool, skillSyncProfilesTable as profiles, skillSyncMatchesTable as matches,
+  skillSyncRoomsTable as rooms, skillSyncMessagesTable as messages, skillSyncActivitiesTable as activities,
+  skillSyncActivityAttemptsTable as attempts, skillSyncAiUsageTable as usage,
+} from "@workspace/db";
+import interactionRouter, { explicitlyInvokesAi, requestedActivity } from "../routes/skillsync-room-interactions";
+import { isGeminiEnabled } from "../lib/skillsync-ai";
+import type { ChatSendResult, SharedActivity, ActivityAttempt } from "@workspace/api-zod";
+
+test("partner chat, shared activities, and simulation permission boundaries", async () => {
+  assert.equal(explicitlyInvokesAi("A normal conversation about AI"), false);
+  assert.equal(explicitlyInvokesAi("contact someone@AI.example"), false);
+  assert.equal(explicitlyInvokesAi("@AI give us a quiz"), true);
+  assert.equal(explicitlyInvokesAi("@SkillSync، تحقق"), true);
+  assert.equal(explicitlyInvokesAi("Is this correct?", "message-id"), true);
+  assert.equal(requestedActivity("How should we represent a flashcard front and back in a JavaScript array?"), null);
+  assert.equal(requestedActivity("Explain the answer to the quiz"), null);
+  assert.equal(requestedActivity("@AI give us a quiz"), "quiz");
+  assert.equal(requestedActivity("@SkillSync أنشئ بطاقات للمراجعة"), "flashcards");
+  const id = `test-${randomUUID()}`;
+  const ids = [`${id}-a`, `${id}-b`];
+  let actingUser = ids[0];
+  const app = express();
+  app.use(express.json());
+  // Test-only authentication fixture; this harness is not imported by the running app.
+  app.use((_req, res, next) => { res.locals.userId = actingUser; next(); });
+  app.use(interactionRouter);
+  const server = app.listen(0);
+  await new Promise<void>((resolve) => server.on("listening", resolve));
+  const address = server.address() as { port: number };
+  const request = async <T = ChatSendResult>(path: string, body?: unknown) => {
+    const response = await fetch(`http://127.0.0.1:${address.port}/skillsync/rooms/${id}${path}`, {
+      method: body === undefined ? "GET" : "POST", headers: { "Content-Type": "application/json" },
+      body: body === undefined ? undefined : JSON.stringify(body),
+    });
+    return { status: response.status, body: await response.json() as T };
+  };
+  try {
+    await db.insert(profiles).values(ids.map((userId, i) => ({ userId, displayName: `Test ${i}`, university: "Test university", teachSkill: "Testing", learnSkill: "Design", bio: "" })));
+    await db.insert(matches).values({ id, userAId: ids[0], userBId: ids[1], rationale: "Test fixture" });
+    await db.insert(rooms).values({ id, matchId: id, projectTitle: "Test project", curriculum: { title: "Test project", description: "Test", goal: "Practice", stages: ["Plan", "Build"] } });
+    const ordinary = await request("/messages", { content: "Let's compare our first examples." });
+    assert.equal(ordinary.status, 201);
+    assert.equal(ordinary.body.assistantMessage, null);
+    assert.equal(ordinary.body.message.channel, "partner");
+    assert.equal((await db.select().from(messages).where(eq(messages.roomId, id))).length, 1);
+    assert.equal((await request("/messages", { content: "Attempted impersonation", simulatedUserId: ids[1] })).status, 403);
+    assert.equal((await request("/messages", { content: "Verify", replyToMessageId: "not-in-this-room" })).status, 400);
+    actingUser = `${id}-outsider`;
+    assert.equal((await request("/activities")).status, 404);
+    await db.update(rooms).set({ isDemo: true }).where(eq(rooms.id, id));
+    const simulated = await request("/messages", { content: "A demo partner message", simulatedUserId: ids[1] });
+    assert.equal(simulated.status, 201);
+    assert.equal(simulated.body.message.senderId, ids[1]);
+    assert.equal(simulated.body.assistantMessage, null);
+    assert.equal((await request("/messages", { content: "Invalid sender", simulatedUserId: "unrelated-student" })).status, 403);
+    if (!isGeminiEnabled()) {
+      const quiz = await request("/messages", { content: "@AI give us a quiz", simulatedUserId: ids[0] });
+      assert.equal(quiz.status, 201);
+      assert.ok(quiz.body.assistantMessage);
+      assert.ok(quiz.body.assistantMessage.activityId);
+      assert.equal(quiz.body.assistantMessage.senderName, "SkillSync AI");
+      const activityList = await request<SharedActivity[]>("/activities");
+      const activity = activityList.body.find((item) => item.id === quiz.body.assistantMessage?.activityId)!;
+      const answers = activity.content.questions!.map((q) => String(q.answerIndex));
+      const attempt = await request<ActivityAttempt>(`/activities/${activity.id}/attempts`, { responses: answers, simulatedUserId: ids[1] });
+      assert.equal(attempt.status, 201);
+      assert.equal(attempt.body.userId, ids[1]);
+      assert.equal(attempt.body.score, 100);
+      const ai = await request("/ai-messages", { content: "Explain the next stage.", simulatedUserId: ids[0] });
+      assert.equal(ai.status, 201);
+      assert.equal(ai.body.assistantMessage?.channel, "ai");
+      const verify = await request("/messages", { content: "Is this message correct?", replyToMessageId: simulated.body.message.id });
+      assert.equal(verify.status, 201);
+      assert.equal(verify.body.assistantMessage?.replyToMessageId, simulated.body.message.id);
+      assert.match(verify.body.assistantMessage?.content ?? "", /not been verified/);
+    }
+    await db.update(rooms).set({ status: "unmatched" }).where(eq(rooms.id, id));
+    assert.equal((await request("/messages", { content: "Read-only check" })).status, 409);
+  } finally {
+    await new Promise<void>((resolve) => server.close(() => resolve()));
+    await db.delete(attempts).where(eq(attempts.roomId, id));
+    await db.delete(activities).where(eq(activities.roomId, id));
+    await db.delete(messages).where(eq(messages.roomId, id));
+    await db.delete(usage).where(inArray(usage.userId, [...ids, `${id}-outsider`]));
+    await db.delete(rooms).where(eq(rooms.id, id));
+    await db.delete(matches).where(eq(matches.id, id));
+    await db.delete(profiles).where(inArray(profiles.userId, ids));
+    await pool.end();
+  }
+});

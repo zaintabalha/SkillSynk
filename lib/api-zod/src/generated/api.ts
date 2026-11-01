@@ -236,6 +236,10 @@ export const getSkillSyncRoomResponseActivitiesItemAttemptsItemScoreMax = 100;
 
 
 export const GetSkillSyncRoomResponse = zod.object({
+  "participants": zod.array(zod.object({
+  "userId": zod.string(),
+  "displayName": zod.string()
+})).optional(),
   "roomId": zod.string(),
   "partnerUserId": zod.string(),
   "partnerName": zod.string(),
@@ -552,6 +556,7 @@ export const submitSkillSyncActivityAttemptBodyResponsesMax = 30;
 
 
 export const SubmitSkillSyncActivityAttemptBody = zod.object({
+  "simulatedUserId": zod.string().nullish(),
   "responses": zod.array(zod.string().max(submitSkillSyncActivityAttemptBodyResponsesItemMax)).min(1).max(submitSkillSyncActivityAttemptBodyResponsesMax)
 })
 

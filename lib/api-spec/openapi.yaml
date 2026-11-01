@@ -658,6 +658,14 @@ components:
       type: object
       required: [roomId, partnerUserId, partnerName, projectTitle, status, progress, isDemo, curriculum, challenge, messages, submissions, activities, updatedAt]
       properties:
+        participants:
+          type: array
+          items:
+            type: object
+            required: [userId, displayName]
+            properties:
+              userId: { type: string }
+              displayName: { type: string }
         roomId: { type: string }
         partnerUserId: { type: string }
         partnerName: { type: string }
@@ -793,6 +801,7 @@ components:
       type: object
       required: [responses]
       properties:
+        simulatedUserId: { type: ["string", "null"] }
         responses:
           type: array
           minItems: 1

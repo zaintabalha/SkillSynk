@@ -8,11 +8,13 @@
 import type { Challenge } from './challenge';
 import type { ChatMessage } from './chatMessage';
 import type { Curriculum } from './curriculum';
+import type { LearningRoomParticipantsItem } from './learningRoomParticipantsItem';
 import type { LearningRoomStatus } from './learningRoomStatus';
 import type { ProjectSubmission } from './projectSubmission';
 import type { SharedActivity } from './sharedActivity';
 
 export interface LearningRoom {
+  participants?: LearningRoomParticipantsItem[];
   roomId: string;
   partnerUserId: string;
   partnerName: string;

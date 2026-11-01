@@ -1,0 +1,54 @@
+import { z } from "zod/v4";
+import type { SkillSyncActivityContent } from "@workspace/db";
+import { generateJson, sanitizeText } from "./skillsync-ai";
+import type { roomMemory } from "./skillsync-room-service";
+
+type Memory = Awaited<ReturnType<typeof roomMemory>>;
+const question = z.object({ id: z.string(), prompt: z.string(), choices: z.array(z.string()).min(2).max(6), answerIndex: z.number().int().min(0), explanation: z.string() }).refine((q) => q.answerIndex < q.choices.length);
+const contentSchema = z.object({
+  questions: z.array(question).min(1).max(10).optional(),
+  flashcards: z.array(z.object({ front: z.string(), back: z.string() })).min(1).max(20).optional(),
+  simulator: z.object({ mode: z.enum(["coding", "language"]), scenario: z.string(), prompt: z.string(), starter: z.string(), expected: z.string(), hint: z.string() }).optional(),
+});
+
+export async function answerRoomQuestion(prompt: string, memory: Memory, quoted?: string) {
+  const result = await generateJson(
+    `Answer this explicit student request using the complete shared room memory below. Respond in the request's language. If a quoted message is supplied, quote it and verify only what can be established; be clear about uncertainty. Return JSON {"answer":"..."}. Request: ${JSON.stringify(prompt)}. Quoted message: ${JSON.stringify(quoted ?? null)}. Shared memory: ${JSON.stringify(memory)}`,
+  );
+  const fallback = quoted
+    ? `“${quoted}”\n\nSkillSync AI is in demo mode. This statement has not been verified. Check the relevant source or test the example together before treating it as correct.`
+    : "SkillSync AI is in demo mode. Your question is saved in the shared workspace. Compare it with your learning plan, test a small example together, and explain each step. Live AI answers require the backend AI connection.";
+  return { answer: sanitizeText(typeof result?.answer === "string" ? result.answer : fallback, memory.students), aiPowered: Boolean(result && typeof result.answer === "string") };
+}
+
+export async function generateRoomActivity(kind: "quiz" | "flashcards" | "simulator", prompt: string, memory: Memory) {
+  const topic = memory.curriculum.title;
+  const fallback: SkillSyncActivityContent = kind === "quiz" ? {
+    questions: [
+      { id: "q1", prompt: `What is the best first step for ${topic}?`, choices: ["Agree on one small, testable goal", "Build unrelated parts without discussing them", "Skip partner feedback"], answerIndex: 0, explanation: "A shared, testable goal keeps both skills connected." },
+      { id: "q2", prompt: "How should partners check a disputed explanation?", choices: ["Assume the more confident partner is correct", "Use a reliable source or a reproducible example", "Ignore the disagreement"], answerIndex: 1, explanation: "Evidence and reproducible examples make verification useful." },
+      { id: "q3", prompt: "What makes a useful project handoff?", choices: ["Only a finished file", "No explanation", "A working example, clear instructions, and known limitations"], answerIndex: 2, explanation: "A handoff should let the other partner understand and use the result." },
+    ],
+  } : kind === "flashcards" ? {
+    flashcards: [
+      { front: "Shared project goal", back: memory.curriculum.goal },
+      { front: "First learning stage", back: memory.curriculum.stages[0] ?? "Agree on a small goal." },
+      { front: "Useful peer feedback", back: "Describe a specific observation, explain its effect, and suggest a testable improvement." },
+    ],
+  } : {
+    simulator: { mode: "language", scenario: `Explain one part of ${topic} to a new partner.`, prompt: "Rewrite an unclear handoff into one precise sentence.", starter: "Do the thing and send it.", expected: "Please review the first example and send one specific improvement.", hint: "Name the action, the object, and the expected feedback." },
+  };
+  const result = await generateJson(
+    `Create a ${kind} grounded in the students' whole conversation and plan. Request: ${JSON.stringify(prompt)}. Return JSON {"title":"...","instructions":"...","content":...}. For quiz, content is {"questions":[{"id":"q1","prompt":"...","choices":["...","..."],"answerIndex":0,"explanation":"..."}]}; for flashcards, {"flashcards":[{"front":"...","back":"..."}]}; for simulator, {"simulator":{"mode":"coding or language","scenario":"...","prompt":"...","starter":"...","expected":"...","hint":"..."}}. Coding simulations are text exercises, not executable code. Shared memory: ${JSON.stringify(memory)}`,
+  );
+  const parsed = contentSchema.safeParse(result?.content);
+  const key = kind === "quiz" ? "questions" : kind;
+  const valid = parsed.success && Boolean(parsed.data[key]);
+  const content = valid && parsed.success ? parsed.data : fallback;
+  const cleaned = JSON.parse(sanitizeText(JSON.stringify(content), memory.students)) as SkillSyncActivityContent;
+  return {
+    title: sanitizeText(valid && typeof result?.title === "string" ? result.title : `Shared ${kind}: ${topic}`, memory.students),
+    instructions: sanitizeText(valid && typeof result?.instructions === "string" ? result.instructions : "Demo practice: work through this together and compare your reasoning.", memory.students),
+    content: cleaned, aiPowered: Boolean(valid),
+  };
+}

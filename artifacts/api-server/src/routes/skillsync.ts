@@ -1,4 +1,3 @@
-import { getAuth } from "@clerk/express";
 import {
   ConnectSkillSyncMatchBody,
   ConnectSkillSyncMatchResponse,
@@ -13,9 +12,6 @@ import {
   GetSkillSyncRoomsResponse,
   SaveSkillSyncProfileBody,
   SaveSkillSyncProfileResponse,
-  SendSkillSyncMessageBody,
-  SendSkillSyncMessageParams,
-  SendSkillSyncMessageResponse,
   SubmitSkillSyncProjectBody,
   SubmitSkillSyncProjectParams,
   SubmitSkillSyncProjectResponse,
@@ -30,7 +26,7 @@ import {
   or,
 } from "drizzle-orm";
 import { randomUUID } from "node:crypto";
-import { Router, type IRouter, type RequestHandler } from "express";
+import { Router, type IRouter } from "express";
 import {
   db,
   skillSyncMatchesTable,
@@ -38,6 +34,7 @@ import {
   skillSyncProfilesTable,
   skillSyncRoomsTable,
   skillSyncSubmissionsTable,
+  skillSyncSuspensionsTable,
   type SkillSyncProfile,
   type SkillSyncRoom,
 } from "@workspace/db";
@@ -48,23 +45,19 @@ import {
   generateDailyChallengeContent,
   generateMatchRankings,
   isGeminiEnabled,
-  moderateChatMessage,
   type CandidateForMatch,
 } from "../lib/skillsync-ai";
+import { requireSkillSyncAuth } from "../lib/skillsync-access";
+import { ensureDemoData } from "../lib/skillsync-demo";
+import roomInteractionRouter from "./skillsync-room-interactions";
+import adminRouter from "./skillsync-admin";
+import { messageDto, roomActivities, recordAiUse, roomContext as sharedRoomContext, roomMemory } from "../lib/skillsync-room-service";
 
 const router: IRouter = Router();
 
-const requireAuth: RequestHandler = (req, res, next) => {
-  const { userId } = getAuth(req);
-  if (!userId) {
-    res.status(401).json({ error: "Sign in to use SkillSync." });
-    return;
-  }
-  res.locals.userId = userId;
-  next();
-};
-
-router.use("/skillsync", requireAuth);
+router.use("/skillsync", requireSkillSyncAuth);
+router.use(roomInteractionRouter);
+router.use(adminRouter);
 
 function iso(value: Date | string): string {
   return value instanceof Date ? value.toISOString() : new Date(value).toISOString();
@@ -183,13 +176,17 @@ function deterministicRecommendations(
 
 async function getCandidateProfiles(userId: string): Promise<SkillSyncProfile[]> {
   await ensureDemoProfiles();
-  return db
+  const restricted = await db.select().from(skillSyncSuspensionsTable);
+  const blocked = new Set(restricted.filter((s) => !s.endsAt || s.endsAt > new Date()).map((s) => s.userId));
+  const candidates = await db
     .select()
     .from(skillSyncProfilesTable)
     .where(ne(skillSyncProfilesTable.userId, userId));
+  return candidates.filter((p) => !blocked.has(p.userId));
 }
 
 async function listRoomSummaries(userId: string) {
+  await ensureDemoData();
   const rows = await db
     .select({
       roomId: skillSyncRoomsTable.id,
@@ -199,6 +196,7 @@ async function listRoomSummaries(userId: string) {
       projectTitle: skillSyncRoomsTable.projectTitle,
       status: skillSyncRoomsTable.status,
       progress: skillSyncRoomsTable.progress,
+      isDemo: skillSyncRoomsTable.isDemo,
       updatedAt: skillSyncRoomsTable.updatedAt,
     })
     .from(skillSyncRoomsTable)
@@ -208,6 +206,7 @@ async function listRoomSummaries(userId: string) {
     )
     .where(
       or(
+        eq(skillSyncRoomsTable.isDemo, true),
         eq(skillSyncMatchesTable.userAId, userId),
         eq(skillSyncMatchesTable.userBId, userId),
       ),
@@ -249,6 +248,7 @@ async function listRoomSummaries(userId: string) {
       projectTitle: row.projectTitle,
       status: row.status,
       progress: row.progress,
+      isDemo: row.isDemo,
       lastMessage: latestMessages.get(row.roomId) ?? null,
       updatedAt: iso(row.updatedAt),
     };
@@ -256,6 +256,7 @@ async function listRoomSummaries(userId: string) {
 }
 
 async function getRoomContext(roomId: string, userId: string) {
+  await ensureDemoData();
   const [room] = await db
     .select()
     .from(skillSyncRoomsTable)
@@ -268,7 +269,7 @@ async function getRoomContext(roomId: string, userId: string) {
     .from(skillSyncMatchesTable)
     .where(eq(skillSyncMatchesTable.id, room.matchId))
     .limit(1);
-  if (!match || (match.userAId !== userId && match.userBId !== userId)) return null;
+  if (!match || (!room.isDemo && match.userAId !== userId && match.userBId !== userId)) return null;
 
   const partnerId = match.userAId === userId ? match.userBId : match.userAId;
   const [partner] = await db
@@ -343,6 +344,7 @@ router.post("/skillsync/matches/recommendations", async (req, res): Promise<void
   const profiles = await getCandidateProfiles(userId);
   const baseline = deterministicRecommendations(current, profiles);
   const rankings = await generateMatchRankings(current, baseline);
+  await recordAiUse(userId, "matching", Boolean(rankings));
   if (!rankings) {
     res.json(
       GenerateSkillSyncRecommendationsResponse.parse({
@@ -394,6 +396,10 @@ router.post("/skillsync/matches/connect", async (req, res): Promise<void> => {
     res.status(404).json({ error: "That student profile could not be found." });
     return;
   }
+  const [restriction] = await db.select().from(skillSyncSuspensionsTable).where(eq(skillSyncSuspensionsTable.userId, partner.userId));
+  if (restriction && (!restriction.endsAt || restriction.endsAt > new Date())) {
+    res.status(409).json({ error: "This student is not available for matching." }); return;
+  }
 
   const [existing] = await db
     .select({ roomId: skillSyncRoomsTable.id })
@@ -420,16 +426,19 @@ router.post("/skillsync/matches/connect", async (req, res): Promise<void> => {
       (room) => room.roomId === existing.roomId,
     );
     if (summary) {
+      if (summary.status === "unmatched") { res.status(409).json({ error: "This pair was unmatched by an administrator." }); return; }
       res.status(201).json(ConnectSkillSyncMatchResponse.parse(summary));
       return;
     }
   }
 
   const curriculum = await generateCurriculum(current, partner);
+  await recordAiUse(userId, "curriculum", curriculum.aiPowered);
   const firstChallenge = buildChallenge(
-    await generateDailyChallengeContent(curriculum, 1),
+    await generateDailyChallengeContent(curriculum, 1, { students: [current, partner], curriculum, conversation: [] }),
     1,
   );
+  await recordAiUse(userId, "challenge", firstChallenge.aiPowered);
   const matchId = randomUUID();
   const roomId = randomUUID();
   await db.transaction(async (tx) => {
@@ -453,9 +462,10 @@ router.post("/skillsync/matches/connect", async (req, res): Promise<void> => {
       id: randomUUID(),
       roomId,
       senderId: null,
-      senderName: "SkillSync Moderator",
-      senderType: "moderator",
-      content: `Welcome to your co-learning room. Start by introducing yourselves and sharing one thing you hope to learn from ${partner.displayName}.`,
+      senderName: "SkillSync AI",
+      senderType: "assistant",
+      channel: "ai",
+      content: "Your shared learning plan is ready. Ask SkillSync AI here when you want help.",
     });
   });
   const summary = (await listRoomSummaries(userId)).find((room) => room.roomId === roomId);
@@ -483,7 +493,7 @@ router.get("/skillsync/rooms/:roomId", async (req, res): Promise<void> => {
     return;
   }
 
-  const [messages, submissions] = await Promise.all([
+  const [messages, submissions, activities, participants] = await Promise.all([
     db
       .select()
       .from(skillSyncMessagesTable)
@@ -494,6 +504,8 @@ router.get("/skillsync/rooms/:roomId", async (req, res): Promise<void> => {
       .from(skillSyncSubmissionsTable)
       .where(eq(skillSyncSubmissionsTable.roomId, context.room.id))
       .orderBy(desc(skillSyncSubmissionsTable.submittedAt)),
+    roomActivities(context.room.id),
+    db.select({ userId: skillSyncProfilesTable.userId, displayName: skillSyncProfilesTable.displayName }).from(skillSyncProfilesTable).where(inArray(skillSyncProfilesTable.userId, [context.match.userAId, context.match.userBId])),
   ]);
   res.json(
     GetSkillSyncRoomResponse.parse({
@@ -503,110 +515,14 @@ router.get("/skillsync/rooms/:roomId", async (req, res): Promise<void> => {
       projectTitle: context.room.projectTitle,
       status: context.room.status,
       progress: context.room.progress,
+      isDemo: context.room.isDemo,
+      participants,
+      activities,
       curriculum: context.room.curriculum,
       challenge: context.room.challenge,
-      messages: messages.map((message) => ({
-        id: message.id,
-        roomId: message.roomId,
-        senderId: message.senderId,
-        senderName: message.senderName,
-        senderType: message.senderType,
-        content: message.content,
-        createdAt: iso(message.createdAt),
-      })),
+      messages: messages.map(messageDto),
       submissions: submissions.map(submissionDto),
       updatedAt: iso(context.room.updatedAt),
-    }),
-  );
-});
-
-router.post("/skillsync/rooms/:roomId/messages", async (req, res): Promise<void> => {
-  const params = SendSkillSyncMessageParams.safeParse(req.params);
-  if (!params.success) {
-    res.status(400).json({ error: params.error.message });
-    return;
-  }
-  const parsed = SendSkillSyncMessageBody.safeParse(req.body);
-  if (!parsed.success || !parsed.data.content.trim()) {
-    res.status(400).json({ error: parsed.success ? "Message cannot be blank." : parsed.error.message });
-    return;
-  }
-
-  const userId = res.locals.userId as string;
-  const context = await getRoomContext(params.data.roomId, userId);
-  if (!context) {
-    res.status(404).json({ error: "Learning room not found." });
-    return;
-  }
-  const profile = await getProfile(userId);
-  const senderName = profile?.displayName ?? "Student";
-  const createdAt = new Date();
-  const [saved] = await db
-    .insert(skillSyncMessagesTable)
-    .values({
-      id: randomUUID(),
-      roomId: context.room.id,
-      senderId: userId,
-      senderName,
-      senderType: "student",
-      content: parsed.data.content.trim(),
-    })
-    .returning();
-
-  const skillContext = `${profile?.teachSkill ?? "their teaching skill"} and ${context.partner?.teachSkill ?? "their partner's teaching skill"}`;
-  const moderatorNote = await moderateChatMessage(saved.content, skillContext);
-  let moderatorMessage: {
-    id: string;
-    roomId: string;
-    senderId: string | null;
-    senderName: string;
-    senderType: "moderator";
-    content: string;
-    createdAt: string;
-  } | null = null;
-  if (moderatorNote) {
-    const [savedModerator] = await db
-      .insert(skillSyncMessagesTable)
-      .values({
-        id: randomUUID(),
-        roomId: context.room.id,
-        senderId: null,
-        senderName: "SkillSync Moderator",
-        senderType: "moderator",
-        content: moderatorNote,
-      })
-      .returning();
-    moderatorMessage = {
-      id: savedModerator.id,
-      roomId: savedModerator.roomId,
-      senderId: null,
-      senderName: savedModerator.senderName,
-      senderType: "moderator",
-      content: savedModerator.content,
-      createdAt: iso(savedModerator.createdAt),
-    };
-  }
-  await db
-    .update(skillSyncRoomsTable)
-    .set({
-      progress: Math.min(context.room.progress + 1, 95),
-      updatedAt: new Date(),
-    })
-    .where(eq(skillSyncRoomsTable.id, context.room.id));
-
-  res.status(201).json(
-    SendSkillSyncMessageResponse.parse({
-      message: {
-        id: saved.id,
-        roomId: saved.roomId,
-        senderId: saved.senderId,
-        senderName: saved.senderName,
-        senderType: saved.senderType,
-        content: saved.content,
-        createdAt: iso(saved.createdAt),
-      },
-      moderatorMessage,
-      aiPowered: isGeminiEnabled(),
     }),
   );
 });
@@ -623,7 +539,10 @@ router.post("/skillsync/rooms/:roomId/daily-challenge", async (req, res): Promis
     return;
   }
   const dayNumber = context.room.challengeDay + 1;
-  const content = await generateDailyChallengeContent(context.room.curriculum, dayNumber);
+  if (context.room.status === "unmatched") { res.status(409).json({ error: "This room is read-only." }); return; }
+  const sharedContext = await sharedRoomContext(context.room.id, res.locals.userId);
+  const content = await generateDailyChallengeContent(context.room.curriculum, dayNumber, sharedContext ? await roomMemory(sharedContext) : undefined);
+  await recordAiUse(res.locals.userId, "challenge", content.aiPowered, context.room.isDemo);
   const challenge = buildChallenge(content, dayNumber);
   await db
     .update(skillSyncRoomsTable)
@@ -648,11 +567,14 @@ router.post("/skillsync/rooms/:roomId/submissions", async (req, res): Promise<vo
     res.status(404).json({ error: "Learning room not found." });
     return;
   }
+  if (context.room.status === "unmatched") { res.status(409).json({ error: "This room is read-only." }); return; }
   const evaluation = await evaluateProjectContent(
     parsed.data.title,
     parsed.data.content,
     context.room.curriculum,
+    await roomMemory((await sharedRoomContext(context.room.id, res.locals.userId))!),
   );
+  await recordAiUse(res.locals.userId, "evaluation", evaluation.aiPowered, context.room.isDemo);
   const [submission] = await db
     .insert(skillSyncSubmissionsTable)
     .values({

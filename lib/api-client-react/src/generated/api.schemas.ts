@@ -174,6 +174,11 @@ export interface ProjectSubmission {
   aiPowered: boolean;
 }
 
+export type LearningRoomParticipantsItem = {
+  userId: string;
+  displayName: string;
+};
+
 export type LearningRoomStatus = typeof LearningRoomStatus[keyof typeof LearningRoomStatus];
 
 
@@ -257,6 +262,7 @@ export interface SharedActivity {
 }
 
 export interface LearningRoom {
+  participants?: LearningRoomParticipantsItem[];
   roomId: string;
   partnerUserId: string;
   partnerName: string;
@@ -329,6 +335,8 @@ export interface ActivityGenerationInput {
 }
 
 export interface ActivityAttemptInput {
+  /** @nullable */
+  simulatedUserId?: string | null;
   /**
      * @minItems 1
      * @maxItems 30

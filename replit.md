@@ -12,7 +12,9 @@ A peer-to-peer skill-sharing platform where university students teach each other
 - `pnpm --filter @workspace/db run push` — push DB schema changes (dev only)
 - Required env: `DATABASE_URL` — provisioned PostgreSQL connection
 - Auth env: Clerk keys are provisioned by Replit's managed Clerk setup
-- Optional env: `GEMINI_API_KEY` — enables live Gemini 2.5 Flash matching, room moderation, challenge generation, and project evaluation; deterministic demo behavior is used when unset
+- Optional env: `GEMINI_API_KEY` — enables live AI matching, explicitly requested room assistance, activity generation, and evaluation; clearly identified demo behavior is used when unset
+- Admin env: `SKILLSYNC_ADMIN_USER_IDS` — comma-separated Clerk user IDs authorized to administer the platform. No user can grant themselves access through the UI.
+- `pnpm --filter @workspace/api-server test` — tests persisted room interactions and simulation boundaries with isolated fixtures, then removes those fixtures
 
 ## Stack
 
@@ -45,6 +47,17 @@ Students create teach/learn profiles, discover complementary peers, open shared 
 ## User preferences
 
 The app should run without a Gemini key; AI-dependent actions have clearly identified deterministic demo behavior until the key is configured.
+
+## Learning Room interaction rules
+
+- The assistant is branded only “SkillSync AI” / “مساعد SkillSync الذكي” in user-facing content. Do not expose provider names or invent a personal assistant name.
+- Partner Chat is silent unless a student explicitly uses `@AI` / `@SkillSync` or requests reply verification. Never add unsolicited AI moderation.
+- The room uses four full-width switchable tabs: Partner Chat, Shared AI Chat, Activities, and Plan & Evaluation.
+- Room AI requests use both profiles, the curriculum, and the complete persisted conversation. Both chat channels and activity attempts are shared with the pair.
+- User A/User B simulation is permitted only in clearly marked demo rooms. Real-room sender identity always comes from the authenticated session.
+- Demo rooms are shared samples visible to signed-in visitors, not private practice spaces. Avoid entering private information there.
+- Administrator unmatching preserves transcripts and makes room interactions read-only.
+- English/Arabic layout direction and the Student/Admin portal switcher must be preserved.
 
 ## Gotchas
 

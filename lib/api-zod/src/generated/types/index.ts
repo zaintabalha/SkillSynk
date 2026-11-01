@@ -38,6 +38,7 @@ export * from './dashboard';
 export * from './dashboardStats';
 export * from './healthStatus';
 export * from './learningRoom';
+export * from './learningRoomParticipantsItem';
 export * from './learningRoomStatus';
 export * from './listSkillSyncAdminReportsParams';
 export * from './listSkillSyncAdminReportsStatus';

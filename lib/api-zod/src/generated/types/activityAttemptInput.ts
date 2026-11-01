@@ -7,6 +7,8 @@
  */
 
 export interface ActivityAttemptInput {
+  /** @nullable */
+  simulatedUserId?: string | null;
   /**
      * @minItems 1
      * @maxItems 30
