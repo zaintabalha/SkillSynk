@@ -20,6 +20,6 @@ export interface AdminOverviewStats {
      */
   matchSuccessRate: number;
   aiActions: number;
-  geminiCalls: number;
+  liveAiCalls: number;
   fallbackCalls: number;
 }

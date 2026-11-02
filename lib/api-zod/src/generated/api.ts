@@ -827,7 +827,7 @@ export const GetSkillSyncAdminOverviewResponse = zod.object({
   "matchAttempts": zod.number().int(),
   "matchSuccessRate": zod.number().min(getSkillSyncAdminOverviewResponseStatsMatchSuccessRateMin).max(getSkillSyncAdminOverviewResponseStatsMatchSuccessRateMax),
   "aiActions": zod.number().int(),
-  "geminiCalls": zod.number().int(),
+  "liveAiCalls": zod.number().int(),
   "fallbackCalls": zod.number().int()
 }),
   "skillDistribution": zod.array(zod.object({

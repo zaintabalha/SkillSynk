@@ -1,6 +1,6 @@
 import { z } from "zod/v4";
 import type { SkillSyncActivityContent } from "@workspace/db";
-import { compactSharedMemory, GeminiProviderError, generateJson, sanitizeText } from "./skillsync-ai";
+import { AiProviderError, compactSharedMemory, generateJson, sanitizeText } from "./skillsync-ai";
 import type { roomMemory } from "./skillsync-room-service";
 
 type Memory = Awaited<ReturnType<typeof roomMemory>>;
@@ -85,7 +85,7 @@ export async function answerRoomQuestion(prompt: string, memory: Memory, quoted?
   );
   const answer = typeof result.answer === "string" ? result.answer.trim() : "";
   if (!answer) {
-    throw new GeminiProviderError(
+    throw new AiProviderError(
       "AI_PROVIDER_ERROR",
       502,
       "SkillSync AI did not return a usable answer. Please try again. / لم تُرجع SkillSync AI إجابة صالحة للاستخدام. حاول مرة أخرى.",

@@ -9,7 +9,7 @@ import {
   skillSyncActivityAttemptsTable as attempts, skillSyncAiUsageTable as usage,
 } from "@workspace/db";
 import interactionRouter, { explicitlyInvokesAi, requestedActivity } from "../routes/skillsync-room-interactions";
-import { isGeminiEnabled } from "../lib/skillsync-ai";
+import { isAiProviderEnabled } from "../lib/skillsync-ai";
 import type { ChatSendResult, SharedActivity, ActivityAttempt, CallCopilotResult } from "@workspace/api-zod";
 import "./ai-limits.test";
 import { aiLimitErrorHandler, withAiBudget } from "../lib/skillsync-ai-limits";
@@ -82,7 +82,7 @@ test("partner chat, shared activities, and simulation permission boundaries", as
       assert.equal((await db.select().from(messages).where(eq(messages.roomId, id))).length, before);
       assert.equal((await request("/messages", { content: "We can still talk about a quiz." })).status, 201);
     }, { userId: actingUser, roomId: id });
-    if (!isGeminiEnabled()) {
+    if (!isAiProviderEnabled()) {
       const quiz = await request("/messages", { content: "@AI give us a quiz", simulatedUserId: ids[0] });
       assert.equal(quiz.status, 201);
       assert.ok(quiz.body.assistantMessage);

@@ -9,7 +9,7 @@ import {
 } from "./middlewares/clerkProxyMiddleware";
 import router from "./routes";
 import { logger } from "./lib/logger";
-import { geminiProviderErrorHandler } from "./lib/skillsync-ai";
+import { aiProviderErrorHandler } from "./lib/skillsync-ai";
 import { aiLimitErrorHandler } from "./lib/skillsync-ai-limits";
 
 const app: Express = express();
@@ -89,7 +89,7 @@ app.use("/api", (_req, res) => {
   });
 });
 app.use("/api", aiLimitErrorHandler);
-app.use("/api", geminiProviderErrorHandler);
+app.use("/api", aiProviderErrorHandler);
 app.use("/api", jsonApiErrorHandler);
 
 export default app;

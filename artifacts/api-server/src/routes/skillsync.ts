@@ -46,7 +46,7 @@ import {
   generateCurriculum,
   generateDailyChallengeContent,
   generateMatchRankings,
-  isGeminiEnabled,
+  isAiProviderEnabled,
   type CandidateForMatch,
 } from "../lib/skillsync-ai";
 import { requireSkillSyncAuth } from "../lib/skillsync-access";
@@ -925,7 +925,7 @@ router.get("/skillsync/dashboard", async (req, res): Promise<void> => {
   res.json(
     GetSkillSyncDashboardResponse.parse({
       profileComplete: Boolean(profile),
-      aiEnabled: isGeminiEnabled(),
+      aiEnabled: isAiProviderEnabled(),
       stats: {
         activeRooms: rooms.filter((room) => room.status === "active").length,
         connectionsMade: rooms.length,

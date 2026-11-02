@@ -8,7 +8,7 @@ await build({
   bundle: true,
   platform: "node",
   format: "esm",
-  external: ["express", "drizzle-orm", "pg-native", "pino", "@google/genai", "zod", "@clerk/express"],
+  external: ["express", "drizzle-orm", "pg-native", "pino", "zod", "@clerk/express"],
   banner: { js: "import { createRequire } from 'node:module'; const require = createRequire(import.meta.url);" },
 });
 const result = spawnSync(process.execPath, [output], { stdio: "inherit" });

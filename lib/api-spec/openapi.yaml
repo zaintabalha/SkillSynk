@@ -998,7 +998,7 @@ components:
         count: { type: integer }
     AdminOverviewStats:
       type: object
-      required: [totalStudents, demoStudents, activeRooms, completedProjects, openComplaints, connectionsMade, matchAttempts, matchSuccessRate, aiActions, geminiCalls, fallbackCalls]
+      required: [totalStudents, demoStudents, activeRooms, completedProjects, openComplaints, connectionsMade, matchAttempts, matchSuccessRate, aiActions, liveAiCalls, fallbackCalls]
       properties:
         totalStudents: { type: integer }
         demoStudents: { type: integer }
@@ -1009,7 +1009,7 @@ components:
         matchAttempts: { type: integer }
         matchSuccessRate: { type: number, minimum: 0, maximum: 100 }
         aiActions: { type: integer }
-        geminiCalls: { type: integer }
+        liveAiCalls: { type: integer }
         fallbackCalls: { type: integer }
     AdminOverview:
       type: object

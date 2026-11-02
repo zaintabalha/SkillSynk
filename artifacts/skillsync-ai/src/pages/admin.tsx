@@ -101,7 +101,7 @@ function Overview({ refetchInterval }: RI) {
   if (q.isError || !q.data) return <ErrorState onRetry={() => q.refetch()} />;
   const { stats, skillDistribution, reportStatuses, sampleDataIncluded } = q.data;
   const reportData = reportStatuses.map((r) => ({ name: t(statusKey[r.status] || 'statusPending'), value: r.count }));
-  const aiData = [{ name: t('aiLive'), value: stats.geminiCalls }, { name: t('aiFallback'), value: stats.fallbackCalls }];
+  const aiData = [{ name: t('aiLive'), value: stats.liveAiCalls }, { name: t('aiFallback'), value: stats.fallbackCalls }];
   const kpis: { label: string; value: string; sub?: string; tone?: string }[] = [
     { label: t('kpiStudents'), value: String(stats.totalStudents), sub: t('kpiDemoStudents', { n: stats.demoStudents }) },
     { label: t('kpiActiveRooms'), value: String(stats.activeRooms) },
@@ -121,7 +121,7 @@ function Overview({ refetchInterval }: RI) {
       <ChartCard title={t('chartReports')} detail={t('chartReportsDetail')} onCsv={() => downloadCsv('complaint-status', [['status', 'count'], ...reportStatuses.map((r) => [r.status, r.count])])}>
         {reportData.some((r) => r.value) ? <ResponsiveContainer width="100%" height={280}><PieChart><Pie data={reportData} dataKey="value" nameKey="name" innerRadius={60} outerRadius={95} paddingAngle={3}>{reportData.map((_, i) => <Cell key={i} fill={pieColors[i % pieColors.length]} />)}</Pie><Tooltip contentStyle={{ background: 'hsl(var(--card))', border: '1px solid hsl(var(--border))', borderRadius: 8, fontSize: 12 }} /><Legend wrapperStyle={{ fontSize: 12 }} /></PieChart></ResponsiveContainer> : <p className="chart-empty">{t('noChartData')}</p>}
       </ChartCard>
-      <ChartCard title={t('chartAi')} detail={t('chartAiDetail')} onCsv={() => downloadCsv('skillsync-ai-responses', [['type', 'count'], ['live', stats.geminiCalls], ['fallback', stats.fallbackCalls]])}>
+      <ChartCard title={t('chartAi')} detail={t('chartAiDetail')} onCsv={() => downloadCsv('skillsync-ai-responses', [['type', 'count'], ['live', stats.liveAiCalls], ['fallback', stats.fallbackCalls]])}>
         <ResponsiveContainer width="100%" height={280}><BarChart data={aiData}><CartesianGrid strokeDasharray="3 3" stroke="hsl(var(--border))" vertical={false} /><XAxis dataKey="name" tick={{ fontSize: 11, fill: 'hsl(var(--muted-foreground))' }} /><YAxis allowDecimals={false} tick={{ fontSize: 11, fill: 'hsl(var(--muted-foreground))' }} /><Tooltip contentStyle={{ background: 'hsl(var(--card))', border: '1px solid hsl(var(--border))', borderRadius: 8, fontSize: 12 }} /><Bar dataKey="value" name={t('countLabel')} radius={[6, 6, 0, 0]}>{aiData.map((_, i) => <Cell key={i} fill={i === 0 ? '#5c8765' : '#d99676'} />)}</Bar></BarChart></ResponsiveContainer>
       </ChartCard>
     </div>

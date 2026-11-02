@@ -79,7 +79,7 @@ router.get("/skillsync/admin/overview", async (_req, res) => {
       openComplaints: reportRows.filter((r) => r.status !== "resolved").length,
       connectionsMade: pairRows.length, matchAttempts: pairRows.length,
       matchSuccessRate: pairRows.length ? Math.round(roomRows.filter((r) => r.status === "completed").length / pairRows.length * 100) : 0,
-      aiActions: events.length, geminiCalls: events.filter((e) => e.aiPowered).length, fallbackCalls: events.filter((e) => !e.aiPowered).length,
+      aiActions: events.length, liveAiCalls: events.filter((e) => e.aiPowered).length, fallbackCalls: events.filter((e) => !e.aiPowered).length,
     },
     skillDistribution: [...skillCounts].map(([skill, count]) => ({ skill, count })),
     reportStatuses: ["pending", "under_review", "resolved"].map((status) => ({ status, count: reportRows.filter((r) => r.status === status).length })),

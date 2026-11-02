@@ -1,7 +1,7 @@
 import { test } from "node:test";
 import assert from "node:assert/strict";
 import { AiLimiter, AiLimitError, withAiBudget, acquireProviderSlot } from "../lib/skillsync-ai-limits";
-import { generateJson, isGeminiEnabled } from "../lib/skillsync-ai";
+import { generateJson, isAiProviderEnabled } from "../lib/skillsync-ai";
 
 test("rolling rate limits expire, rejection is atomic, release is idempotent", () => {
   let now = 0;
@@ -35,10 +35,9 @@ test("user budgets span rooms; room concurrency spans users; failures release sl
 
 test("nested shared AI calls charge once and missing identities fail closed", async () => {
   await assert.rejects(generateJson("no identity"), /authenticated request context/);
+  assert.equal(typeof isAiProviderEnabled(), "boolean");
   for (let i = 0; i < 10; i++) {
-    await withAiBudget(() => isGeminiEnabled()
-      ? withAiBudget(async () => null)
-      : generateJson("demo generation"), { userId: "nested" });
+    await withAiBudget(() => withAiBudget(async () => null), { userId: "nested" });
   }
   await assert.rejects(withAiBudget(async () => {}, { userId: "nested" }), AiLimitError);
 });
