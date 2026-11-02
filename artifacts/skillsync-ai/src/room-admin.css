@@ -404,7 +404,9 @@ html[lang='ar'] .display { line-height: 1.25; }
 /* ---------- Live video room + co-pilot ---------- */
 .room-stage > .room-tab-panel { display: flex; min-width: 0; flex: 1; }
 .room-tab-panel[hidden] { display: none !important; }
-.video-workspace { display: grid; grid-template-columns: minmax(0, 1.35fr) minmax(340px, .85fr); gap: 0; width: 100%; min-height: 720px; background: #f8f8f2; }
+.room-stage:has(.video-workspace) { display: block; min-height: 0; overflow: visible; }
+.room-tab-panel:has(.video-workspace) { display: block; }
+.video-workspace { display: grid; grid-template-columns: minmax(0, 1.35fr) minmax(340px, .85fr); align-items: start; gap: 0; width: 100%; min-height: 720px; background: #f8f8f2; }
 .video-workspace-wide { grid-template-columns: minmax(0, 1fr); }
 .video-column { display: flex; min-width: 0; flex-direction: column; padding: 18px; border-inline-end: 1px solid #e1e3d8; }
 .video-toolbar, .video-toolbar-actions { display: flex; align-items: center; justify-content: space-between; gap: 12px; }
@@ -423,7 +425,7 @@ html[lang='ar'] .display { line-height: 1.25; }
 .copilot-tabs { display: flex; gap: 4px; padding: 10px 12px; border-bottom: 1px solid #e1e3d8; }
 .copilot-tabs button { display: inline-flex; align-items: center; gap: 6px; padding: 8px 10px; border: 0; border-radius: 8px; background: transparent; color: #758276; font-size: 10px; font-weight: 700; }
 .copilot-tabs button[aria-selected='true'] { background: #e7ece1; color: #365c43; }
-.copilot-companion { min-height: 350px; border-bottom: 1px solid #e1e3d8; }
+.copilot-companion { min-width: 0; min-height: 350px; flex: 0 0 auto; border-bottom: 1px solid #e1e3d8; }
 .copilot-companion[hidden] { display: none !important; }
 .copilot-companion .chat-pane { height: 370px; min-height: 340px; }
 .copilot-companion .message-feed { padding: 12px; }
@@ -433,7 +435,7 @@ html[lang='ar'] .display { line-height: 1.25; }
 .copilot-companion .activity-rail { padding: 12px; gap: 9px; }
 .copilot-companion .activity-stage { padding: 14px; }
 .copilot-companion .activity-body { gap: 12px; }
-.copilot-tools { display: grid; gap: 10px; padding: 14px; }
+.copilot-tools { display: grid; min-width: 0; flex: 0 0 auto; gap: 10px; padding: 14px; }
 .role-card { display: grid; gap: 7px; padding: 12px; border: 1px solid #e1e5d9; border-radius: 10px 4px; background: #fffef9; }
 .role-card header, .role-card header span, .transcript-heading { display: flex; align-items: center; justify-content: space-between; gap: 8px; }
 .role-card header span, .transcript-heading > span { justify-content: flex-start; color: #44654d; font-size: 10px; font-weight: 700; }
@@ -458,14 +460,18 @@ html[lang='ar'] .display { line-height: 1.25; }
 .whisper-card p { margin: 0; font-size: 11px; line-height: 1.55; }
 .call-end-button { justify-content: center; background: #aa5b49; border-color: #aa5b49; }
 .video-restore { justify-self: center; align-self: start; margin: 12px; }
+.video-diagnostics { margin: 8px 0 0; color: #956448; font-size: 10px; line-height: 1.5; }
 .call-summary-card { display: grid; gap: 9px; margin: 8px 0; padding: 13px; border: 1px solid #dbe5d7; border-inline-start: 3px solid #63906d; border-radius: 5px 15px; background: #f0f4eb; color: #3c5742; }
 .call-summary-card h3 { display: flex; align-items: center; gap: 6px; margin: 0; font-size: 12px; }
 .call-summary-card > div > b { font-size: 10px; }
 .call-summary-card ul { margin: 4px 0 0; padding-inline-start: 19px; color: #596b5a; font-size: 11px; line-height: 1.5; }
 @keyframes pulse { 50% { opacity: .35; transform: scale(.8); } }
 @media (max-width: 1100px) {
-  .video-workspace { grid-template-columns: minmax(0, 1fr); }
-  .copilot-panel { max-height: none; border-top: 1px solid #e1e3d8; }
+  .video-workspace { grid-template-columns: minmax(0, 1fr); min-height: 0; }
+  .video-column { min-width: 0; border-inline-end: 0; }
+  .copilot-panel { max-height: none; overflow: visible; border-top: 1px solid #e1e3d8; }
+  .copilot-companion { min-height: 0; }
+  .copilot-companion .activities-layout { min-height: 0; }
 }
 @media (max-width: 760px) {
   .video-column { padding: 10px; }

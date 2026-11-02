@@ -219,6 +219,40 @@ paths:
           content:
             application/json:
               schema: { $ref: "#/components/schemas/CallCopilotResult" }
+  /skillsync/rooms/{roomId}/call-transcription:
+    post:
+      operationId: transcribeSkillSyncCallAudio
+      tags: [skillsync]
+      summary: Transcribe a short, consented call-audio chunk
+      description: Set the Accept-Language request header to en or ar.
+      parameters:
+        - name: roomId
+          in: path
+          required: true
+          schema: { type: string }
+      requestBody:
+        required: true
+        content:
+          application/octet-stream:
+            schema: { type: string, format: binary }
+      responses:
+        "200":
+          description: Transcribed text; silence may produce an empty string
+          content:
+            application/json:
+              schema:
+                type: object
+                required: [text]
+                properties:
+                  text: { type: string, maxLength: 10000 }
+        "400":
+          description: Invalid audio chunk or room
+        "413":
+          description: Audio chunk is too large
+        "429":
+          $ref: "#/components/responses/AiLimited"
+        "415":
+          description: Unsupported audio format
   /skillsync/rooms/{roomId}/activities:
     get:
       operationId: listSkillSyncActivities

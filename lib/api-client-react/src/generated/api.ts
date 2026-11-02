@@ -59,6 +59,7 @@ import type {
   SimulatorSolution,
   SubmissionInput,
   SuspensionInput,
+  TranscribeSkillSyncCallAudio200,
   UserNotice,
   UserProfile,
   WarningInput
@@ -1213,6 +1214,96 @@ export const useRequestSkillSyncCallCopilot = <TError = ErrorType<AiLimitedRespo
         TContext
       > => {
       return useMutation(getRequestSkillSyncCallCopilotMutationOptions(options), queryClient);
+    }
+
+export const getTranscribeSkillSyncCallAudioUrl = (roomId: string,) => {
+
+
+
+
+  return `/api/skillsync/rooms/${roomId}/call-transcription`
+}
+
+/**
+ * Set the Accept-Language request header to en or ar.
+ * @summary Transcribe a short, consented call-audio chunk
+ */
+export const transcribeSkillSyncCallAudio = async (roomId: string,
+    transcribeSkillSyncCallAudioBody: Blob, options?: Parameters<typeof customFetch>[1]): Promise<TranscribeSkillSyncCallAudio200> => {
+
+    const getHeaders = (h?: NonNullable<RequestInit['headers']>): Record<string, string | readonly string[]> => {
+    if (!h) return {};
+    if (h instanceof Headers) return Object.fromEntries(h.entries());
+    if (Symbol.iterator in h) {
+      return Object.fromEntries(
+        Array.from(h as Iterable<Iterable<string>>, (entry) => Array.from(entry) as [string, string]),
+      );
+    }
+    const headers: Record<string, string | readonly string[]> = {};
+    for (const [name, value] of Object.entries<string | readonly string[] | undefined>(h)) {
+      if (value !== undefined) headers[name] = value;
+    }
+    return headers;
+  };
+return customFetch<TranscribeSkillSyncCallAudio200>(getTranscribeSkillSyncCallAudioUrl(roomId),
+  {
+    ...options,
+    method: 'POST',
+    headers: { 'Content-Type': 'application/octet-stream', ...getHeaders(options?.headers) },
+    body: transcribeSkillSyncCallAudioBody
+  }
+);}
+
+
+
+
+
+export const getTranscribeSkillSyncCallAudioMutationKey = () => ['transcribeSkillSyncCallAudio'] as const;
+
+export const getTranscribeSkillSyncCallAudioMutationOptions = <TError = ErrorType<void | AiLimitedResponse>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof transcribeSkillSyncCallAudio>>, TError,TranscribeSkillSyncCallAudioMutationVariables, TContext>, request?: SecondParameter<typeof customFetch>}
+): UseMutationOptions<Awaited<ReturnType<typeof transcribeSkillSyncCallAudio>>, TError,TranscribeSkillSyncCallAudioMutationVariables, TContext> => {
+
+const mutationKey = getTranscribeSkillSyncCallAudioMutationKey();
+const {mutation: mutationOptions, request: requestOptions} = options ?
+      options.mutation && 'mutationKey' in options.mutation && options.mutation.mutationKey ?
+      options
+      : {...options, mutation: {...options.mutation, mutationKey}}
+      : {mutation: { mutationKey, }, request: undefined};
+
+
+
+
+      const mutationFn: MutationFunction<Awaited<ReturnType<typeof transcribeSkillSyncCallAudio>>, TranscribeSkillSyncCallAudioMutationVariables> = (props) => {
+          const {roomId,data} = props ?? {};
+
+          return  transcribeSkillSyncCallAudio(roomId,data,requestOptions)
+        }
+
+
+
+
+
+
+  return  { mutationFn, ...mutationOptions }}
+
+    export type TranscribeSkillSyncCallAudioMutationResult = NonNullable<Awaited<ReturnType<typeof transcribeSkillSyncCallAudio>>>
+    export type TranscribeSkillSyncCallAudioMutationBody = BodyType<Blob>
+    export type TranscribeSkillSyncCallAudioMutationError = ErrorType<void | AiLimitedResponse>
+    export type TranscribeSkillSyncCallAudioMutationVariables = {roomId: string;data: BodyType<Blob>}
+
+    /**
+ * @summary Transcribe a short, consented call-audio chunk
+ */
+export const useTranscribeSkillSyncCallAudio = <TError = ErrorType<void | AiLimitedResponse>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof transcribeSkillSyncCallAudio>>, TError,TranscribeSkillSyncCallAudioMutationVariables, TContext>, request?: SecondParameter<typeof customFetch>}
+ , queryClient?: QueryClient): UseMutationResult<
+        Awaited<ReturnType<typeof transcribeSkillSyncCallAudio>>,
+        TError,
+        TranscribeSkillSyncCallAudioMutationVariables,
+        TContext
+      > => {
+      return useMutation(getTranscribeSkillSyncCallAudioMutationOptions(options), queryClient);
     }
 
 export const getListSkillSyncActivitiesUrl = (roomId: string,) => {

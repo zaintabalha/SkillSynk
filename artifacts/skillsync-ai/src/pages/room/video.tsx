@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState } from 'react';
+import { useCallback, useEffect, useRef, useState } from 'react';
 import { useQueryClient } from '@tanstack/react-query';
 import {
   AlertTriangle, ArrowUpRight, Check, Clock3, Languages, LoaderCircle,
@@ -7,7 +7,7 @@ import {
 } from 'lucide-react';
 import {
   getGetSkillSyncRoomQueryKey, getListSkillSyncActivitiesQueryKey,
-  useRequestSkillSyncCallCopilot,
+  transcribeSkillSyncCallAudio, useRequestSkillSyncCallCopilot,
 } from '@workspace/api-client-react';
 import type { CallCopilotInputAction, LearningRoom } from '@workspace/api-client-react';
 import { aiErrorMessage } from '@/lib/ai-error';
@@ -48,16 +48,179 @@ export function VideoRoom({ room, actingUserId, viewerId, onOpenActivity, select
   const [transcript, setTranscript] = useState('');
   const [consent, setConsent] = useState(false);
   const [listening, setListening] = useState(false);
+  const [recognitionAvailable, setRecognitionAvailable] = useState(false);
+  const [recorderAvailable, setRecorderAvailable] = useState(false);
+  const [transcribing, setTranscribing] = useState(false);
+  const [transcriptionError, setTranscriptionError] = useState('');
   const [turn, setTurn] = useState(0);
   const [secondsLeft, setSecondsLeft] = useState(15 * 60);
   const recognition = useRef<Recognition | null>(null);
+  const listeningRef = useRef(false);
+  const mediaRecorder = useRef<MediaRecorder | null>(null);
+  const mediaStream = useRef<MediaStream | null>(null);
+  const recordingTimer = useRef<number | null>(null);
+  const uploadQueue = useRef<Promise<void>>(Promise.resolve());
+  const fallbackStarting = useRef(false);
+  const transcriptRef = useRef('');
   const participants = room.participants ?? [];
   const currentTurn = participants[turn % Math.max(participants.length, 1)];
   const cleanRoomId = room.roomId.replace(/[^A-Za-z0-9_-]/g, '-').slice(0, 100);
   const meetingName = `SkillSync_AI_Room_${cleanRoomId}`;
-  const meetingUrl = `https://meet.jit.si/${encodeURIComponent(meetingName)}`;
+  const meetingUrl = `https://meet.jit.si/${encodeURIComponent(meetingName)}#config.prejoinPageEnabled=true`;
   const timerText = `${String(Math.floor(secondsLeft / 60)).padStart(2, '0')}:${String(secondsLeft % 60).padStart(2, '0')}`;
-  const shareText = transcript.trim();
+  const shareText = transcriptRef.current.trim();
+
+  const appendTranscript = useCallback((text: string) => {
+    const piece = text.trim();
+    if (!piece) return;
+    const current = transcriptRef.current;
+    const normalize = (value: string) => value.normalize('NFKC').toLocaleLowerCase().replace(/[^\p{L}\p{N}]+/gu, ' ').trim();
+    const normalizedPiece = normalize(piece);
+    if (normalizedPiece && normalize(current).includes(normalizedPiece)) return;
+    const next = `${current.trim()}${current.trim() ? '\n' : ''}${piece}`.slice(-10000);
+    transcriptRef.current = next;
+    setTranscript(next);
+  }, []);
+
+  const transcribeChunk = useCallback(async (chunk: Blob) => {
+    if (chunk.size < 1024) return;
+    setTranscribing(true);
+    setTranscriptionError('');
+    try {
+      const result = await transcribeSkillSyncCallAudio(room.roomId, chunk, {
+        headers: {
+          'Content-Type': chunk.type || 'application/octet-stream',
+          'Accept-Language': aiLocale,
+        },
+      });
+      appendTranscript(result.text);
+    } catch (error) {
+      setTranscriptionError(aiErrorMessage(error, t('transcriptionError')));
+    } finally {
+      setTranscribing(false);
+    }
+  }, [aiLocale, appendTranscript, room.roomId, t]);
+
+  const startMediaRecorderFallback = useCallback(async () => {
+    if (fallbackStarting.current || mediaStream.current || !listeningRef.current) return;
+    fallbackStarting.current = true;
+    try {
+      if (!navigator.mediaDevices?.getUserMedia || typeof MediaRecorder === 'undefined') {
+        throw new Error('Media recording is not supported in this browser.');
+      }
+      const stream = await navigator.mediaDevices.getUserMedia({
+        audio: { echoCancellation: true, noiseSuppression: true, autoGainControl: true },
+      });
+      mediaStream.current = stream;
+      const supportedMime = ['audio/webm;codecs=opus', 'audio/mp4', 'audio/ogg;codecs=opus']
+        .find((mime) => typeof MediaRecorder.isTypeSupported !== 'function' || MediaRecorder.isTypeSupported(mime));
+
+      const startSegment = () => {
+        if (!listeningRef.current) {
+          stream.getTracks().forEach((track) => track.stop());
+          mediaStream.current = null;
+          mediaRecorder.current = null;
+          return;
+        }
+        try {
+          const recorder = new MediaRecorder(stream, supportedMime ? { mimeType: supportedMime } : undefined);
+          const chunks: BlobPart[] = [];
+          recorder.ondataavailable = (event) => {
+            if (event.data.size) chunks.push(event.data);
+          };
+          recorder.onerror = () => {
+            setTranscriptionError(t('transcriptionError'));
+            listeningRef.current = false;
+            setListening(false);
+            stream.getTracks().forEach((track) => track.stop());
+            mediaStream.current = null;
+            mediaRecorder.current = null;
+          };
+          recorder.onstop = () => {
+            if (recordingTimer.current !== null) window.clearTimeout(recordingTimer.current);
+            recordingTimer.current = null;
+            const blob = new Blob(chunks, { type: recorder.mimeType || supportedMime || 'audio/webm' });
+            if (blob.size >= 1024) {
+              uploadQueue.current = uploadQueue.current.then(() => transcribeChunk(blob));
+            }
+            if (listeningRef.current) {
+              recordingTimer.current = window.setTimeout(startSegment, 100);
+            } else {
+              stream.getTracks().forEach((track) => track.stop());
+              mediaStream.current = null;
+              mediaRecorder.current = null;
+            }
+          };
+          mediaRecorder.current = recorder;
+          recorder.start();
+          recordingTimer.current = window.setTimeout(() => {
+            if (recorder.state === 'recording') recorder.stop();
+          }, 8000);
+        } catch (error) {
+          setTranscriptionError(aiErrorMessage(error, t('transcriptionError')));
+          listeningRef.current = false;
+          setListening(false);
+          stream.getTracks().forEach((track) => track.stop());
+          mediaStream.current = null;
+          mediaRecorder.current = null;
+        }
+      };
+
+      setTranscriptionError('');
+      setListening(true);
+      startSegment();
+    } catch (error) {
+      listeningRef.current = false;
+      setListening(false);
+      setTranscriptionError(
+        error instanceof Error && error.name === 'NotAllowedError'
+          ? t('microphonePermissionError')
+          : aiErrorMessage(error, t('transcriptionError')),
+      );
+    } finally {
+      fallbackStarting.current = false;
+    }
+  }, [t, transcribeChunk]);
+
+  const stopTranscription = useCallback(() => {
+    listeningRef.current = false;
+    try { recognition.current?.stop(); } catch { /* Recognition may already have stopped. */ }
+    if (recordingTimer.current !== null) window.clearTimeout(recordingTimer.current);
+    recordingTimer.current = null;
+    const recorder = mediaRecorder.current;
+    if (recorder && recorder.state !== 'inactive') {
+      try { recorder.stop(); } catch { /* The final audio chunk is best-effort. */ }
+    } else {
+      mediaStream.current?.getTracks().forEach((track) => track.stop());
+      mediaStream.current = null;
+      mediaRecorder.current = null;
+    }
+    setListening(false);
+  }, []);
+
+  const toggleListening = useCallback(async () => {
+    if (!consent || !joined) return;
+    if (listeningRef.current) {
+      stopTranscription();
+      return;
+    }
+    setTranscriptionError('');
+    listeningRef.current = true;
+    setListening(true);
+    if (recognition.current) {
+      try {
+        recognition.current.start();
+        return;
+      } catch {
+        // Older Safari implementations can expose SpeechRecognition but fail to start it.
+      }
+    }
+    await startMediaRecorderFallback();
+  }, [consent, joined, startMediaRecorderFallback, stopTranscription]);
+
+  useEffect(() => {
+    setRecorderAvailable(typeof navigator.mediaDevices !== 'undefined' && typeof MediaRecorder !== 'undefined');
+  }, []);
 
   useEffect(() => {
     if (!timerRunning || secondsLeft === 0) return;
@@ -76,8 +239,13 @@ export function VideoRoom({ room, actingUserId, viewerId, onOpenActivity, select
   useEffect(() => {
     const scope = window as typeof window & { SpeechRecognition?: new () => Recognition; webkitSpeechRecognition?: new () => Recognition };
     const RecognitionClass = scope.SpeechRecognition ?? scope.webkitSpeechRecognition;
-    if (!RecognitionClass) { recognition.current = null; return; }
+    if (!RecognitionClass) {
+      recognition.current = null;
+      setRecognitionAvailable(false);
+      return;
+    }
     const instance = new RecognitionClass();
+    setRecognitionAvailable(true);
     instance.lang = locale === 'ar' ? 'ar-SA' : 'en-US';
     instance.continuous = true;
     instance.interimResults = true;
@@ -87,17 +255,32 @@ export function VideoRoom({ room, actingUserId, viewerId, onOpenActivity, select
         .map((item) => item[0].transcript.trim())
         .filter(Boolean)
         .join(' ');
-      if (finalText) setTranscript((current) => `${current.trim()}${current.trim() ? '\n' : ''}${finalText}`);
+      if (finalText) appendTranscript(finalText);
     };
-    instance.onerror = () => setListening(false);
-    instance.onend = () => setListening(false);
+    instance.onerror = () => {
+      if (listeningRef.current) void startMediaRecorderFallback();
+    };
+    instance.onend = () => {
+      if (listeningRef.current) void startMediaRecorderFallback();
+    };
     recognition.current = instance;
     return () => {
       instance.onresult = null;
       try { instance.stop(); } catch { /* Recognition may not have started. */ }
       recognition.current = null;
+      setRecognitionAvailable(false);
     };
-  }, [locale]);
+  }, [appendTranscript, locale, startMediaRecorderFallback]);
+
+  useEffect(() => () => {
+    listeningRef.current = false;
+    try { recognition.current?.stop(); } catch { /* Recognition may already have stopped. */ }
+    if (recordingTimer.current !== null) window.clearTimeout(recordingTimer.current);
+    if (mediaRecorder.current?.state === 'recording') {
+      try { mediaRecorder.current.stop(); } catch { /* Best-effort cleanup. */ }
+    }
+    mediaStream.current?.getTracks().forEach((track) => track.stop());
+  }, []);
 
   const runTool = (action: CallCopilotInputAction, needsTranscript = true) => {
     if (needsTranscript && !shareText) return;
@@ -111,8 +294,7 @@ export function VideoRoom({ room, actingUserId, viewerId, onOpenActivity, select
         }
         client.invalidateQueries({ queryKey: getGetSkillSyncRoomQueryKey(room.roomId) });
         if (action === 'summary') {
-          recognition.current?.stop();
-          setListening(false);
+          stopTranscription();
           setJoined(false);
           setTimerRunning(false);
           setPanel('chat');
@@ -120,15 +302,8 @@ export function VideoRoom({ room, actingUserId, viewerId, onOpenActivity, select
       } },
     );
   };
-  const toggleListening = () => {
-    if (!consent) return;
-    if (listening) { recognition.current?.stop(); setListening(false); return; }
-    if (!recognition.current) return;
-    try { recognition.current.start(); setListening(true); } catch { setListening(false); }
-  };
   const leaveCall = () => {
-    recognition.current?.stop();
-    setListening(false);
+    stopTranscription();
     setTimerRunning(false);
     setJoined(false);
   };
@@ -148,12 +323,13 @@ export function VideoRoom({ room, actingUserId, viewerId, onOpenActivity, select
         <iframe
           title={t('callTitle')}
           src={meetingUrl}
-          allow="camera; microphone; fullscreen; display-capture"
+          allow="camera https://meet.jit.si; microphone https://meet.jit.si; fullscreen https://meet.jit.si; display-capture https://meet.jit.si; autoplay https://meet.jit.si"
           allowFullScreen
           referrerPolicy="strict-origin"
           data-testid="jitsi-frame"
         />
       </div>}
+      {joined && <p className="video-diagnostics" role="status">{t('jitsiMediaHelp')}</p>}
       <div className="video-link-row"><span className="video-privacy"><AlertTriangle size={13} />{t('callPrivacy')}</span>
         <a href={meetingUrl} target="_blank" rel="noopener noreferrer"><ArrowUpRight size={13} />{t('openJitsi')}</a></div>
     </section>
@@ -180,12 +356,14 @@ export function VideoRoom({ room, actingUserId, viewerId, onOpenActivity, select
           </div>
         </article>
         <div className="transcript-heading"><span><Languages size={14} />{t('transcriptTitle')}</span>{listening && <b className="listening-pill"><i />{t('speechListening')}</b>}</div>
-        <label className="transcript-consent"><input type="checkbox" checked={consent} onChange={(event) => { setConsent(event.target.checked); if (!event.target.checked) { recognition.current?.stop(); setListening(false); } }} />{t('transcriptConsent')}</label>
+        <label className="transcript-consent"><input type="checkbox" checked={consent} onChange={(event) => { setConsent(event.target.checked); if (!event.target.checked) stopTranscription(); }} />{t('transcriptConsent')}</label>
         <div className="transcript-controls">
-          <button className="quiet-button" onClick={toggleListening} disabled={!joined || !consent || !recognition.current} data-testid="button-toggle-listening">{listening ? <MicOff size={14} /> : <Mic size={14} />}{listening ? t('stopListening') : t('startListening')}</button>
-          {!recognition.current && <span className="transcript-note">{t('transcriptUnsupported')}</span>}
+          <button className="quiet-button" onClick={() => void toggleListening()} disabled={!joined || !consent || (!recognitionAvailable && !recorderAvailable)} data-testid="button-toggle-listening">{listening ? <MicOff size={14} /> : <Mic size={14} />}{listening ? t('stopListening') : t('startListening')}</button>
+          {!recognitionAvailable && <span className="transcript-note">{t('transcriptUnsupported')}</span>}
+          {transcribing && <span className="listening-pill"><LoaderCircle size={12} className="spin" />{t('transcribing')}</span>}
         </div>
-        <textarea className="call-transcript" value={transcript} onChange={(event) => setTranscript(event.target.value)} maxLength={10000} rows={4} dir="auto" placeholder={t('transcriptPlaceholder')} data-testid="input-call-transcript" />
+        {transcriptionError && <p className="inline-error" role="alert">{transcriptionError}</p>}
+        <textarea className="call-transcript" value={transcript} onChange={(event) => { transcriptRef.current = event.target.value; setTranscript(event.target.value); }} maxLength={10000} rows={4} dir="auto" placeholder={t('transcriptPlaceholder')} data-testid="input-call-transcript" />
         <p className="transcript-note">{t('transcriptSendNotice')}</p>
         <div className="call-tool-grid">
           <button className="button button-secondary button-small" disabled={!shareText || copilot.isPending} onClick={() => runTool('hint')} data-testid="button-live-hint"><Sparkles size={13} />{t('voiceHint')}</button>

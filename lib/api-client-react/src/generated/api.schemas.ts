@@ -729,6 +729,11 @@ export interface CurriculumRegeneration {
  */
 export type AiLimitedResponse = AiLimitResponse;
 
+export type TranscribeSkillSyncCallAudio200 = {
+  /** @maxLength 10000 */
+  text: string;
+};
+
 export type ListSkillSyncAdminReportsParams = {
 status?: ListSkillSyncAdminReportsStatus;
 };

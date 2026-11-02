@@ -12,7 +12,7 @@ import interactionRouter, { explicitlyInvokesAi, requestedActivity } from "../ro
 import { isAiProviderEnabled } from "../lib/skillsync-ai";
 import type { ChatSendResult, SharedActivity, ActivityAttempt, CallCopilotResult } from "@workspace/api-zod";
 import "./ai-limits.test";
-import { aiLimitErrorHandler, withAiBudget } from "../lib/skillsync-ai-limits";
+import { aiLimitErrorHandler, aiRequestContext, withAiBudget } from "../lib/skillsync-ai-limits";
 
 test("partner chat, shared activities, and simulation permission boundaries", async () => {
   assert.equal(explicitlyInvokesAi("A normal conversation about AI"), false);
@@ -31,6 +31,7 @@ test("partner chat, shared activities, and simulation permission boundaries", as
   app.use(express.json());
   // Test-only authentication fixture; this harness is not imported by the running app.
   app.use((_req, res, next) => { res.locals.userId = actingUser; next(); });
+  app.use(aiRequestContext);
   app.use(interactionRouter);
   app.use(aiLimitErrorHandler);
   const server = app.listen(0);
@@ -42,6 +43,14 @@ test("partner chat, shared activities, and simulation permission boundaries", as
       body: body === undefined ? undefined : JSON.stringify(body),
     });
     return { status: response.status, headers: response.headers, body: await response.json() as T };
+  };
+  const requestAudio = async (audio: Buffer) => {
+    const response = await fetch(`http://127.0.0.1:${address.port}/skillsync/rooms/${id}/call-transcription`, {
+      method: "POST",
+      headers: { "Content-Type": "audio/wav", "Accept-Language": "en" },
+      body: audio as unknown as string,
+    });
+    return { status: response.status, body: await response.json() as { text?: string; error?: string } };
   };
   try {
     await db.insert(profiles).values(ids.map((userId, i) => ({ userId, displayName: `Test ${i}`, university: "Test university", teachSkill: "Testing", learnSkill: "Design", bio: "" })));
@@ -103,18 +112,45 @@ test("partner chat, shared activities, and simulation permission boundaries", as
       assert.equal(verify.body.assistantMessage?.replyToMessageId, simulated.body.message.id);
       assert.match(verify.body.assistantMessage?.content ?? "", /not been verified/);
     }
+    if (isAiProviderEnabled()) {
+      const sampleRate = 16_000;
+      const dataSize = sampleRate * 2 * 4;
+      const silentWav = Buffer.alloc(44 + dataSize);
+      silentWav.write("RIFF", 0);
+      silentWav.writeUInt32LE(36 + dataSize, 4);
+      silentWav.write("WAVE", 8);
+      silentWav.write("fmt ", 12);
+      silentWav.writeUInt32LE(16, 16);
+      silentWav.writeUInt16LE(1, 20);
+      silentWav.writeUInt16LE(1, 22);
+      silentWav.writeUInt32LE(sampleRate, 24);
+      silentWav.writeUInt32LE(sampleRate * 2, 28);
+      silentWav.writeUInt16LE(2, 32);
+      silentWav.writeUInt16LE(16, 34);
+      silentWav.write("data", 36);
+      silentWav.writeUInt32LE(dataSize, 40);
+      const previousActingUser = actingUser;
+      actingUser = ids[0];
+      const transcription = await requestAudio(silentWav);
+      actingUser = previousActingUser;
+      assert.equal(transcription.status, 200, JSON.stringify(transcription.body));
+      assert.equal(typeof transcription.body.text, "string");
+    }
+    const previousCopilotUser = actingUser;
+    actingUser = ids[1];
     const speakingPrompt = await request<CallCopilotResult>("/call-copilot", { action: "speaking_prompt", transcript: "", locale: "en" });
-    assert.equal(speakingPrompt.status, 200);
+    assert.equal(speakingPrompt.status, 200, JSON.stringify(speakingPrompt.body));
     assert.equal(speakingPrompt.body.action, "speaking_prompt");
     const liveHint = await request<CallCopilotResult>("/call-copilot", { action: "hint", transcript: "We discussed an array of flashcards.", locale: "en" });
-    assert.equal(liveHint.status, 200);
+    assert.equal(liveHint.status, 200, JSON.stringify(liveHint.body));
     const callQuiz = await request<CallCopilotResult>("/call-copilot", { action: "quiz", transcript: "A JavaScript array stores related flashcard objects.", locale: "en" });
-    assert.equal(callQuiz.status, 200);
+    assert.equal(callQuiz.status, 200, JSON.stringify(callQuiz.body));
     assert.equal(callQuiz.body.activity?.kind, "quiz");
     const callSummary = await request<CallCopilotResult>("/call-copilot", { action: "summary", transcript: "We learned that arrays store a sequence of values.", locale: "en" });
-    assert.equal(callSummary.status, 200);
+    assert.equal(callSummary.status, 200, JSON.stringify(callSummary.body));
     assert.ok(callSummary.body.summary);
     assert.ok((await db.select().from(messages).where(eq(messages.roomId, id))).some((message) => message.content.startsWith("SKILLSYNC_CALL_SUMMARY:")));
+    actingUser = previousCopilotUser;
     await db.update(rooms).set({ status: "unmatched" }).where(eq(rooms.id, id));
     assert.equal((await request("/messages", { content: "Read-only check" })).status, 409);
     assert.equal((await request("/call-copilot", { action: "hint", transcript: "Text", locale: "en" })).status, 409);

@@ -77,6 +77,7 @@ export * from './simulatorSolution';
 export * from './skillCount';
 export * from './submissionInput';
 export * from './suspensionInput';
+export * from './transcribeSkillSyncCallAudio200';
 export * from './userNotice';
 export * from './userNoticeKind';
 export * from './userProfile';

@@ -1,6 +1,8 @@
 import { z } from "zod/v4";
 import type { SkillSyncActivityContent } from "@workspace/db";
-import { AiProviderError, compactSharedMemory, generateJson, sanitizeText } from "./skillsync-ai";
+import { AiProviderError, compactSharedMemory, generateJson, getGroqApiKey, sanitizeText } from "./skillsync-ai";
+import { acquireProviderSlot } from "./skillsync-ai-limits";
+import { logger } from "./logger";
 import type { roomMemory } from "./skillsync-room-service";
 
 type Memory = Awaited<ReturnType<typeof roomMemory>>;
@@ -25,6 +27,89 @@ export const callSummarySchema = z.object({
   nextSteps: z.array(z.string().min(1).max(500)).min(1).max(6),
 });
 export type CallSummary = z.infer<typeof callSummarySchema>;
+
+const CALL_TRANSCRIPTION_MODELS = ["whisper-large-v3-turbo", "whisper-large-v3"] as const;
+
+export async function transcribeCallAudio(audio: Buffer, mimeType: string, locale: "en" | "ar"): Promise<string> {
+  const apiKey = getGroqApiKey();
+  const audioBytes = new Uint8Array(audio.byteLength);
+  audioBytes.set(audio);
+  const fileBlob = new Blob([audioBytes.buffer], { type: mimeType });
+  const fileExtension = mimeType === "audio/mp4" || mimeType === "audio/x-m4a"
+    ? "m4a"
+    : mimeType === "audio/ogg"
+      ? "ogg"
+      : mimeType === "audio/wav" || mimeType === "audio/x-wav"
+        ? "wav"
+        : "webm";
+  let lastStatus: number | undefined;
+  let timedOut = false;
+
+  for (const model of CALL_TRANSCRIPTION_MODELS) {
+    const release = acquireProviderSlot();
+    try {
+      const form = new FormData();
+      form.append("file", fileBlob, `call-chunk.${fileExtension}`);
+      form.append("model", model);
+      form.append("response_format", "json");
+      form.append("language", locale);
+
+      const response = await fetch("https://api.groq.com/openai/v1/audio/transcriptions", {
+        method: "POST",
+        headers: { Authorization: `Bearer ${apiKey}` },
+        body: form,
+        signal: AbortSignal.timeout(25_000),
+      });
+      if (!response.ok) {
+        lastStatus = response.status;
+        const details = (await response.text().catch(() => "")).slice(0, 800);
+        logger.warn({ model, status: response.status, providerDetails: details }, "Groq call transcription attempt failed");
+        continue;
+      }
+
+      const payload: unknown = await response.json();
+      if (!payload || typeof payload !== "object" || !("text" in payload) || typeof payload.text !== "string") {
+        lastStatus = 502;
+        logger.warn({ model }, "Groq call transcription returned an invalid response");
+        continue;
+      }
+      return payload.text.trim().slice(0, 10_000);
+    } catch (error) {
+      lastStatus = undefined;
+      timedOut ||= error instanceof Error && error.name === "TimeoutError";
+      logger.warn({ model, err: error }, "Groq call transcription request failed");
+    } finally {
+      release();
+    }
+  }
+
+  if (lastStatus === 429) {
+    throw new AiProviderError(
+      "AI_QUOTA_EXCEEDED",
+      429,
+      "Live transcription is temporarily rate-limited. Wait a moment and try again. / التفريغ المباشر محدود مؤقتاً. انتظر قليلاً ثم حاول مجدداً.",
+    );
+  }
+  if (lastStatus === 404) {
+    throw new AiProviderError(
+      "AI_MODEL_UNAVAILABLE",
+      503,
+      "Live transcription is unavailable right now. Please try again shortly. / التفريغ المباشر غير متاح حالياً. حاول مجدداً بعد قليل.",
+    );
+  }
+  if (timedOut) {
+    throw new AiProviderError(
+      "AI_PROVIDER_ERROR",
+      504,
+      "Live transcription took too long. Try a shorter recording or try again. / استغرق التفريغ المباشر وقتاً طويلاً. سجّل مقطعاً أقصر أو حاول مجدداً.",
+    );
+  }
+  throw new AiProviderError(
+    "AI_PROVIDER_ERROR",
+    lastStatus && lastStatus >= 500 ? 502 : 503,
+    "SkillSync AI could not transcribe this audio chunk. Check your microphone connection and try again. / تعذّر على SkillSync AI تفريغ هذا المقطع الصوتي. تحقق من اتصال الميكروفون وحاول مجدداً.",
+  );
+}
 
 export async function generateCallCopilotText(
   action: "speaking_prompt" | "hint",

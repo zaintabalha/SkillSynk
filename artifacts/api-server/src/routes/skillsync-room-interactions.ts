@@ -1,4 +1,4 @@
-import { Router, type IRouter, type RequestHandler } from "express";
+import express, { Router, type IRouter, type RequestHandler } from "express";
 import {
   SendSkillSyncMessageBody, SendSkillSyncMessageResponse,
   GenerateSkillSyncActivityBody, GenerateSkillSyncActivityResponse,
@@ -13,7 +13,7 @@ import {
 import { and, eq } from "drizzle-orm";
 import { randomUUID } from "node:crypto";
 import { roomContext, resolveSpeaker, roomMemory, messageDto, roomActivities, attemptDto, recordAiUse, type RoomContext } from "../lib/skillsync-room-service";
-import { answerRoomQuestion, generateCallCopilotText, generateCallSummary, generateRoomActivity, generateSimulatorSolution } from "../lib/skillsync-room-ai";
+import { answerRoomQuestion, generateCallCopilotText, generateCallSummary, generateRoomActivity, generateSimulatorSolution, transcribeCallAudio } from "../lib/skillsync-room-ai";
 import { withAiBudget } from "../lib/skillsync-ai-limits";
 import { logger } from "../lib/logger";
 import { evaluateSimulatorResponse } from "../lib/skillsync-simulator-evaluation";
@@ -163,6 +163,37 @@ router.post("/skillsync/rooms/:roomId/call-copilot", async (req, res) => {
   }, { userId: res.locals.userId, roomId: context.room.id });
   res.json(RequestSkillSyncCallCopilotResponse.parse(result));
 });
+router.post(
+  "/skillsync/rooms/:roomId/call-transcription",
+  express.raw({
+    type: ["audio/webm", "audio/mp4", "audio/x-m4a", "audio/ogg", "audio/wav", "audio/x-wav", "audio/mpeg", "application/octet-stream"],
+    limit: "8mb",
+  }),
+  async (req, res): Promise<void> => {
+    const context = await roomContext(String(req.params.roomId), res.locals.userId);
+    if (!context) { res.status(404).json({ error: "Room not found." }); return; }
+    if (context.room.status === "unmatched") { res.status(409).json({ error: "This room is read-only." }); return; }
+
+    const mimeType = req.get("content-type")?.split(";")[0].trim().toLowerCase() ?? "";
+    const acceptedTypes = new Set(["audio/webm", "audio/mp4", "audio/x-m4a", "audio/ogg", "audio/wav", "audio/x-wav", "audio/mpeg", "application/octet-stream"]);
+    if (!acceptedTypes.has(mimeType)) {
+      res.status(415).json({ error: "Use a supported audio format such as WebM, MP4, Ogg, or WAV." });
+      return;
+    }
+    if (!Buffer.isBuffer(req.body) || req.body.length < 1024) {
+      res.status(400).json({ error: "The audio chunk is empty or too short. Record a little more and try again." });
+      return;
+    }
+
+    const rawLocale = req.get("accept-language")?.split(",")[0]?.trim().toLowerCase();
+    const locale = rawLocale?.startsWith("ar") ? "ar" : "en";
+    const text = await withAiBudget(
+      () => transcribeCallAudio(req.body as Buffer, mimeType, locale),
+      { userId: res.locals.userId, roomId: context.room.id },
+    );
+    res.json({ text });
+  },
+);
 router.get("/skillsync/rooms/:roomId/activities", async (req, res) => {
   const context = await roomContext(String(req.params.roomId), res.locals.userId);
   if (!context) { res.status(404).json({ error: "Room not found." }); return; }

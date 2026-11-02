@@ -41,7 +41,7 @@ export const aiProviderErrorHandler: ErrorRequestHandler = (error, _req, res, ne
   });
 };
 
-function getGroqApiKey(): string {
+export function getGroqApiKey(): string {
   const apiKey = process.env.GROQ_API_KEY?.trim().replace(/^Gsk_/, "gsk_");
   if (!apiKey) {
     throw new AiProviderError(

@@ -523,6 +523,23 @@ export const RequestSkillSyncCallCopilotResponse = zod.object({
 
 
 /**
+ * Set the Accept-Language request header to en or ar.
+ * @summary Transcribe a short, consented call-audio chunk
+ */
+export const TranscribeSkillSyncCallAudioParams = zod.object({
+  "roomId": zod.coerce.string()
+})
+
+export const transcribeSkillSyncCallAudioResponseTextMax = 10000;
+
+
+
+export const TranscribeSkillSyncCallAudioResponse = zod.object({
+  "text": zod.string().max(transcribeSkillSyncCallAudioResponseTextMax)
+})
+
+
+/**
  * @summary List shared quizzes, flashcards, and simulators
  */
 export const ListSkillSyncActivitiesParams = zod.object({
