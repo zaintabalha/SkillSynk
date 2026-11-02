@@ -35,18 +35,17 @@ async function generateJsonWithinBudget(prompt: string): Promise<Record<string, 
     // Admission errors must propagate, not be retried or disguised as demo output.
     const release = acquireProviderSlot();
     try {
-      const response = await gemini.interactions.create({
-        model: "gemini-3.8-flash",
-        input: prompt,
-        system_instruction: SYSTEM_INSTRUCTION,
-        store: false,
-        response_format: { type: "text", mime_type: "application/json" },
-        generation_config: {
-          thinking_level: "low",
+      const response = await gemini.models.generateContent({
+        model: "gemini-2.5-flash",
+        contents: prompt,
+        config: {
+          httpOptions: { timeout: 30_000 },
+          systemInstruction: SYSTEM_INSTRUCTION,
+          responseMimeType: "application/json",
           temperature: 0.25,
         },
-      }, { timeout: 30_000 });
-      const raw = response.output_text?.trim();
+      });
+      const raw = response.text?.trim();
       if (!raw) return null;
       const json = sanitizeText(raw.replace(/^```(?:json)?\s*/i, "").replace(/\s*```$/, ""));
       const parsed: unknown = JSON.parse(json);
