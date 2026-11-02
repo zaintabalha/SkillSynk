@@ -3,8 +3,8 @@ name: Gemini model access
 description: The model choice and account limitation for SkillSync's Gemini integration
 ---
 
-The user selected `gemini-3.8-flash` after Google rejected `gemini-2.5-flash` for their newly configured API account as unavailable to new users. Keep the model choice and backend-only credential handling unless the user changes them.
+The user's current SkillSync direction is `gemini-2.5-flash` through standard `generateContent`. Google previously rejected that model for the configured account as unavailable to new users; do not silently substitute another model.
 
-**Why:** The requested 2.5 model could not serve this account, and the user explicitly chose 3.8 rather than silently changing the model.
+**Why:** The user explicitly restored the requested 2.5 model and asked to remove demo fallbacks, even though prior provider access failed.
 
-**How to apply:** Before changing the model again, check current provider access and ask the user. Keep requests stateless when using the Interactions API.
+**How to apply:** Keep Gemini credentials server-side and use `gemini-2.5-flash` with `generateContent`. If Google rejects the model, report that limitation rather than silently changing models or returning demo content.

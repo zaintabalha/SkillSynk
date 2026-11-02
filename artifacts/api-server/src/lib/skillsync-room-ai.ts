@@ -69,10 +69,9 @@ export async function answerRoomQuestion(prompt: string, memory: Memory, quoted?
   const result = await generateJson(
     `Answer this explicit student request using the complete shared room memory below. Respond in the request's language. If a quoted message is supplied, quote it and verify only what can be established; be clear about uncertainty. Return JSON {"answer":"..."}. Request: ${JSON.stringify(prompt)}. Quoted message: ${JSON.stringify(quoted ?? null)}. Shared memory: ${JSON.stringify(memory)}`,
   );
-  const fallback = quoted
-    ? `“${quoted}”\n\nSkillSync AI is in demo mode. This statement has not been verified. Check the relevant source or test the example together before treating it as correct.`
-    : "SkillSync AI is in demo mode. Your question is saved in the shared workspace. Compare it with your learning plan, test a small example together, and explain each step. Live AI answers require the backend AI connection.";
-  return { answer: sanitizeText(typeof result?.answer === "string" ? result.answer : fallback, memory.students), aiPowered: Boolean(result && typeof result.answer === "string") };
+  const answer = typeof result.answer === "string" ? result.answer.trim() : "";
+  if (!answer) throw new Error("Gemini returned no answer for the @AI request.");
+  return { answer: sanitizeText(answer, memory.students), aiPowered: true };
 }
 
 export async function generateRoomActivity(kind: "quiz" | "flashcards" | "simulator", prompt: string, memory: Memory) {
