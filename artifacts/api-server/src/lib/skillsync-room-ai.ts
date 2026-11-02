@@ -113,7 +113,7 @@ export async function generateRoomActivity(kind: "quiz" | "flashcards" | "simula
     ? "Create exactly 4 short questions. Each has 3 brief choices, answerIndex, and an explanation under 12 words."
     : kind === "flashcards"
       ? "Create exactly 8 concise flashcards with short fronts and backs."
-      : "Create one concise text-based simulation with short fields.";
+      : "Create one concise interactive practice simulation with short fields. If the request is about programming, use coding mode, JavaScript, a partial starter snippet, explicit task requirements, and a concise JavaScript reference implementation in expected. Otherwise use language mode and a concise model response in expected.";
   const groundingInstruction = kind === "quiz"
     ? "Ground it in the requested topic and compact learning plan."
     : "Ground it in the learning plan and recent student messages.";
@@ -134,7 +134,7 @@ export async function generateRoomActivity(kind: "quiz" | "flashcards" | "simula
     simulator: { mode: "language", scenario: `Explain one part of ${topic} to a new partner.`, prompt: "Rewrite an unclear handoff into one precise sentence.", starter: "Do the thing and send it.", expected: "Please review the first example and send one specific improvement.", hint: "Name the action, the object, and the expected feedback." },
   };
   const result = await generateJson(
-    `Create a concise ${kind} in the request's language. ${groundingInstruction} ${activityInstructions} Request: ${JSON.stringify(compactPrompt(prompt, 600))}. Return JSON only with title, instructions, and content. Quiz content shape: {"questions":[{"id":"q1","prompt":"...","choices":["...","...","..."],"answerIndex":0,"explanation":"..."}]}. Flashcard shape: {"flashcards":[{"front":"...","back":"..."}]}. Simulator shape: {"simulator":{"mode":"coding or language","scenario":"...","prompt":"...","starter":"...","expected":"...","hint":"..."}}. Coding simulations are text exercises, not executable code. Memory: ${JSON.stringify(promptMemory)}`,
+    `Create a concise ${kind} in the request's language. ${groundingInstruction} ${activityInstructions} Request: ${JSON.stringify(compactPrompt(prompt, 600))}. Return JSON only with title, instructions, and content. Quiz content shape: {"questions":[{"id":"q1","prompt":"...","choices":["...","...","..."],"answerIndex":0,"explanation":"..."}]}. Flashcard shape: {"flashcards":[{"front":"...","back":"..."}]}. Simulator shape: {"simulator":{"mode":"coding or language","scenario":"...","prompt":"...","starter":"...","expected":"...","hint":"..."}}. Coding responses are checked against task/reference signals and basic structure; do not claim arbitrary code execution. Memory: ${JSON.stringify(promptMemory)}`,
     { maxOutputTokens },
   );
   const parsed = contentSchema.safeParse(result?.content);

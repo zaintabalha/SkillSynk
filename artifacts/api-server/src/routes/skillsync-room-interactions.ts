@@ -15,6 +15,7 @@ import { roomContext, resolveSpeaker, roomMemory, messageDto, roomActivities, at
 import { answerRoomQuestion, generateCallCopilotText, generateCallSummary, generateRoomActivity } from "../lib/skillsync-room-ai";
 import { withAiBudget } from "../lib/skillsync-ai-limits";
 import { logger } from "../lib/logger";
+import { evaluateSimulatorResponse } from "../lib/skillsync-simulator-evaluation";
 
 const router: IRouter = Router();
 type Kind = "quiz" | "flashcards" | "simulator";
@@ -196,7 +197,12 @@ router.post("/skillsync/rooms/:roomId/activities/:activityId/attempts", async (r
     score = Math.round(100 * questions.filter((q, i) => body.data.responses[i] === String(q.answerIndex)).length / questions.length);
   }
   if (activity.kind === "simulator" && activity.content.simulator) {
-    score = body.data.responses[0]?.trim().toLowerCase() === activity.content.simulator.expected.trim().toLowerCase() ? 100 : 0;
+    score = evaluateSimulatorResponse(
+      activity.content.simulator.mode,
+      body.data.responses[0] ?? "",
+      activity.content.simulator.expected,
+      activity.content.simulator.prompt,
+    );
   }
   const [attempt] = await db.insert(attempts).values({
     id: randomUUID(), roomId: context.room.id, activityId: activity.id,

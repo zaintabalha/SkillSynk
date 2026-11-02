@@ -1,7 +1,7 @@
 import { aiErrorMessage } from '@/lib/ai-error';
-import { useEffect, useState, type FormEvent } from 'react';
+import { useEffect, useRef, useState, type FormEvent, type KeyboardEvent } from 'react';
 import { useQueryClient } from '@tanstack/react-query';
-import { Check, CircleDashed, Code2, Languages, Layers, ListChecks, LoaderCircle, RotateCcw, Sparkles, WandSparkles, X } from 'lucide-react';
+import { Check, CircleDashed, Code2, Eye, EyeOff, Languages, Layers, ListChecks, LoaderCircle, Play, RotateCcw, Sparkles, Terminal, WandSparkles, X } from 'lucide-react';
 import { getGetSkillSyncRoomQueryKey, getListSkillSyncActivitiesQueryKey, useGenerateSkillSyncActivity, useListSkillSyncActivities, useSubmitSkillSyncActivityAttempt } from '@workspace/api-client-react';
 import type { ActivityAttemptInput, ActivityGenerationInputKind, LearningRoom, SharedActivity } from '@workspace/api-client-react';
 import { EmptyState, ErrorState, initials } from '@/components/shell';
@@ -65,7 +65,7 @@ function ActivityView({ activity, room, actingUserId, onDone }: { activity: Shar
   const M = kindMeta[activity.kind] || kindMeta.quiz;
   return <div className="activity-view page-enter">
     <header className="activity-head"><span className="activity-kind"><M.icon size={14} /> {t(M.label)}</span><h2 dir="auto">{activity.title}</h2><p dir="auto">{activity.instructions}</p></header>
-    <div className="activity-body">
+      <div className={`activity-body ${activity.kind === 'simulator' ? 'simulator-body' : ''}`}>
       <div className="activity-work">
         {activity.kind === 'quiz' && <QuizRunner activity={activity} room={room} actingUserId={actingUserId} onDone={onDone} />}
         {activity.kind === 'flashcards' && <FlashcardRunner activity={activity} room={room} actingUserId={actingUserId} onDone={onDone} />}
@@ -128,18 +128,74 @@ function SimulatorRunner({ activity, room, actingUserId, onDone }: RunnerProps) 
   const [value, setValue] = useState(sim?.starter || '');
   const [hint, setHint] = useState(false);
   const [compare, setCompare] = useState(false);
+  const lineGutter = useRef<HTMLDivElement>(null);
   const { send, submit } = useAttempt(room, activity, actingUserId, onDone);
   if (!sim) return null;
   const coding = sim.mode === 'coding';
+  const score = submit.data?.score;
+  const lineCount = Math.max(14, value.split('\n').length);
+  const handleEditorKeyDown = (event: KeyboardEvent<HTMLTextAreaElement>) => {
+    if (coding && event.key === 'Tab') {
+      event.preventDefault();
+      const editor = event.currentTarget;
+      editor.setRangeText('  ', editor.selectionStart, editor.selectionEnd, 'end');
+      setValue(editor.value);
+    } else if (event.key === 'Enter' && (event.metaKey || event.ctrlKey) && value.trim() && !submit.isPending) {
+      event.preventDefault();
+      send([value]);
+    }
+  };
+
   return <div className="sim">
     <div className="sim-mode">{coding ? <Code2 size={14} /> : <Languages size={14} />} {coding ? t('codingSim') : t('languageSim')}</div>
-    <div className="sim-brief"><div><small>{t('scenario')}</small><p dir="auto">{sim.scenario}</p></div><div><small>{t('task')}</small><p dir="auto">{sim.prompt}</p></div></div>
-    <label className="sim-editor"><span>{t('yourResponse')}</span><textarea value={value} onChange={(e) => setValue(e.target.value)} rows={coding ? 10 : 5} spellCheck={!coding} dir={coding ? 'ltr' : 'auto'} className={coding ? 'code' : ''} data-testid="input-simulator" /></label>
-    <p className="sim-honest">{t('simulatorGradingNote')}</p>
-    <div className="sim-tools"><button className="quiet-button" onClick={() => setHint(!hint)} data-testid="button-sim-hint">{t('showHint')}</button><button className="quiet-button" onClick={() => setCompare(!compare)} data-testid="button-sim-compare">{t('showExpected')}</button></div>
+    <section className="sim-brief">
+      <div><small>{t('scenario')}</small><p dir="auto">{sim.scenario}</p></div>
+      <div><small>{t('task')}</small><p dir="auto">{sim.prompt}</p></div>
+    </section>
+    <section className={`sim-editor-card ${coding ? 'is-code' : 'is-language'}`}>
+      <header className="sim-editor-toolbar">
+        <div><Terminal size={15} /><b>{t('yourResponse')}</b></div>
+        <span className="sim-file-label" dir="ltr">{coding ? 'solution.js' : t('languageResponse')}</span>
+      </header>
+      <div className={`sim-editor-surface ${coding ? 'code-surface' : 'language-surface'}`} dir={coding ? 'ltr' : 'auto'}>
+        {coding && <div className="sim-line-gutter" ref={lineGutter} aria-hidden="true">{Array.from({ length: lineCount }, (_, index) => <span key={index}>{index + 1}</span>)}</div>}
+        <textarea
+          value={value}
+          onChange={(event) => setValue(event.target.value)}
+          onKeyDown={handleEditorKeyDown}
+          onScroll={(event) => { if (lineGutter.current) lineGutter.current.scrollTop = event.currentTarget.scrollTop; }}
+          rows={coding ? 18 : 14}
+          maxLength={4000}
+          spellCheck={!coding}
+          dir={coding ? 'ltr' : 'auto'}
+          className="sim-editor-input"
+          aria-label={t('yourResponse')}
+          data-testid="input-simulator"
+        />
+      </div>
+      <footer className="sim-editor-footer">
+        <span>{t('simulatorGradingNote')}</span>
+        <span className="sim-char-count">{value.length}/4000</span>
+      </footer>
+    </section>
+    <div className="sim-tools">
+      <button type="button" className="quiet-button" onClick={() => setHint((visible) => !visible)} data-testid="button-sim-hint">{hint ? <EyeOff size={14} /> : <Eye size={14} />}{hint ? t('hideHint') : t('showHint')}</button>
+      <button type="button" className="quiet-button" onClick={() => setCompare((visible) => !visible)} data-testid="button-sim-compare">{compare ? <EyeOff size={14} /> : <Eye size={14} />}{compare ? t('hideExpected') : t('showExpected')}</button>
+    </div>
     {hint && <div className="sim-note" dir="auto">{sim.hint}</div>}
     {compare && <div className="sim-note sim-expected"><small>{t('expected')}</small><pre dir={coding ? 'ltr' : 'auto'}>{sim.expected}</pre></div>}
-    <div className="runner-actions">{submit.isSuccess && <span className="saved-note"><Check size={14} /> {t('attemptSaved')}</span>}<button className="button button-small" disabled={!value.trim() || submit.isPending} onClick={() => send([value])} data-testid="button-submit-sim">{submit.isPending && <LoaderCircle size={14} className="spin" />}{t('submitAttempt')}</button></div>
+    <div className="sim-submit-row">
+      {submit.isSuccess && <span className="saved-note"><Check size={14} /> {t('attemptSaved')}</span>}
+      <button className="button sim-submit-button" disabled={!value.trim() || submit.isPending} onClick={() => send([value])} data-testid="button-submit-sim">
+        {submit.isPending ? <LoaderCircle size={15} className="spin" /> : <Play size={15} />}
+        {submit.isPending ? t('evaluating') : coding ? t('runChecksSubmit') : t('evaluateSubmit')}
+      </button>
+    </div>
+    {submit.isSuccess && score !== null && score !== undefined && <section className={`sim-result ${score >= 80 ? 'result-strong' : score >= 50 ? 'result-partial' : 'result-revise'}`} role="status" aria-live="polite">
+      <div className="sim-result-heading"><div><Terminal size={15} /><b>{t('simEvaluation')}</b></div><strong>{score}%</strong></div>
+      <div className="sim-score-track"><span style={{ width: `${score}%` }} /></div>
+      <p>{score >= 80 ? t('simFeedbackStrong') : score >= 50 ? t('simFeedbackPartial') : t('simFeedbackRevise')}</p>
+    </section>}
     {submit.isError && <p className="inline-error">{t('attemptError')}</p>}
   </div>;
 }
