@@ -1,3 +1,3 @@
 - [AI admission scope](ai-admission.md) — limits protect authenticated callers, not simulated partners; process-local budgets need shared storage before scaling out.
 - [AI provider access](ai-provider.md) — SkillSync AI calls use Groq server-side; keep all feature calls on the shared provider transport.
-- [Simulator safety](simulator-evaluation.md) — keep grading static; optional local runs need an opaque iframe/worker, network restrictions, bounded output, and a hard timeout.
+- [Simulator safety](simulator-evaluation.md) — keep grading static; interactive local runs use an opaque iframe with network restrictions and strict session/output limits.

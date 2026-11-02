@@ -1,12 +1,22 @@
 import { aiErrorMessage } from '@/lib/ai-error';
-import { createSimulatorPreviewDocument, runJavaScriptInSandbox, type SimulatorRunResult } from '@/lib/simulator-sandbox';
+import {
+  SIMULATOR_BOOT_TIMEOUT_MS,
+  SIMULATOR_MAX_CODE_CHARS,
+  SIMULATOR_MAX_LOG_CHARS,
+  SIMULATOR_MAX_LOG_ENTRIES,
+  SIMULATOR_SESSION_TIMEOUT_MS,
+  SIMULATOR_SETUP_TIMEOUT_MS,
+  type SimulatorConsoleEntry,
+  type SimulatorSandboxEvent,
+} from '@/lib/simulator-sandbox';
 import { useEffect, useRef, useState, type FormEvent, type KeyboardEvent } from 'react';
 import { useQueryClient } from '@tanstack/react-query';
-import { Check, CircleDashed, Code2, Eye, EyeOff, Languages, Layers, ListChecks, LoaderCircle, Play, RotateCcw, Sparkles, Terminal, WandSparkles, X } from 'lucide-react';
+import { Check, CircleDashed, Code2, Eye, EyeOff, Languages, Layers, ListChecks, LoaderCircle, Play, RotateCcw, Sparkles, Square, Terminal, WandSparkles, X } from 'lucide-react';
 import { getGetSkillSyncRoomQueryKey, getListSkillSyncActivitiesQueryKey, useGenerateSkillSyncActivity, useGenerateSkillSyncSimulatorSolution, useListSkillSyncActivities, useSubmitSkillSyncActivityAttempt } from '@workspace/api-client-react';
 import type { ActivityAttemptInput, ActivityGenerationInputKind, LearningRoom, SharedActivity } from '@workspace/api-client-react';
 import { EmptyState, ErrorState, initials } from '@/components/shell';
 import { formatDate, useI18n, type DictKey } from '@/lib/i18n';
+import { SimulatorSandboxFrame } from './SimulatorSandboxFrame';
 
 const kindMeta: Record<string, { label: DictKey; icon: typeof ListChecks }> = {
   quiz: { label: 'kindQuiz', icon: ListChecks },
@@ -78,6 +88,19 @@ function ActivityView({ activity, room, actingUserId, onDone }: { activity: Shar
 }
 
 type RunnerProps = { activity: SharedActivity; room: LearningRoom; actingUserId: string | null; onDone: () => void };
+type SimulatorExecutionStatus = 'starting' | 'running' | 'complete' | 'error' | 'stopped' | 'timedOut';
+type SimulatorExecution = {
+  id: number;
+  code: string;
+  live: boolean;
+  uiVisible: boolean;
+  status: SimulatorExecutionStatus;
+  logs: SimulatorConsoleEntry[];
+  value?: string;
+  error?: string;
+  sourceOutputOmitted?: boolean;
+  logsTruncated?: boolean;
+};
 
 function QuizRunner({ activity, room, actingUserId, onDone }: RunnerProps) {
   const { t } = useI18n();
@@ -129,32 +152,132 @@ function SimulatorRunner({ activity, room, actingUserId, onDone }: RunnerProps) 
   const [value, setValue] = useState(sim?.starter || '');
   const [hint, setHint] = useState(false);
   const [compare, setCompare] = useState(false);
-  const [runResult, setRunResult] = useState<SimulatorRunResult | null>(null);
-  const [isRunning, setIsRunning] = useState(false);
+  const [execution, setExecution] = useState<SimulatorExecution | null>(null);
   const lineGutter = useRef<HTMLDivElement>(null);
+  const runIdRef = useRef(0);
+  const bootTimerRef = useRef<number | null>(null);
+  const setupTimerRef = useRef<number | null>(null);
+  const sessionTimerRef = useRef<number | null>(null);
   const { send, submit } = useAttempt(room, activity, actingUserId, onDone);
   const generateSolution = useGenerateSkillSyncSimulatorSolution();
+  const clearRunTimers = () => {
+    if (bootTimerRef.current !== null) window.clearTimeout(bootTimerRef.current);
+    if (setupTimerRef.current !== null) window.clearTimeout(setupTimerRef.current);
+    if (sessionTimerRef.current !== null) window.clearTimeout(sessionTimerRef.current);
+    bootTimerRef.current = null;
+    setupTimerRef.current = null;
+    sessionTimerRef.current = null;
+  };
+  useEffect(() => () => clearRunTimers(), []);
   if (!sim) return null;
   const coding = sim.mode === 'coding';
   const score = submit.data?.score;
   const lineCount = Math.max(14, value.split('\n').length);
+  const endExecution = (id: number, status: SimulatorExecutionStatus, error?: string) => {
+    clearRunTimers();
+    setExecution((current) => current?.id === id
+      ? { ...current, status, live: false, ...(error ? { error } : {}) }
+      : current);
+  };
+  const resetExecution = () => {
+    clearRunTimers();
+    setExecution(null);
+  };
   const generateCode = () => {
-    setRunResult(null);
+    resetExecution();
     generateSolution.mutate(
       { roomId: room.roomId, activityId: activity.id },
       { onSuccess: (result) => setValue(result.code) },
     );
   };
-  const runCode = async () => {
-    setRunResult(null);
-    setIsRunning(true);
-    try {
-      setRunResult(await runJavaScriptInSandbox(value));
-    } catch {
-      setRunResult({ ok: false, logs: [], error: t('simRunnerUnavailable') });
-    } finally {
-      setIsRunning(false);
+  const runCode = () => {
+    const code = value.trim();
+    if (!code || code.length > SIMULATOR_MAX_CODE_CHARS) return;
+    clearRunTimers();
+    const id = ++runIdRef.current;
+    setExecution({ id, code, live: true, uiVisible: false, status: 'starting', logs: [] });
+    bootTimerRef.current = window.setTimeout(() => endExecution(id, 'error', t('simRunnerUnavailable')), SIMULATOR_BOOT_TIMEOUT_MS);
+    sessionTimerRef.current = window.setTimeout(() => endExecution(id, 'timedOut', t('simSessionTimeoutDetail')), SIMULATOR_SESSION_TIMEOUT_MS);
+  };
+  const handleSandboxMessage = (message: SimulatorSandboxEvent) => {
+    if (message.type === 'navigation') {
+      endExecution(message.runId, 'error', t('simNavigationBlocked'));
+      return;
     }
+    if (message.type === 'started') {
+      if (bootTimerRef.current !== null) window.clearTimeout(bootTimerRef.current);
+      bootTimerRef.current = null;
+      setupTimerRef.current = window.setTimeout(() => endExecution(message.runId, 'timedOut', t('simSetupTimeoutDetail')), SIMULATOR_SETUP_TIMEOUT_MS);
+      setExecution((current) => current?.id === message.runId ? { ...current, status: 'running' } : current);
+      return;
+    }
+    if (message.type === 'complete') {
+      if (setupTimerRef.current !== null) window.clearTimeout(setupTimerRef.current);
+      setupTimerRef.current = null;
+      setExecution((current) => current?.id === message.runId ? { ...current, status: 'complete' } : current);
+      return;
+    }
+    if (message.type === 'ui') {
+      setExecution((current) => current?.id === message.runId ? { ...current, uiVisible: true } : current);
+      return;
+    }
+    if (message.type === 'log' && typeof message.level === 'string' && typeof message.text === 'string') {
+      const text = message.text.slice(0, SIMULATOR_MAX_LOG_CHARS);
+      setExecution((current) => {
+        if (!current || current.id !== message.runId) return current;
+        if (current.logs.length >= SIMULATOR_MAX_LOG_ENTRIES) return { ...current, logsTruncated: true };
+        return { ...current, logs: [...current.logs, { level: message.level!, text }] };
+      });
+      return;
+    }
+    if (message.type === 'value' && typeof message.value === 'string') {
+      setExecution((current) => current?.id === message.runId ? { ...current, value: message.value!.slice(0, SIMULATOR_MAX_CODE_CHARS) } : current);
+      return;
+    }
+    if (message.type === 'error' && typeof message.error === 'string') {
+      if (setupTimerRef.current !== null) window.clearTimeout(setupTimerRef.current);
+      setupTimerRef.current = null;
+      setExecution((current) => current?.id === message.runId
+        ? { ...current, status: 'error', error: message.error!.slice(0, 1000) }
+        : current);
+      return;
+    }
+    if (message.type === 'warning' && typeof message.text === 'string') {
+      setExecution((current) => {
+        if (!current || current.id !== message.runId) return current;
+        if (current.logs.length >= SIMULATOR_MAX_LOG_ENTRIES) return { ...current, logsTruncated: true };
+        return { ...current, logs: [...current.logs, { level: 'warn', text: message.text!.slice(0, SIMULATOR_MAX_LOG_CHARS) }] };
+      });
+      return;
+    }
+    if (message.type === 'source-hidden') {
+      setExecution((current) => current?.id === message.runId ? { ...current, sourceOutputOmitted: true } : current);
+      return;
+    }
+    if (message.type === 'logs-truncated') {
+      setExecution((current) => current?.id === message.runId ? { ...current, logsTruncated: true } : current);
+      return;
+    }
+    if (message.type === 'clear-logs') {
+      setExecution((current) => current?.id === message.runId
+        ? { ...current, logs: [], logsTruncated: false, sourceOutputOmitted: false }
+        : current);
+    }
+  };
+  const stopCode = () => {
+    if (execution) endExecution(execution.id, 'stopped');
+  };
+  const isBooting = execution?.status === 'starting' || execution?.status === 'running';
+  const statusLabel = execution?.status === 'complete' ? t('simRunComplete')
+    : execution?.status === 'stopped' ? t('simRunStopped')
+      : execution?.status === 'timedOut' ? t('simRunTimeout')
+        : execution?.status === 'error' ? t('simRunFailed')
+          : execution ? t('simRunning') : '';
+  const statusIsError = execution?.status === 'error' || execution?.status === 'timedOut';
+  const handleEditorChange = (nextValue: string) => {
+    setValue(nextValue);
+    resetExecution();
+    if (generateSolution.isSuccess || generateSolution.isError) generateSolution.reset();
   };
   const handleEditorKeyDown = (event: KeyboardEvent<HTMLTextAreaElement>) => {
     if (coding && event.key === 'Tab') {
@@ -162,6 +285,7 @@ function SimulatorRunner({ activity, room, actingUserId, onDone }: RunnerProps) 
       const editor = event.currentTarget;
       editor.setRangeText('  ', editor.selectionStart, editor.selectionEnd, 'end');
       setValue(editor.value);
+      resetExecution();
     } else if (event.key === 'Enter' && (event.metaKey || event.ctrlKey) && value.trim() && !submit.isPending) {
       event.preventDefault();
       send([value]);
@@ -189,7 +313,7 @@ function SimulatorRunner({ activity, room, actingUserId, onDone }: RunnerProps) 
         {coding && <div className="sim-line-gutter" ref={lineGutter} aria-hidden="true">{Array.from({ length: lineCount }, (_, index) => <span key={index}>{index + 1}</span>)}</div>}
         <textarea
           value={value}
-          onChange={(event) => { setValue(event.target.value); setRunResult(null); if (generateSolution.isSuccess || generateSolution.isError) generateSolution.reset(); }}
+          onChange={(event) => handleEditorChange(event.target.value)}
           onKeyDown={handleEditorKeyDown}
           onScroll={(event) => { if (lineGutter.current) lineGutter.current.scrollTop = event.currentTarget.scrollTop; }}
           rows={coding ? 18 : 14}
@@ -215,29 +339,35 @@ function SimulatorRunner({ activity, room, actingUserId, onDone }: RunnerProps) 
     {hint && <div className="sim-note" dir="auto">{sim.hint}</div>}
     {compare && <div className="sim-note sim-expected"><small>{t('expected')}</small><pre dir={coding ? 'ltr' : 'auto'}>{sim.expected}</pre></div>}
     <div className="sim-actions">
-      {coding && <button type="button" className="button button-secondary sim-run-button" disabled={!value.trim() || isRunning} onClick={runCode} data-testid="button-run-simulator-code">
-        {isRunning ? <LoaderCircle size={15} className="spin" /> : <Play size={15} />}
-        {isRunning ? t('simRunning') : t('simRunCode')}
+      {coding && <button type="button" className="button button-secondary sim-run-button" disabled={!value.trim() || isBooting} onClick={runCode} data-testid="button-run-simulator-code">
+        {isBooting ? <LoaderCircle size={15} className="spin" /> : <Play size={15} />}
+        {isBooting ? t('simRunning') : t('simRunCode')}
       </button>}
+      {coding && execution?.live && <button type="button" className="button button-secondary sim-stop-button" onClick={stopCode} data-testid="button-stop-simulator-code"><Square size={14} />{t('simStop')}</button>}
       {submit.isSuccess && <span className="saved-note"><Check size={14} /> {t('attemptSaved')}</span>}
       <button className="button sim-submit-button" disabled={!value.trim() || submit.isPending} onClick={() => send([value])} data-testid="button-submit-sim">
         {submit.isPending ? <LoaderCircle size={15} className="spin" /> : <Play size={15} />}
         {submit.isPending ? t('evaluating') : coding ? t('runChecksSubmit') : t('evaluateSubmit')}
       </button>
     </div>
-    {coding && <section className={`sim-output-panel ${runResult?.ok ? 'output-success' : runResult ? 'output-error' : ''}`} aria-live="polite">
+    {coding && <section className={`sim-output-panel ${execution?.status === 'complete' ? 'output-success' : statusIsError ? 'output-error' : ''}`} aria-live="polite">
       <header className="sim-output-heading"><div><Terminal size={15} /><b>{t('simOutput')}</b></div>
-        {runResult && <span className={`sim-output-status ${runResult.ok ? 'is-ok' : 'is-error'}`}>{runResult.ok ? t('simRunComplete') : runResult.timedOut ? t('simRunTimeout') : t('simRunFailed')}</span>}
+        {execution && <span className={`sim-output-status ${statusIsError ? 'is-error' : execution.status === 'complete' ? 'is-ok' : ''}`}>{statusLabel}</span>}
       </header>
       <div className="sim-output-content">
-        {!runResult && <p className="sim-output-placeholder">{t('simOutputPlaceholder')}</p>}
-        {runResult?.logs.map((entry, index) => <div className="sim-output-line" data-level={entry.level} key={`${entry.level}-${index}`}><span>{entry.level}</span><pre>{entry.text}</pre></div>)}
-        {runResult?.value && <div className="sim-output-value"><small>{t('simReturnValue')}</small><pre>{runResult.value}</pre></div>}
-        {runResult?.previewHtml && <div className="sim-output-preview"><small>{t('simPreview')}</small><iframe title={t('simPreview')} sandbox="" referrerPolicy="no-referrer" srcDoc={createSimulatorPreviewDocument(runResult.previewHtml)} /></div>}
-        {runResult?.sourceOutputOmitted && <p className="sim-output-placeholder">{t('simSourceOutputOmitted')}</p>}
-        {runResult?.logsTruncated && <p className="sim-output-placeholder">{t('simLogLimitReached')}</p>}
-        {runResult?.error && <div className="sim-output-error" role="alert"><b>{t('simError')}</b><pre>{runResult.timedOut ? t('simRunTimeoutDetail') : runResult.error}</pre></div>}
-        {runResult?.ok && !runResult.logs.length && !runResult.value && !runResult.previewHtml && !runResult.sourceOutputOmitted && <p className="sim-output-placeholder">{t('simNoOutput')}</p>}
+        {!execution && <p className="sim-output-placeholder">{t('simOutputPlaceholder')}</p>}
+        {execution && <div className={`sim-live-preview ${execution.uiVisible ? 'has-ui' : ''}`}>
+          {execution.live && <SimulatorSandboxFrame key={execution.id} code={execution.code} runId={execution.id} onMessage={handleSandboxMessage} />}
+          {!execution.uiVisible && <div className="sim-live-preview-placeholder">{execution.status === 'starting' || execution.status === 'running' ? t('simPreviewStarting') : t('simNoUi')}</div>}
+        </div>}
+        {execution && <div className="sim-output-logs">
+          {execution.logs.map((entry, index) => <div className="sim-output-line" data-level={entry.level} key={`${entry.level}-${index}`}><span>{entry.level}</span><pre>{entry.text}</pre></div>)}
+          {execution.value && <div className="sim-output-value"><small>{t('simReturnValue')}</small><pre>{execution.value}</pre></div>}
+          {execution.sourceOutputOmitted && <p className="sim-output-placeholder">{t('simSourceOutputOmitted')}</p>}
+          {execution.logsTruncated && <p className="sim-output-placeholder">{t('simLogLimitReached')}</p>}
+          {execution.error && <div className="sim-output-error" role="alert"><b>{t('simError')}</b><pre>{execution.error}</pre></div>}
+          {execution.status === 'complete' && !execution.uiVisible && !execution.logs.length && !execution.value && !execution.error && <p className="sim-output-placeholder">{t('simNoOutput')}</p>}
+        </div>}
       </div>
       <footer className="sim-output-footer">{t('simSandboxNote')}</footer>
     </section>}
