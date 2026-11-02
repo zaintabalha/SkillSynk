@@ -5,10 +5,15 @@
  * API specification
  * OpenAPI spec version: 0.1.0
  */
+import type { CurriculumGenerationStatus } from './curriculumGenerationStatus';
+import type { CurriculumLearningPaths } from './curriculumLearningPaths';
 
 export interface Curriculum {
   title: string;
   description: string;
   goal: string;
   stages: string[];
+  learningPaths?: CurriculumLearningPaths;
+  aiPowered?: boolean;
+  generationStatus?: CurriculumGenerationStatus;
 }

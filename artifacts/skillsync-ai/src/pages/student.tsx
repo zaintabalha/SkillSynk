@@ -92,15 +92,18 @@ export function ProfilePage() {
 }
 
 export function MatchesPage() {
-  const query = useGetSkillSyncMatches();
-  const generate = useGenerateSkillSyncRecommendations();
-  const connect = useConnectSkillSyncMatch();
+  const { t, locale } = useI18n();
+  const request = { headers: { 'Accept-Language': locale } };
+  const query = useGetSkillSyncMatches({ request });
+  const generate = useGenerateSkillSyncRecommendations({ request });
+  const connect = useConnectSkillSyncMatch({ request });
   const client = useQueryClient();
   const [, setLocation] = useLocation();
-  const { t } = useI18n();
   const [connectingId, setConnectingId] = useState('');
   const [errorId, setErrorId] = useState('');
   const recommendations = generate.data?.recommendations || query.data || [];
+  const profileRequired =
+    isProfileRequired(query.error) || isProfileRequired(generate.error);
   const startRoom = (candidate: MatchCandidate) => {
     setConnectingId(candidate.userId); setErrorId('');
     connect.mutate({ data: { partnerUserId: candidate.userId } }, {
@@ -112,8 +115,10 @@ export function MatchesPage() {
   return <AppShell active="/matches"><div className="page-enter">
     <SectionHeader eyebrow={t('matchesEyebrow')} title={t('matchesTitle')} detail={t('matchesDetail')} action={<button className="button button-secondary" onClick={() => generate.mutate(undefined, { onSuccess: () => client.invalidateQueries({ queryKey: getGetSkillSyncMatchesQueryKey() }) })} disabled={generate.isPending} data-testid="button-refresh-matches">{generate.isPending ? <LoaderCircle className="spin" size={15} /> : <WandSparkles size={15} />}{generate.isPending ? t('lookingAround') : t('findFresh')}</button>} />
     <div className="match-intro-strip"><div className="match-intro-icon"><HeartHandshake size={21} /></div><div><b>{t('matchIntroTitle')}</b><span>{t('matchIntroDetail')}</span></div><Plus className="intro-star" size={20} /></div>
-    {generate.isError && <p className="inline-error">{aiErrorMessage(generate.error, t('actionError'))}</p>}
-    {query.isLoading && !generate.data ? <div className="match-grid">{[1, 2, 3, 4].map((i) => <div className="skeleton match-skeleton" key={i} />)}</div> : query.isError && !generate.data ? <ErrorState onRetry={() => query.refetch()} /> : recommendations.length ? <div className="match-grid">{recommendations.map((c, index) => <article className={`match-card ${index === 0 ? 'match-card-lead' : ''}`} key={c.userId} data-testid={`card-match-${c.userId}`}>
+    {generate.isError && (profileRequired ? <p className="inline-error">{t('matchProfileRequired')} <Link href="/profile">{t('setupProfile')}</Link></p> : <p className="inline-error">{aiErrorMessage(generate.error, t('actionError'))}</p>)}
+    {query.isLoading && !generate.data ? <div className="match-grid">{[1, 2, 3, 4].map((i) => <div className="skeleton match-skeleton" key={i} />)}</div> : query.isError && !generate.data ? profileRequired
+      ? <EmptyState title={t('matchProfileTitle')} detail={t('matchProfileRequired')} action={<Link href="/profile" className="button button-secondary">{t('setupProfile')} <ArrowRight size={15} className="flip-rtl" /></Link>} />
+      : <ErrorState onRetry={() => query.refetch()} /> : recommendations.length ? <div className="match-grid">{recommendations.map((c, index) => <article className={`match-card ${index === 0 ? 'match-card-lead' : ''}`} key={c.userId} data-testid={`card-match-${c.userId}`}>
       <div className="match-card-top"><div className="match-avatar">{initials(c.displayName)}</div><div className="match-score"><span>{t('goodFit')}</span><b dir="ltr">{c.compatibilityScore}<small>%</small></b></div></div>
       <div className="match-name" dir="auto">{c.displayName}</div><div className="match-campus"><GraduationCap size={14} /> <span dir="auto">{c.university}</span></div>
       <div className="exchange-pair"><div><small>{t('theyShare')}</small><b dir="auto">{c.teachSkill}</b></div><ArrowLeftRight size={16} className="exchange-arrow" /><div><small>{t('theyLearn')}</small><b dir="auto">{c.learnSkill}</b></div></div>
@@ -122,6 +127,11 @@ export function MatchesPage() {
       {errorId === c.userId && <p className="inline-error">{aiErrorMessage(connect.error, t('roomOpenError'))}</p>}
     </article>)}</div> : <EmptyState title={t('noMatchesTitle')} detail={t('noMatchesDetail')} action={<Link href="/profile" className="button button-secondary">{t('setupProfile')} <ArrowRight size={15} className="flip-rtl" /></Link>} />}
   </div></AppShell>;
+}
+
+function isProfileRequired(error: unknown): boolean {
+  return typeof error === 'object' && error !== null &&
+    'status' in error && (error as { status?: unknown }).status === 409;
 }
 
 export function RoomsPage() {

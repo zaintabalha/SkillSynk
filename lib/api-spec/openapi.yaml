@@ -672,6 +672,23 @@ components:
         stages:
           type: array
           items: { type: string }
+        learningPaths:
+          type: object
+          required: [userA, userB]
+          properties:
+            userA: { $ref: "#/components/schemas/PersonalLearningPath" }
+            userB: { $ref: "#/components/schemas/PersonalLearningPath" }
+        aiPowered: { type: boolean }
+        generationStatus: { type: string, enum: [pending, ready] }
+    PersonalLearningPath:
+      type: object
+      required: [title, goal, stages]
+      properties:
+        title: { type: string }
+        goal: { type: string }
+        stages:
+          type: array
+          items: { type: string }
     ChatMessage:
       type: object
       required: [id, roomId, senderId, senderName, senderType, channel, replyToMessageId, activityId, content, createdAt]
@@ -698,7 +715,7 @@ components:
         aiPowered: { type: boolean }
     ProjectSubmission:
       type: object
-      required: [id, title, content, technicalScore, communicationScore, overallScore, technicalFeedback, communicationFeedback, nextSteps, submittedAt, aiPowered]
+      required: [id, title, content, technicalScore, communicationScore, overallScore, technicalFeedback, communicationFeedback, nextSteps, submittedAt, aiPowered, evaluationStatus]
       properties:
         id: { type: string }
         title: { type: string }
@@ -713,6 +730,7 @@ components:
           items: { type: string }
         submittedAt: { type: string, format: date-time }
         aiPowered: { type: boolean }
+        evaluationStatus: { type: string, enum: [pending, ready, fallback] }
     LearningRoom:
       type: object
       required: [roomId, partnerUserId, partnerName, projectTitle, status, progress, isDemo, curriculum, challenge, messages, submissions, activities, updatedAt]

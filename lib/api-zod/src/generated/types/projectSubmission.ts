@@ -5,6 +5,7 @@
  * API specification
  * OpenAPI spec version: 0.1.0
  */
+import type { ProjectSubmissionEvaluationStatus } from './projectSubmissionEvaluationStatus';
 
 export interface ProjectSubmission {
   id: string;
@@ -30,4 +31,5 @@ export interface ProjectSubmission {
   nextSteps: string[];
   submittedAt: Date;
   aiPowered: boolean;
+  evaluationStatus: ProjectSubmissionEvaluationStatus;
 }

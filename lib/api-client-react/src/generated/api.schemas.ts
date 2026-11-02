@@ -114,11 +114,33 @@ export interface RoomSummary {
   updatedAt: string;
 }
 
+export interface PersonalLearningPath {
+  title: string;
+  goal: string;
+  stages: string[];
+}
+
+export type CurriculumLearningPaths = {
+  userA: PersonalLearningPath;
+  userB: PersonalLearningPath;
+};
+
+export type CurriculumGenerationStatus = typeof CurriculumGenerationStatus[keyof typeof CurriculumGenerationStatus];
+
+
+export const CurriculumGenerationStatus = {
+  pending: 'pending',
+  ready: 'ready',
+} as const;
+
 export interface Curriculum {
   title: string;
   description: string;
   goal: string;
   stages: string[];
+  learningPaths?: CurriculumLearningPaths;
+  aiPowered?: boolean;
+  generationStatus?: CurriculumGenerationStatus;
 }
 
 export type ChatMessageSenderType = typeof ChatMessageSenderType[keyof typeof ChatMessageSenderType];
@@ -163,6 +185,15 @@ export interface Challenge {
   aiPowered: boolean;
 }
 
+export type ProjectSubmissionEvaluationStatus = typeof ProjectSubmissionEvaluationStatus[keyof typeof ProjectSubmissionEvaluationStatus];
+
+
+export const ProjectSubmissionEvaluationStatus = {
+  pending: 'pending',
+  ready: 'ready',
+  fallback: 'fallback',
+} as const;
+
 export interface ProjectSubmission {
   id: string;
   title: string;
@@ -187,6 +218,7 @@ export interface ProjectSubmission {
   nextSteps: string[];
   submittedAt: string;
   aiPowered: boolean;
+  evaluationStatus: ProjectSubmissionEvaluationStatus;
 }
 
 export type LearningRoomParticipantsItem = {

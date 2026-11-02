@@ -253,7 +253,21 @@ export const GetSkillSyncRoomResponse = zod.object({
   "title": zod.string(),
   "description": zod.string(),
   "goal": zod.string(),
+  "stages": zod.array(zod.string()),
+  "learningPaths": zod.object({
+  "userA": zod.object({
+  "title": zod.string(),
+  "goal": zod.string(),
   "stages": zod.array(zod.string())
+}),
+  "userB": zod.object({
+  "title": zod.string(),
+  "goal": zod.string(),
+  "stages": zod.array(zod.string())
+})
+}).optional(),
+  "aiPowered": zod.boolean().optional(),
+  "generationStatus": zod.enum(['pending', 'ready']).optional()
 }),
   "challenge": zod.union([zod.object({
   "id": zod.string(),
@@ -286,7 +300,8 @@ export const GetSkillSyncRoomResponse = zod.object({
   "communicationFeedback": zod.string(),
   "nextSteps": zod.array(zod.string()),
   "submittedAt": zod.coerce.date(),
-  "aiPowered": zod.boolean()
+  "aiPowered": zod.boolean(),
+  "evaluationStatus": zod.enum(['pending', 'ready', 'fallback'])
 })),
   "activities": zod.array(zod.object({
   "id": zod.string(),
@@ -719,7 +734,8 @@ export const SubmitSkillSyncProjectResponse = zod.object({
   "communicationFeedback": zod.string(),
   "nextSteps": zod.array(zod.string()),
   "submittedAt": zod.coerce.date(),
-  "aiPowered": zod.boolean()
+  "aiPowered": zod.boolean(),
+  "evaluationStatus": zod.enum(['pending', 'ready', 'fallback'])
 })
 
 
@@ -1063,7 +1079,21 @@ export const RegenerateSkillSyncAdminCurriculumResponse = zod.object({
   "title": zod.string(),
   "description": zod.string(),
   "goal": zod.string(),
+  "stages": zod.array(zod.string()),
+  "learningPaths": zod.object({
+  "userA": zod.object({
+  "title": zod.string(),
+  "goal": zod.string(),
   "stages": zod.array(zod.string())
+}),
+  "userB": zod.object({
+  "title": zod.string(),
+  "goal": zod.string(),
+  "stages": zod.array(zod.string())
+})
+}).optional(),
+  "aiPowered": zod.boolean().optional(),
+  "generationStatus": zod.enum(['pending', 'ready']).optional()
 }),
   "aiPowered": zod.boolean()
 })

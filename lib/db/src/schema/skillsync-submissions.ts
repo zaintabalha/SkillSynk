@@ -14,6 +14,7 @@ export const skillSyncSubmissionsTable = pgTable("skillsync_submissions", {
   communicationFeedback: text("communication_feedback").notNull(),
   nextSteps: jsonb("next_steps").$type<string[]>().notNull(),
   aiPowered: boolean("ai_powered").notNull().default(false),
+  evaluationStatus: text("evaluation_status").notNull().default("ready"),
   submittedAt: timestamp("submitted_at", { withTimezone: true }).notNull().defaultNow(),
 });
 

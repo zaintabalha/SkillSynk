@@ -7,6 +7,20 @@ export type SkillSyncCurriculum = {
   description: string;
   goal: string;
   stages: string[];
+  learningPaths?: {
+    userA: {
+      title: string;
+      goal: string;
+      stages: string[];
+    };
+    userB: {
+      title: string;
+      goal: string;
+      stages: string[];
+    };
+  };
+  aiPowered?: boolean;
+  generationStatus?: "pending" | "ready";
 };
 
 export type SkillSyncChallenge = {

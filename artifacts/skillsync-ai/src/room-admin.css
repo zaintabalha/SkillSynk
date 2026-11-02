@@ -200,6 +200,17 @@ html[lang='ar'] .display { line-height: 1.25; }
 .plan-stages li.stage-done i { background: #d9e7d8; }
 .plan-stages li.stage-now b { color: #2f5a45; font-weight: 700; }
 .plan-stages li.stage-now i { border-color: #d99676; box-shadow: 0 0 0 3px rgba(217,150,118,.2); }
+.learning-paths-grid { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 12px; margin-top: 18px; }
+.learning-path-card { min-width: 0; padding: 15px; border: 1px solid #e0e6dc; border-radius: 12px; background: #fbfcf8; }
+.learning-path-card h3 { margin: 8px 0 5px; color: #2f4d3c; font: 700 17px var(--app-font-serif); }
+.learning-path-card > p { margin: 0; color: #738075; font-size: 12px; line-height: 1.55; }
+.personal-learning-stages { margin: 12px 0 0; padding: 0; list-style: none; }
+.personal-learning-stages li { display: grid; grid-template-columns: 24px minmax(0, 1fr); align-items: start; gap: 7px; padding: 8px 0; border-top: 1px solid #e8ece5; }
+.personal-learning-stages li span { color: #9aa597; font-size: 10px; }
+.personal-learning-stages li b { color: #5c6e60; font-size: 11px; font-weight: 500; line-height: 1.5; }
+.plan-generation-note { margin: 14px 0 0; color: #58735e; font-size: 12px; }
+.evaluation-status-pill { align-self: center; padding: 6px 10px; border-radius: 99px; background: #f1eadb; color: #7c6747; font-size: 11px; font-weight: 700; }
+.evaluation-pending-note { color: #7c6747; font-size: 12px; line-height: 1.55; }
 .plan-challenge { margin-top: 18px; }
 .plan-eval { padding: 24px clamp(18px, 3vw, 36px); }
 
@@ -313,7 +324,7 @@ html[lang='ar'] .display { line-height: 1.25; }
   .topbar-right { gap: 8px; }
   .lang-toggle span { display: none; }
   .chat-pane { height: calc(100dvh - 300px); min-height: 460px; }
-  .activities-layout, .plan-layout { grid-template-columns: 1fr; }
+  .activities-layout, .plan-layout, .learning-paths-grid { grid-template-columns: 1fr; }
   .activity-rail, .plan-path { border-inline-end: 0; border-bottom: 1px solid #ebece3; }
   .sim-brief { grid-template-columns: 1fr; }
   .room-stage { border-radius: 6px 16px 6px 16px; }

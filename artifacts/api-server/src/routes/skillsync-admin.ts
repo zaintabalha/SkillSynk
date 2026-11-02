@@ -164,8 +164,18 @@ router.post("/skillsync/admin/rooms/:roomId/regenerate-curriculum", async (req, 
   if (!pair) { res.status(404).json({ error: "Pair not found." }); return; }
   const students = await db.select().from(profiles).where(inArray(profiles.userId, [pair.userAId, pair.userBId]));
   if (students.length !== 2) { res.status(409).json({ error: "Both profiles are required." }); return; }
+  const orderedStudents = [
+    students.find((student) => student.userId === pair.userAId)!,
+    students.find((student) => student.userId === pair.userBId)!,
+  ];
   const context = await roomContext(room.id, pair.userAId);
-  const curriculum = await generateCurriculum(students[0], students[1], context ? await roomMemory(context) : undefined);
+  const locale = req.get("accept-language")?.toLowerCase().startsWith("ar") ? "ar" : "en";
+  const curriculum = await generateCurriculum(
+    orderedStudents[0],
+    orderedStudents[1],
+    context ? await roomMemory(context) : undefined,
+    locale,
+  );
   await db.update(rooms).set({ curriculum, projectTitle: curriculum.title, updatedAt: new Date() }).where(eq(rooms.id, room.id));
   await recordAiUse(res.locals.userId, "curriculum", curriculum.aiPowered, room.isDemo);
   await audit(res.locals.userId, "curriculum", "Learning plan regenerated.", null, room.id);

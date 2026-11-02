@@ -40,7 +40,9 @@ import {
 } from "@workspace/db";
 import {
   buildChallenge,
+  buildFallbackCurriculum,
   evaluateProjectContent,
+  fallbackProjectEvaluation,
   generateCurriculum,
   generateDailyChallengeContent,
   generateMatchRankings,
@@ -130,12 +132,29 @@ async function ensureDemoProfiles(): Promise<void> {
 }
 
 function skillOverlap(left: string, right: string): number {
-  const normalize = (value: string) => value.toLowerCase().replace(/[^a-z0-9 ]/g, " ").trim();
+  const normalize = (value: string) =>
+    value
+      .normalize("NFKC")
+      .toLocaleLowerCase()
+      .replace(/[\u064B-\u065F\u0670]/gu, "")
+      .replace(/[^\p{L}\p{N}]+/gu, " ")
+      .trim();
   const a = normalize(left);
   const b = normalize(right);
   if (a === b) return 1;
-  const wordsA = new Set(a.split(/\s+/).filter((word) => word.length > 2));
-  const wordsB = new Set(b.split(/\s+/).filter((word) => word.length > 2));
+  const wordsA = new Set(a.split(/\s+/).filter((word) => word.length > 1));
+  const wordsB = new Set(b.split(/\s+/).filter((word) => word.length > 1));
+  const aliases = [
+    { key: "programming", words: ["programming", "program", "coding", "code", "python", "javascript", "برمجة", "البرمجة", "كود"] },
+    { key: "web", words: ["web", "website", "frontend", "ويب", "مواقع", "المواقع"] },
+    { key: "english", words: ["english", "انجليزي", "الانجليزية", "الإنجليزية"] },
+    { key: "arabic", words: ["arabic", "عربي", "العربية"] },
+    { key: "design", words: ["design", "تصميم", "التصميم"] },
+  ];
+  for (const alias of aliases) {
+    if (alias.words.some((word) => a.includes(word))) wordsA.add(alias.key);
+    if (alias.words.some((word) => b.includes(word))) wordsB.add(alias.key);
+  }
   if (!wordsA.size || !wordsB.size) return 0;
   const common = [...wordsA].filter((word) => wordsB.has(word)).length;
   return common / Math.max(wordsA.size, wordsB.size);
@@ -144,23 +163,34 @@ function skillOverlap(left: string, right: string): number {
 function deterministicRecommendations(
   current: SkillSyncProfile,
   profiles: SkillSyncProfile[],
+  locale = "en",
 ): CandidateForMatch[] {
   return profiles
     .map((candidate) => {
       const learnFromCandidate = skillOverlap(current.learnSkill, candidate.teachSkill);
       const candidateLearnsFromCurrent = skillOverlap(current.teachSkill, candidate.learnSkill);
+      if (learnFromCandidate === 0 && candidateLearnsFromCurrent === 0) return null;
+      const reciprocalFit = learnFromCandidate > 0 && candidateLearnsFromCurrent > 0;
       const score = Math.min(
         99,
-        Math.round(48 + learnFromCandidate * 31 + candidateLearnsFromCurrent * 20),
+        Math.round(
+          50 +
+            learnFromCandidate * 28 +
+            candidateLearnsFromCurrent * 21 +
+            (reciprocalFit ? 8 : 0),
+        ),
       );
-      const whyMatch =
-        learnFromCandidate > 0 && candidateLearnsFromCurrent > 0
+      const whyMatch = locale === "ar"
+        ? learnFromCandidate > 0 && candidateLearnsFromCurrent > 0
+          ? `يمكنك تعليم ${current.teachSkill} وتعلّم ${candidate.teachSkill} من هذا الشريك.`
+          : learnFromCandidate > 0
+            ? `تتوافق مهارة ${candidate.teachSkill} مع هدفك في التعلّم.`
+            : `يمكنك تعليم ${current.teachSkill} لهذا الشريك.`
+        : learnFromCandidate > 0 && candidateLearnsFromCurrent > 0
           ? `You can teach ${current.teachSkill} while learning ${candidate.teachSkill}.`
           : learnFromCandidate > 0
             ? `Their ${candidate.teachSkill} connects with what you want to learn.`
-            : candidateLearnsFromCurrent > 0
-              ? `They want to learn ${candidate.learnSkill}, which you can teach.`
-              : `Explore a skill exchange around ${current.teachSkill} and ${candidate.teachSkill}.`;
+            : `They want to learn ${candidate.learnSkill}, which you can teach.`;
       return {
         userId: candidate.userId,
         displayName: candidate.displayName,
@@ -172,6 +202,7 @@ function deterministicRecommendations(
         whyMatch,
       };
     })
+    .filter((candidate): candidate is CandidateForMatch => candidate !== null)
     .sort((a, b) => b.compatibilityScore - a.compatibilityScore)
     .slice(0, 8);
 }
@@ -295,6 +326,7 @@ function submissionDto(submission: typeof skillSyncSubmissionsTable.$inferSelect
     nextSteps: submission.nextSteps,
     submittedAt: iso(submission.submittedAt),
     aiPowered: submission.aiPowered,
+    evaluationStatus: submission.evaluationStatus as "pending" | "ready" | "fallback",
   };
 }
 
@@ -325,6 +357,7 @@ router.put("/skillsync/profile", async (req, res): Promise<void> => {
 
 router.get("/skillsync/matches", async (req, res): Promise<void> => {
   const userId = res.locals.userId as string;
+  const locale = req.get("accept-language")?.toLowerCase().startsWith("ar") ? "ar" : "en";
   const current = await getProfile(userId);
   if (!current) {
     res.status(409).json({ error: "Complete your profile to see skill matches." });
@@ -332,21 +365,60 @@ router.get("/skillsync/matches", async (req, res): Promise<void> => {
   }
   const profiles = await getCandidateProfiles(userId);
   res.json(
-    GetSkillSyncMatchesResponse.parse(deterministicRecommendations(current, profiles)),
+    GetSkillSyncMatchesResponse.parse(deterministicRecommendations(current, profiles, locale)),
   );
 });
 
 router.post("/skillsync/matches/recommendations", async (req, res): Promise<void> => {
   const userId = res.locals.userId as string;
+  const locale = req.get("accept-language")?.toLowerCase().startsWith("ar") ? "ar" : "en";
   const current = await getProfile(userId);
   if (!current) {
     res.status(409).json({ error: "Complete your profile before generating matches." });
     return;
   }
   const profiles = await getCandidateProfiles(userId);
-  const baseline = deterministicRecommendations(current, profiles);
-  const rankings = await generateMatchRankings(current, baseline);
-  await recordAiUse(userId, "matching", Boolean(rankings));
+  const baseline = deterministicRecommendations(current, profiles, locale);
+  if (!baseline.length) {
+    res.json(
+      GenerateSkillSyncRecommendationsResponse.parse({
+        recommendations: [],
+        aiPowered: false,
+      }),
+    );
+    return;
+  }
+  let rankings: Awaited<ReturnType<typeof generateMatchRankings>> = null;
+  let rankingFailed = false;
+  let rankingTimedOut = false;
+  let rankingTimer: ReturnType<typeof setTimeout> | undefined;
+  try {
+    rankings = await Promise.race([
+      generateMatchRankings(current, baseline, locale),
+      new Promise<null>((resolve) => {
+        rankingTimer = setTimeout(() => {
+          rankingTimedOut = true;
+          resolve(null);
+        }, 18_000);
+      }),
+    ]);
+    if (rankingTimedOut) {
+      rankingFailed = true;
+      req.log.warn({ userId, timeoutMs: 18_000 }, "AI match ranking exceeded its response budget; returning deterministic matches");
+    }
+  } catch (error) {
+    rankingFailed = true;
+    req.log.warn({ err: error, userId }, "AI match ranking failed; returning reciprocal skill matches");
+  } finally {
+    if (rankingTimer) clearTimeout(rankingTimer);
+  }
+  if (!rankingFailed) {
+    try {
+      await recordAiUse(userId, "matching", Boolean(rankings));
+    } catch (error) {
+      req.log.warn({ err: error, userId }, "Could not record AI match-ranking usage");
+    }
+  }
   if (!rankings) {
     res.json(
       GenerateSkillSyncRecommendationsResponse.parse({
@@ -382,6 +454,7 @@ router.post("/skillsync/matches/connect", async (req, res): Promise<void> => {
   }
 
   const userId = res.locals.userId as string;
+  const locale = req.get("accept-language")?.toLowerCase().startsWith("ar") ? "ar" : "en";
   if (parsed.data.partnerUserId === userId) {
     res.status(400).json({ error: "You cannot connect with your own profile." });
     return;
@@ -434,13 +507,17 @@ router.post("/skillsync/matches/connect", async (req, res): Promise<void> => {
     }
   }
 
-  const curriculum = await generateCurriculum(current, partner);
-  await recordAiUse(userId, "curriculum", curriculum.aiPowered);
-  const firstChallenge = buildChallenge(
-    await generateDailyChallengeContent(curriculum, 1, { students: [current, partner], curriculum, conversation: [] }),
-    1,
-  );
-  await recordAiUse(userId, "challenge", firstChallenge.aiPowered);
+  const fallbackCurriculum = buildFallbackCurriculum(current, partner, locale);
+  const pendingCurriculum = {
+    ...fallbackCurriculum,
+    aiPowered: false,
+    generationStatus: "pending" as const,
+  };
+  const firstChallenge = buildChallenge({
+    prompt: `Each partner teaches one ${current.teachSkill} or ${partner.teachSkill} technique, then applies it to a personal learning goal.`,
+    hint: "Take turns: explain one small idea, try it together, and describe what changed.",
+    aiPowered: false,
+  }, 1);
   const matchId = randomUUID();
   const roomId = randomUUID();
   await db.transaction(async (tx) => {
@@ -453,10 +530,10 @@ router.post("/skillsync/matches/connect", async (req, res): Promise<void> => {
     await tx.insert(skillSyncRoomsTable).values({
       id: roomId,
       matchId,
-      projectTitle: curriculum.title,
+      projectTitle: fallbackCurriculum.title,
       status: "active",
       progress: 8,
-      curriculum,
+      curriculum: pendingCurriculum,
       challenge: firstChallenge,
       challengeDay: 1,
     });
@@ -467,9 +544,59 @@ router.post("/skillsync/matches/connect", async (req, res): Promise<void> => {
       senderName: "SkillSync AI",
       senderType: "assistant",
       channel: "ai",
-      content: "Your shared learning plan is ready. Ask SkillSync AI here when you want help.",
+      content: "Your learning room is ready. Personalized paths for both partners are being prepared.",
     });
   });
+  void (async () => {
+    try {
+      const curriculum = await generateCurriculum(current, partner, undefined, locale);
+      await db
+        .update(skillSyncRoomsTable)
+        .set({
+          curriculum: { ...curriculum, generationStatus: "ready" },
+          projectTitle: curriculum.title,
+          updatedAt: new Date(),
+        })
+        .where(eq(skillSyncRoomsTable.id, roomId));
+      try {
+        await recordAiUse(userId, "curriculum", curriculum.aiPowered);
+      } catch (error) {
+        req.log.warn({ err: error, roomId }, "Could not record curriculum-generation usage");
+      }
+
+      try {
+        const generatedChallenge = await generateDailyChallengeContent(
+          curriculum,
+          1,
+          { students: [current, partner], curriculum, conversation: [] },
+          locale,
+        );
+        await db
+          .update(skillSyncRoomsTable)
+          .set({ challenge: buildChallenge(generatedChallenge, 1), updatedAt: new Date() })
+          .where(eq(skillSyncRoomsTable.id, roomId));
+        try {
+          await recordAiUse(userId, "challenge", generatedChallenge.aiPowered);
+        } catch (error) {
+          req.log.warn({ err: error, roomId }, "Could not record challenge-generation usage");
+        }
+      } catch (error) {
+        req.log.warn({ err: error, roomId }, "Could not generate the initial room challenge");
+      }
+    } catch (error) {
+      req.log.warn({ err: error, roomId }, "Background learning-room enrichment failed");
+      await db
+        .update(skillSyncRoomsTable)
+        .set({
+          curriculum: { ...pendingCurriculum, generationStatus: "ready" },
+          updatedAt: new Date(),
+        })
+        .where(eq(skillSyncRoomsTable.id, roomId))
+        .catch((updateError) => {
+          req.log.error({ err: updateError, roomId }, "Could not finalize fallback learning paths");
+        });
+    }
+  })();
   const summary = (await listRoomSummaries(userId)).find((room) => room.roomId === roomId);
   if (!summary) {
     res.status(500).json({ error: "The learning room was created but could not be loaded." });
@@ -547,8 +674,14 @@ router.post("/skillsync/rooms/:roomId/daily-challenge", async (req, res): Promis
   }
   const dayNumber = context.room.challengeDay + 1;
   if (context.room.status === "unmatched") { res.status(409).json({ error: "This room is read-only." }); return; }
+  const locale = req.get("accept-language")?.toLowerCase().startsWith("ar") ? "ar" : "en";
   const sharedContext = await sharedRoomContext(context.room.id, res.locals.userId);
-  const content = await generateDailyChallengeContent(context.room.curriculum, dayNumber, sharedContext ? await roomMemory(sharedContext) : undefined);
+  const content = await generateDailyChallengeContent(
+    context.room.curriculum,
+    dayNumber,
+    sharedContext ? await roomMemory(sharedContext) : undefined,
+    locale,
+  );
   await recordAiUse(res.locals.userId, "challenge", content.aiPowered, context.room.isDemo);
   const challenge = buildChallenge(content, dayNumber);
   await db
@@ -569,36 +702,77 @@ router.post("/skillsync/rooms/:roomId/submissions", async (req, res): Promise<vo
     res.status(400).json({ error: parsed.error.message });
     return;
   }
+  const title = parsed.data.title.trim();
+  const content = parsed.data.content.trim();
+  if (!title || !content) {
+    res.status(400).json({ error: "Add a project title and description before submitting." });
+    return;
+  }
   const context = await getRoomContext(params.data.roomId, res.locals.userId as string);
   if (!context) {
     res.status(404).json({ error: "Learning room not found." });
     return;
   }
   if (context.room.status === "unmatched") { res.status(409).json({ error: "This room is read-only." }); return; }
-  const evaluation = await evaluateProjectContent(
-    parsed.data.title,
-    parsed.data.content,
-    context.room.curriculum,
-    await roomMemory((await sharedRoomContext(context.room.id, res.locals.userId))!),
-  );
-  await recordAiUse(res.locals.userId, "evaluation", evaluation.aiPowered, context.room.isDemo);
-  const [submission] = await db
-    .insert(skillSyncSubmissionsTable)
-    .values({
-      id: randomUUID(),
-      roomId: context.room.id,
-      title: parsed.data.title.trim(),
-      content: parsed.data.content.trim(),
-      ...evaluation,
-    })
-    .returning();
-  await db
-    .update(skillSyncRoomsTable)
-    .set({ status: "completed", progress: 100, updatedAt: new Date() })
-    .where(eq(skillSyncRoomsTable.id, context.room.id));
-  res.status(201).json(
-    SubmitSkillSyncProjectResponse.parse(submissionDto(submission)),
-  );
+  const userId = res.locals.userId as string;
+  const locale = req.get("accept-language")?.toLowerCase().startsWith("ar") ? "ar" : "en";
+  const submission = await db.transaction(async (tx) => {
+    const [saved] = await tx
+      .insert(skillSyncSubmissionsTable)
+      .values({
+        id: randomUUID(),
+        roomId: context.room.id,
+        title,
+        content,
+        ...fallbackProjectEvaluation(locale),
+        evaluationStatus: "pending",
+      })
+      .returning();
+    await tx
+      .update(skillSyncRoomsTable)
+      .set({ status: "completed", progress: 100, updatedAt: new Date() })
+      .where(eq(skillSyncRoomsTable.id, context.room.id));
+    return saved;
+  });
+  res.status(201).json(SubmitSkillSyncProjectResponse.parse(submissionDto(submission)));
+
+  void (async () => {
+    try {
+      const memoryContext = await sharedRoomContext(context.room.id, userId);
+      const evaluation = await evaluateProjectContent(
+        title,
+        content,
+        context.room.curriculum,
+        memoryContext ? await roomMemory(memoryContext) : undefined,
+        locale,
+      );
+      const evaluationStatus = evaluation.aiPowered ? "ready" : "fallback";
+      await db
+        .update(skillSyncSubmissionsTable)
+        .set({ ...evaluation, evaluationStatus })
+        .where(eq(skillSyncSubmissionsTable.id, submission.id));
+      try {
+        await recordAiUse(userId, "evaluation", evaluation.aiPowered, context.room.isDemo);
+      } catch (error) {
+        req.log.warn({ err: error, roomId: context.room.id }, "Could not record project-evaluation usage");
+      }
+    } catch (error) {
+      req.log.warn(
+        { err: error, roomId: context.room.id, userId },
+        "Project saved; asynchronous AI evaluation will remain in fallback state",
+      );
+      await db
+        .update(skillSyncSubmissionsTable)
+        .set({ evaluationStatus: "fallback" })
+        .where(eq(skillSyncSubmissionsTable.id, submission.id))
+        .catch((updateError) => {
+          req.log.error(
+            { err: updateError, submissionId: submission.id },
+            "Could not finalize fallback project evaluation",
+          );
+        });
+    }
+  })();
 });
 
 router.get("/skillsync/dashboard", async (req, res): Promise<void> => {
