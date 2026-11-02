@@ -15,8 +15,9 @@ const SYSTEM_INSTRUCTION =
 export class GeminiProviderError extends Error {
   constructor(
     readonly code: "AI_MODEL_UNAVAILABLE" | "AI_PROVIDER_ERROR",
-    readonly httpStatus: 502 | 503,
+    readonly httpStatus: 502 | 503 | 504,
     message: string,
+    readonly providerDetails?: string,
   ) {
     super(message);
     this.name = "GeminiProviderError";
@@ -28,7 +29,14 @@ export const geminiProviderErrorHandler: ErrorRequestHandler = (error, _req, res
     next(error);
     return;
   }
-  res.status(error.httpStatus).json({ error: error.message, code: error.code });
+  const detailedMessage = error.providerDetails
+    ? `${error.message} Details: ${error.providerDetails}`
+    : error.message;
+  res.status(error.httpStatus).json({
+    error: detailedMessage,
+    code: error.code,
+    ...(error.providerDetails ? { details: error.providerDetails } : {}),
+  });
 };
 
 function getGeminiClient(): GoogleGenAI {
@@ -44,8 +52,94 @@ function getGeminiClient(): GoogleGenAI {
 }
 
 function getProviderStatus(error: unknown): number | undefined {
-  if (typeof error !== "object" || error === null || !("status" in error)) return undefined;
-  return typeof error.status === "number" ? error.status : undefined;
+  if (typeof error !== "object" || error === null) return undefined;
+  const status = "status" in error ? error.status : undefined;
+  if (typeof status === "number") return status;
+  const statusCode = "statusCode" in error ? error.statusCode : undefined;
+  return typeof statusCode === "number" ? statusCode : undefined;
+}
+
+function redactDiagnosticText(value: string): string {
+  return value
+    .replace(/([?&](?:key|api[_-]?key|access[_-]?token|token)=)[^&#\s]*/gi, "$1[REDACTED]")
+    .replace(/\bAIza[0-9A-Za-z_-]{20,}\b/g, "[REDACTED_API_KEY]")
+    .replace(/\b(Bearer)\s+[A-Za-z0-9._~+/-]+=*/gi, "$1 [REDACTED]")
+    .replace(/(["']?(?:api[_-]?key|authorization|access[_-]?token|token)["']?\s*[:=]\s*["']?)[^"',\s}&]+/gi, "$1[REDACTED]")
+    .slice(0, 3000);
+}
+
+const DIAGNOSTIC_FIELDS = [
+  "name",
+  "message",
+  "status",
+  "statusCode",
+  "statusText",
+  "code",
+  "details",
+  "errorDetails",
+  "error",
+  "response",
+  "cause",
+  "body",
+  "data",
+  "stack",
+] as const;
+
+function sanitizeDiagnosticValue(
+  value: unknown,
+  includeStack: boolean,
+  seen = new WeakSet<object>(),
+  depth = 0,
+): unknown {
+  if (value === null || value === undefined || typeof value === "number" || typeof value === "boolean") {
+    return value;
+  }
+  if (typeof value === "string") return redactDiagnosticText(value);
+  if (typeof value === "bigint") return value.toString();
+  if (typeof value !== "object") return `[${typeof value}]`;
+  if (depth >= 5) return "[diagnostic depth limit]";
+  if (seen.has(value)) return "[circular]";
+  seen.add(value);
+
+  if (Array.isArray(value)) {
+    return value.slice(0, 20).map((entry) => sanitizeDiagnosticValue(entry, includeStack, seen, depth + 1));
+  }
+
+  const record = value as Record<string, unknown>;
+  const keys = new Set<string>(Object.keys(record));
+  for (const key of DIAGNOSTIC_FIELDS) {
+    try {
+      if (key in record) keys.add(key);
+    } catch {
+      // Ignore SDK properties that cannot safely be inspected.
+    }
+  }
+
+  const result: Record<string, unknown> = {};
+  for (const key of keys) {
+    if (
+      (!includeStack && key === "stack") ||
+      /api.?key|authorization|token|prompt|contents|request|headers|config|url/i.test(key)
+    ) {
+      continue;
+    }
+    try {
+      const item = record[key];
+      if (item !== undefined) result[key] = sanitizeDiagnosticValue(item, includeStack, seen, depth + 1);
+    } catch {
+      result[key] = "[unavailable]";
+    }
+  }
+  return result;
+}
+
+function getClientProviderDetails(error: unknown): string {
+  const safe = sanitizeDiagnosticValue(error, false);
+  try {
+    return (JSON.stringify(safe) ?? "Provider error details unavailable.").slice(0, 1800);
+  } catch {
+    return redactDiagnosticText(error instanceof Error ? error.message : String(error));
+  }
 }
 
 export function isGeminiEnabled(): boolean {
@@ -80,21 +174,30 @@ async function generateJsonWithinBudget(prompt: string): Promise<Record<string, 
     return parsed as Record<string, unknown>;
   } catch (err) {
     const providerStatus = getProviderStatus(err);
-    logger.warn(
-      { errorType: err instanceof Error ? err.name : "UnknownError", providerStatus },
-      "AI request failed",
-    );
+    const providerError = sanitizeDiagnosticValue(err, true);
+    const providerDetails = getClientProviderDetails(err);
+    logger.error({ providerStatus, providerError }, "Gemini generateContent failed");
     if (providerStatus === 404) {
       throw new GeminiProviderError(
         "AI_MODEL_UNAVAILABLE",
         503,
         "SkillSync AI is unavailable because its configured model cannot be reached. / خدمة SkillSync AI غير متاحة لأن النموذج المُعدّ غير قابل للوصول.",
+        providerDetails,
+      );
+    }
+    if (providerStatus === 504) {
+      throw new GeminiProviderError(
+        "AI_PROVIDER_ERROR",
+        504,
+        "SkillSync AI timed out while contacting its AI provider. Please try again. / انتهت مهلة SkillSync AI أثناء الاتصال بمزوّد الذكاء الاصطناعي. حاول مرة أخرى.",
+        providerDetails,
       );
     }
     throw new GeminiProviderError(
       "AI_PROVIDER_ERROR",
       502,
       "SkillSync AI could not complete the request. Please try again later. / تعذّر على SkillSync AI إكمال الطلب. يرجى المحاولة لاحقاً.",
+      providerDetails,
     );
   } finally {
     release();
