@@ -855,9 +855,8 @@ router.post("/skillsync/rooms/:roomId/submissions", async (req, res): Promise<vo
       .where(eq(skillSyncRoomsTable.id, context.room.id));
     return saved;
   });
-  res.status(201).json(SubmitSkillSyncProjectResponse.parse(submissionDto(submission)));
 
-  void (async () => {
+  const evaluateInBackground = async (): Promise<void> => {
     try {
       const memoryContext = await sharedRoomContext(context.room.id, userId);
       const evaluation = await evaluateProjectContent(
@@ -893,7 +892,12 @@ router.post("/skillsync/rooms/:roomId/submissions", async (req, res): Promise<vo
           );
         });
     }
-  })();
+  };
+
+  res.status(201).json(SubmitSkillSyncProjectResponse.parse(submissionDto(submission)));
+  setImmediate(() => {
+    void evaluateInBackground();
+  });
 });
 
 router.get("/skillsync/dashboard", async (req, res): Promise<void> => {
