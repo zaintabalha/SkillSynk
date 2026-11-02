@@ -29,11 +29,8 @@ export const geminiProviderErrorHandler: ErrorRequestHandler = (error, _req, res
     next(error);
     return;
   }
-  const detailedMessage = error.providerDetails
-    ? `${error.message} Details: ${error.providerDetails}`
-    : error.message;
   res.status(error.httpStatus).json({
-    error: detailedMessage,
+    error: error.message,
     code: error.code,
     ...(error.providerDetails ? { details: error.providerDetails } : {}),
   });
@@ -166,7 +163,7 @@ async function generateJsonWithinBudget(
         model: "gemini-3.8-flash",
         contents: prompt,
         config: {
-          httpOptions: { timeout: 30_000 },
+          httpOptions: { timeout: 90_000 },
           systemInstruction: SYSTEM_INSTRUCTION,
           responseMimeType: "application/json",
           temperature: 0.25,

@@ -1,4 +1,4 @@
-/** Show the server's bilingual retry guidance, retaining existing messages for other failures. */
+/** Keep provider diagnostics in the response, but show only localized action copy in the UI. */
 export function aiErrorMessage(error: unknown, fallback: string): string {
   if (!error || typeof error !== 'object' || !('data' in error)) return fallback;
   const data = error.data;
@@ -8,5 +8,5 @@ export function aiErrorMessage(error: unknown, fallback: string): string {
     !('code' in data) ||
     !['AI_LIMIT_EXCEEDED', 'AI_MODEL_UNAVAILABLE', 'AI_PROVIDER_ERROR', 'INTERNAL_SERVER_ERROR'].includes(String(data.code))
   ) return fallback;
-  return 'error' in data && typeof data.error === 'string' ? data.error : fallback;
+  return fallback;
 }
