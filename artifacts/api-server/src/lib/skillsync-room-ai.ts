@@ -1,6 +1,6 @@
 import { z } from "zod/v4";
 import type { SkillSyncActivityContent } from "@workspace/db";
-import { generateJson, sanitizeText } from "./skillsync-ai";
+import { GeminiProviderError, generateJson, sanitizeText } from "./skillsync-ai";
 import type { roomMemory } from "./skillsync-room-service";
 
 type Memory = Awaited<ReturnType<typeof roomMemory>>;
@@ -70,7 +70,13 @@ export async function answerRoomQuestion(prompt: string, memory: Memory, quoted?
     `Answer this explicit student request using the complete shared room memory below. Respond in the request's language. If a quoted message is supplied, quote it and verify only what can be established; be clear about uncertainty. Return JSON {"answer":"..."}. Request: ${JSON.stringify(prompt)}. Quoted message: ${JSON.stringify(quoted ?? null)}. Shared memory: ${JSON.stringify(memory)}`,
   );
   const answer = typeof result.answer === "string" ? result.answer.trim() : "";
-  if (!answer) throw new Error("Gemini returned no answer for the @AI request.");
+  if (!answer) {
+    throw new GeminiProviderError(
+      "AI_PROVIDER_ERROR",
+      502,
+      "SkillSync AI did not return a usable answer. Please try again.",
+    );
+  }
   return { answer: sanitizeText(answer, memory.students), aiPowered: true };
 }
 
