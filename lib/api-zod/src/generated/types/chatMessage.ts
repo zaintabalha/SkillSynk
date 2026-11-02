@@ -6,7 +6,9 @@
  * OpenAPI spec version: 0.1.0
  */
 import type { ChatMessageChannel } from './chatMessageChannel';
+import type { ChatMessageMediaType } from './chatMessageMediaType';
 import type { ChatMessageSenderType } from './chatMessageSenderType';
+import type { MessageReplySnapshot } from './messageReplySnapshot';
 
 export interface ChatMessage {
   id: string;
@@ -18,8 +20,27 @@ export interface ChatMessage {
   channel: ChatMessageChannel;
   /** @nullable */
   replyToMessageId: string | null;
+  replyTo: MessageReplySnapshot | null;
   /** @nullable */
   activityId: string | null;
   content: string;
+  /** @nullable */
+  mediaType: ChatMessageMediaType;
+  /** @nullable */
+  mediaUrl: string | null;
+  /** @nullable */
+  mediaName: string | null;
+  /**
+     * @minimum 0
+     * @nullable
+     */
+  mediaSize: number | null;
+  /**
+     * @minimum 0
+     * @nullable
+     */
+  mediaDurationSeconds: number | null;
+  /** @nullable */
+  transcript: string | null;
   createdAt: Date;
 }

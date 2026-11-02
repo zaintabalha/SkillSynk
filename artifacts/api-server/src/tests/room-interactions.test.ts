@@ -66,6 +66,7 @@ test("partner chat, shared activities, and simulation permission boundaries", as
     assert.equal(ordinary.status, 201);
     assert.equal(ordinary.body.assistantMessage, null);
     assert.equal(ordinary.body.message.channel, "partner");
+    assert.equal((await request("/messages", { content: "   " })).status, 400);
     assert.equal((await db.select().from(messages).where(eq(messages.roomId, id))).length, 1);
     assert.equal((await request("/messages", { content: "Attempted impersonation", simulatedUserId: ids[1] })).status, 403);
     assert.equal((await request("/messages", { content: "Verify", replyToMessageId: "not-in-this-room" })).status, 400);
@@ -77,6 +78,19 @@ test("partner chat, shared activities, and simulation permission boundaries", as
     assert.equal(simulated.body.message.senderId, ids[1]);
     assert.equal(simulated.body.assistantMessage, null);
     assert.equal((await request("/messages", { content: "Invalid sender", simulatedUserId: "unrelated-student" })).status, 403);
+    const reply = await request("/messages", { content: "Here is my reply.", replyToMessageId: simulated.body.message.id, simulatedUserId: ids[0] });
+    assert.equal(reply.status, 201);
+    assert.deepEqual(reply.body.message.replyTo, {
+      id: simulated.body.message.id,
+      senderName: simulated.body.message.senderName,
+      contentSnippet: "A demo partner message",
+      mediaType: null,
+    });
+    const storedReply = (await db.select().from(messages).where(eq(messages.id, reply.body.message.id)))[0];
+    assert.equal(storedReply.replyTo?.id, simulated.body.message.id);
+    assert.equal((await request("/media/upload-url", { fileName: "photo.jpg", size: 5000, contentType: "image/jpeg" })).status, 403);
+    assert.equal((await request("/messages", { content: "caption", mediaObjectPath: `/objects/uploads/skillsync/${id}/${randomUUID()}` })).status, 403);
+    assert.equal((await request(`/media/${randomUUID()}`)).status, 404);
     // Occupy the authenticated user's slot, not the simulated student's slot.
     await withAiBudget(async () => {
       const before = (await db.select().from(messages).where(eq(messages.roomId, id))).length;

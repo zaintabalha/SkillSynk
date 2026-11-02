@@ -35,8 +35,10 @@ export async function transcribeCallAudio(audio: Buffer, mimeType: string, local
   const audioBytes = new Uint8Array(audio.byteLength);
   audioBytes.set(audio);
   const fileBlob = new Blob([audioBytes.buffer], { type: mimeType });
-  const fileExtension = mimeType === "audio/mp4" || mimeType === "audio/x-m4a"
+  const fileExtension = mimeType === "audio/mp4" || mimeType === "audio/m4a" || mimeType === "audio/x-m4a"
     ? "m4a"
+    : mimeType === "audio/aac"
+      ? "aac"
     : mimeType === "audio/ogg"
       ? "ogg"
       : mimeType === "audio/wav" || mimeType === "audio/x-wav"

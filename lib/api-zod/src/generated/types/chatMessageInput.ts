@@ -7,13 +7,23 @@
  */
 
 export interface ChatMessageInput {
-  /**
-     * @minLength 1
-     * @maxLength 4000
-     */
+  /** @maxLength 4000 */
   content: string;
   /** @nullable */
   replyToMessageId?: string | null;
   /** @nullable */
   simulatedUserId?: string | null;
+  /** @nullable */
+  mediaObjectPath?: string | null;
+  /**
+     * @maxLength 255
+     * @nullable
+     */
+  mediaName?: string | null;
+  /**
+     * @minimum 0
+     * @maximum 3600
+     * @nullable
+     */
+  mediaDurationSeconds?: number | null;
 }

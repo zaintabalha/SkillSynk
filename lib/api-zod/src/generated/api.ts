@@ -219,6 +219,12 @@ export const GetSkillSyncRoomParams = zod.object({
 export const getSkillSyncRoomResponseProgressMin = 0;
 export const getSkillSyncRoomResponseProgressMax = 100;
 
+export const getSkillSyncRoomResponseMessagesItemReplyToOneContentSnippetMax = 180;
+
+export const getSkillSyncRoomResponseMessagesItemMediaSizeMin = 0;
+
+export const getSkillSyncRoomResponseMessagesItemMediaDurationSecondsMin = 0;
+
 export const getSkillSyncRoomResponseSubmissionsItemTechnicalScoreMin = 0;
 export const getSkillSyncRoomResponseSubmissionsItemTechnicalScoreMax = 100;
 
@@ -285,8 +291,20 @@ export const GetSkillSyncRoomResponse = zod.object({
   "senderType": zod.enum(['student', 'assistant', 'moderator']),
   "channel": zod.enum(['partner', 'ai']),
   "replyToMessageId": zod.string().nullable(),
+  "replyTo": zod.union([zod.object({
+  "id": zod.string(),
+  "senderName": zod.string(),
+  "contentSnippet": zod.string().max(getSkillSyncRoomResponseMessagesItemReplyToOneContentSnippetMax),
+  "mediaType": zod.union([zod.literal('image'),zod.literal('audio'),zod.literal(null)]).nullable()
+}),zod.null()]),
   "activityId": zod.string().nullable(),
   "content": zod.string(),
+  "mediaType": zod.union([zod.literal('image'),zod.literal('audio'),zod.literal(null)]).nullable(),
+  "mediaUrl": zod.string().nullable(),
+  "mediaName": zod.string().nullable(),
+  "mediaSize": zod.number().int().min(getSkillSyncRoomResponseMessagesItemMediaSizeMin).nullable(),
+  "mediaDurationSeconds": zod.number().int().min(getSkillSyncRoomResponseMessagesItemMediaDurationSecondsMin).nullable(),
+  "transcript": zod.string().nullable(),
   "createdAt": zod.coerce.date()
 })),
   "submissions": zod.array(zod.object({
@@ -355,13 +373,35 @@ export const SendSkillSyncMessageParams = zod.object({
 
 export const sendSkillSyncMessageBodyContentMax = 4000;
 
+export const sendSkillSyncMessageBodyMediaNameMax = 255;
+
+export const sendSkillSyncMessageBodyMediaDurationSecondsMin = 0;
+export const sendSkillSyncMessageBodyMediaDurationSecondsMax = 3600;
+
 
 
 export const SendSkillSyncMessageBody = zod.object({
-  "content": zod.string().min(1).max(sendSkillSyncMessageBodyContentMax),
+  "content": zod.string().max(sendSkillSyncMessageBodyContentMax),
   "replyToMessageId": zod.string().nullish(),
-  "simulatedUserId": zod.string().nullish()
+  "simulatedUserId": zod.string().nullish(),
+  "mediaObjectPath": zod.string().nullish(),
+  "mediaName": zod.string().max(sendSkillSyncMessageBodyMediaNameMax).nullish(),
+  "mediaDurationSeconds": zod.number().int().min(sendSkillSyncMessageBodyMediaDurationSecondsMin).max(sendSkillSyncMessageBodyMediaDurationSecondsMax).nullish()
 })
+
+export const sendSkillSyncMessageResponseMessageReplyToOneContentSnippetMax = 180;
+
+export const sendSkillSyncMessageResponseMessageMediaSizeMin = 0;
+
+export const sendSkillSyncMessageResponseMessageMediaDurationSecondsMin = 0;
+
+export const sendSkillSyncMessageResponseAssistantMessageOneReplyToOneContentSnippetMax = 180;
+
+export const sendSkillSyncMessageResponseAssistantMessageOneMediaSizeMin = 0;
+
+export const sendSkillSyncMessageResponseAssistantMessageOneMediaDurationSecondsMin = 0;
+
+
 
 export const SendSkillSyncMessageResponse = zod.object({
   "message": zod.object({
@@ -372,8 +412,20 @@ export const SendSkillSyncMessageResponse = zod.object({
   "senderType": zod.enum(['student', 'assistant', 'moderator']),
   "channel": zod.enum(['partner', 'ai']),
   "replyToMessageId": zod.string().nullable(),
+  "replyTo": zod.union([zod.object({
+  "id": zod.string(),
+  "senderName": zod.string(),
+  "contentSnippet": zod.string().max(sendSkillSyncMessageResponseMessageReplyToOneContentSnippetMax),
+  "mediaType": zod.union([zod.literal('image'),zod.literal('audio'),zod.literal(null)]).nullable()
+}),zod.null()]),
   "activityId": zod.string().nullable(),
   "content": zod.string(),
+  "mediaType": zod.union([zod.literal('image'),zod.literal('audio'),zod.literal(null)]).nullable(),
+  "mediaUrl": zod.string().nullable(),
+  "mediaName": zod.string().nullable(),
+  "mediaSize": zod.number().int().min(sendSkillSyncMessageResponseMessageMediaSizeMin).nullable(),
+  "mediaDurationSeconds": zod.number().int().min(sendSkillSyncMessageResponseMessageMediaDurationSecondsMin).nullable(),
+  "transcript": zod.string().nullable(),
   "createdAt": zod.coerce.date()
 }),
   "assistantMessage": zod.union([zod.object({
@@ -384,8 +436,20 @@ export const SendSkillSyncMessageResponse = zod.object({
   "senderType": zod.enum(['student', 'assistant', 'moderator']),
   "channel": zod.enum(['partner', 'ai']),
   "replyToMessageId": zod.string().nullable(),
+  "replyTo": zod.union([zod.object({
+  "id": zod.string(),
+  "senderName": zod.string(),
+  "contentSnippet": zod.string().max(sendSkillSyncMessageResponseAssistantMessageOneReplyToOneContentSnippetMax),
+  "mediaType": zod.union([zod.literal('image'),zod.literal('audio'),zod.literal(null)]).nullable()
+}),zod.null()]),
   "activityId": zod.string().nullable(),
   "content": zod.string(),
+  "mediaType": zod.union([zod.literal('image'),zod.literal('audio'),zod.literal(null)]).nullable(),
+  "mediaUrl": zod.string().nullable(),
+  "mediaName": zod.string().nullable(),
+  "mediaSize": zod.number().int().min(sendSkillSyncMessageResponseAssistantMessageOneMediaSizeMin).nullable(),
+  "mediaDurationSeconds": zod.number().int().min(sendSkillSyncMessageResponseAssistantMessageOneMediaDurationSecondsMin).nullable(),
+  "transcript": zod.string().nullable(),
   "createdAt": zod.coerce.date()
 }),zod.null()]),
   "aiPowered": zod.boolean()
@@ -401,13 +465,35 @@ export const SendSkillSyncAiMessageParams = zod.object({
 
 export const sendSkillSyncAiMessageBodyContentMax = 4000;
 
+export const sendSkillSyncAiMessageBodyMediaNameMax = 255;
+
+export const sendSkillSyncAiMessageBodyMediaDurationSecondsMin = 0;
+export const sendSkillSyncAiMessageBodyMediaDurationSecondsMax = 3600;
+
 
 
 export const SendSkillSyncAiMessageBody = zod.object({
-  "content": zod.string().min(1).max(sendSkillSyncAiMessageBodyContentMax),
+  "content": zod.string().max(sendSkillSyncAiMessageBodyContentMax),
   "replyToMessageId": zod.string().nullish(),
-  "simulatedUserId": zod.string().nullish()
+  "simulatedUserId": zod.string().nullish(),
+  "mediaObjectPath": zod.string().nullish(),
+  "mediaName": zod.string().max(sendSkillSyncAiMessageBodyMediaNameMax).nullish(),
+  "mediaDurationSeconds": zod.number().int().min(sendSkillSyncAiMessageBodyMediaDurationSecondsMin).max(sendSkillSyncAiMessageBodyMediaDurationSecondsMax).nullish()
 })
+
+export const sendSkillSyncAiMessageResponseMessageReplyToOneContentSnippetMax = 180;
+
+export const sendSkillSyncAiMessageResponseMessageMediaSizeMin = 0;
+
+export const sendSkillSyncAiMessageResponseMessageMediaDurationSecondsMin = 0;
+
+export const sendSkillSyncAiMessageResponseAssistantMessageOneReplyToOneContentSnippetMax = 180;
+
+export const sendSkillSyncAiMessageResponseAssistantMessageOneMediaSizeMin = 0;
+
+export const sendSkillSyncAiMessageResponseAssistantMessageOneMediaDurationSecondsMin = 0;
+
+
 
 export const SendSkillSyncAiMessageResponse = zod.object({
   "message": zod.object({
@@ -418,8 +504,20 @@ export const SendSkillSyncAiMessageResponse = zod.object({
   "senderType": zod.enum(['student', 'assistant', 'moderator']),
   "channel": zod.enum(['partner', 'ai']),
   "replyToMessageId": zod.string().nullable(),
+  "replyTo": zod.union([zod.object({
+  "id": zod.string(),
+  "senderName": zod.string(),
+  "contentSnippet": zod.string().max(sendSkillSyncAiMessageResponseMessageReplyToOneContentSnippetMax),
+  "mediaType": zod.union([zod.literal('image'),zod.literal('audio'),zod.literal(null)]).nullable()
+}),zod.null()]),
   "activityId": zod.string().nullable(),
   "content": zod.string(),
+  "mediaType": zod.union([zod.literal('image'),zod.literal('audio'),zod.literal(null)]).nullable(),
+  "mediaUrl": zod.string().nullable(),
+  "mediaName": zod.string().nullable(),
+  "mediaSize": zod.number().int().min(sendSkillSyncAiMessageResponseMessageMediaSizeMin).nullable(),
+  "mediaDurationSeconds": zod.number().int().min(sendSkillSyncAiMessageResponseMessageMediaDurationSecondsMin).nullable(),
+  "transcript": zod.string().nullable(),
   "createdAt": zod.coerce.date()
 }),
   "assistantMessage": zod.union([zod.object({
@@ -430,11 +528,88 @@ export const SendSkillSyncAiMessageResponse = zod.object({
   "senderType": zod.enum(['student', 'assistant', 'moderator']),
   "channel": zod.enum(['partner', 'ai']),
   "replyToMessageId": zod.string().nullable(),
+  "replyTo": zod.union([zod.object({
+  "id": zod.string(),
+  "senderName": zod.string(),
+  "contentSnippet": zod.string().max(sendSkillSyncAiMessageResponseAssistantMessageOneReplyToOneContentSnippetMax),
+  "mediaType": zod.union([zod.literal('image'),zod.literal('audio'),zod.literal(null)]).nullable()
+}),zod.null()]),
   "activityId": zod.string().nullable(),
   "content": zod.string(),
+  "mediaType": zod.union([zod.literal('image'),zod.literal('audio'),zod.literal(null)]).nullable(),
+  "mediaUrl": zod.string().nullable(),
+  "mediaName": zod.string().nullable(),
+  "mediaSize": zod.number().int().min(sendSkillSyncAiMessageResponseAssistantMessageOneMediaSizeMin).nullable(),
+  "mediaDurationSeconds": zod.number().int().min(sendSkillSyncAiMessageResponseAssistantMessageOneMediaDurationSecondsMin).nullable(),
+  "transcript": zod.string().nullable(),
   "createdAt": zod.coerce.date()
 }),zod.null()]),
   "aiPowered": zod.boolean()
+})
+
+
+/**
+ * @summary Create a short-lived upload URL for a room image or voice note
+ */
+export const RequestSkillSyncRoomMediaUploadParams = zod.object({
+  "roomId": zod.coerce.string()
+})
+
+export const requestSkillSyncRoomMediaUploadBodyFileNameMax = 255;
+
+export const requestSkillSyncRoomMediaUploadBodySizeMax = 25000000;
+
+
+
+export const RequestSkillSyncRoomMediaUploadBody = zod.object({
+  "fileName": zod.string().min(1).max(requestSkillSyncRoomMediaUploadBodyFileNameMax),
+  "size": zod.number().int().min(1).max(requestSkillSyncRoomMediaUploadBodySizeMax),
+  "contentType": zod.enum(['image/jpeg', 'image/png', 'image/webp', 'image/gif', 'image/avif', 'audio/mp4', 'audio/aac', 'audio/m4a', 'audio/x-m4a', 'audio/webm', 'audio/ogg', 'audio/mpeg', 'audio/wav', 'audio/x-wav'])
+})
+
+export const RequestSkillSyncRoomMediaUploadResponse = zod.object({
+  "uploadUrl": zod.string().url(),
+  "mediaObjectPath": zod.string()
+})
+
+
+/**
+ * @summary Stream a private room attachment to an authorized participant
+ */
+export const GetSkillSyncRoomMediaParams = zod.object({
+  "roomId": zod.coerce.string(),
+  "mediaId": zod.coerce.string().uuid()
+})
+
+export const GetSkillSyncRoomMediaResponse = zod.unknown()
+
+
+/**
+ * @summary Remove an uploaded attachment that has not been sent
+ */
+export const DeletePendingSkillSyncRoomMediaParams = zod.object({
+  "roomId": zod.coerce.string(),
+  "mediaId": zod.coerce.string().uuid()
+})
+
+export const DeletePendingSkillSyncRoomMediaResponse = zod.void()
+
+
+/**
+ * @summary Transcribe a sent voice note on request
+ */
+export const TranscribeSkillSyncVoiceNoteParams = zod.object({
+  "roomId": zod.coerce.string(),
+  "messageId": zod.coerce.string().uuid()
+})
+
+export const transcribeSkillSyncVoiceNoteResponseTranscriptMax = 10000;
+
+
+
+export const TranscribeSkillSyncVoiceNoteResponse = zod.object({
+  "messageId": zod.string(),
+  "transcript": zod.string().max(transcribeSkillSyncVoiceNoteResponseTranscriptMax)
 })
 
 
@@ -910,6 +1085,14 @@ export const GetSkillSyncAdminReportParams = zod.object({
   "reportId": zod.coerce.string()
 })
 
+export const getSkillSyncAdminReportResponseTranscriptItemReplyToOneContentSnippetMax = 180;
+
+export const getSkillSyncAdminReportResponseTranscriptItemMediaSizeMin = 0;
+
+export const getSkillSyncAdminReportResponseTranscriptItemMediaDurationSecondsMin = 0;
+
+
+
 export const GetSkillSyncAdminReportResponse = zod.object({
   "report": zod.object({
   "id": zod.string(),
@@ -936,8 +1119,20 @@ export const GetSkillSyncAdminReportResponse = zod.object({
   "senderType": zod.enum(['student', 'assistant', 'moderator']),
   "channel": zod.enum(['partner', 'ai']),
   "replyToMessageId": zod.string().nullable(),
+  "replyTo": zod.union([zod.object({
+  "id": zod.string(),
+  "senderName": zod.string(),
+  "contentSnippet": zod.string().max(getSkillSyncAdminReportResponseTranscriptItemReplyToOneContentSnippetMax),
+  "mediaType": zod.union([zod.literal('image'),zod.literal('audio'),zod.literal(null)]).nullable()
+}),zod.null()]),
   "activityId": zod.string().nullable(),
   "content": zod.string(),
+  "mediaType": zod.union([zod.literal('image'),zod.literal('audio'),zod.literal(null)]).nullable(),
+  "mediaUrl": zod.string().nullable(),
+  "mediaName": zod.string().nullable(),
+  "mediaSize": zod.number().int().min(getSkillSyncAdminReportResponseTranscriptItemMediaSizeMin).nullable(),
+  "mediaDurationSeconds": zod.number().int().min(getSkillSyncAdminReportResponseTranscriptItemMediaDurationSecondsMin).nullable(),
+  "transcript": zod.string().nullable(),
   "createdAt": zod.coerce.date()
 }))
 })

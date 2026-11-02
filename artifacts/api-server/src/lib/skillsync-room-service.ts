@@ -27,13 +27,21 @@ export function resolveSpeaker(context: RoomContext, userId: string, simulatedUs
 }
 export function messageDto(message: typeof messages.$inferSelect) {
   const assistant = message.senderType !== "student";
+  const mediaType = message.mediaType === "image" || message.mediaType === "audio" ? message.mediaType : null;
+  const mediaId = message.mediaObjectPath?.split("/").at(-1);
   return {
     id: message.id, roomId: message.roomId, senderId: message.senderId,
     senderName: assistant ? "SkillSync AI" : message.senderName,
     senderType: assistant ? "assistant" as const : "student" as const,
     channel: message.channel === "ai" || message.senderType === "moderator" ? "ai" as const : "partner" as const,
-    replyToMessageId: message.replyToMessageId, activityId: message.activityId,
+    replyToMessageId: message.replyToMessageId, replyTo: message.replyTo ?? null, activityId: message.activityId,
     content: message.content, createdAt: message.createdAt.toISOString(),
+    mediaType,
+    mediaUrl: mediaId && mediaType ? `/api/skillsync/rooms/${encodeURIComponent(message.roomId)}/media/${encodeURIComponent(mediaId)}` : null,
+    mediaName: message.mediaName ?? null,
+    mediaSize: message.mediaSize ?? null,
+    mediaDurationSeconds: message.mediaDurationSeconds ?? null,
+    transcript: message.transcript ?? null,
   };
 }
 export async function roomMemory(context: RoomContext) {

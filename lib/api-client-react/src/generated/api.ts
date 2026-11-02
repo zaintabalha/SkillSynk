@@ -54,6 +54,8 @@ import type {
   ReportInput,
   ReportTicket,
   ReportUpdateInput,
+  RoomMediaUploadInput,
+  RoomMediaUploadUrl,
   RoomSummary,
   SharedActivity,
   SimulatorSolution,
@@ -62,6 +64,7 @@ import type {
   TranscribeSkillSyncCallAudio200,
   UserNotice,
   UserProfile,
+  VoiceNoteTranscriptResponse,
   WarningInput
 } from './api.schemas';
 
@@ -1125,6 +1128,356 @@ export const useSendSkillSyncAiMessage = <TError = ErrorType<AiLimitedResponse>,
         TContext
       > => {
       return useMutation(getSendSkillSyncAiMessageMutationOptions(options), queryClient);
+    }
+
+export const getRequestSkillSyncRoomMediaUploadUrl = (roomId: string,) => {
+
+
+
+
+  return `/api/skillsync/rooms/${roomId}/media/upload-url`
+}
+
+/**
+ * @summary Create a short-lived upload URL for a room image or voice note
+ */
+export const requestSkillSyncRoomMediaUpload = async (roomId: string,
+    roomMediaUploadInput: RoomMediaUploadInput, options?: Parameters<typeof customFetch>[1]): Promise<RoomMediaUploadUrl> => {
+
+    const getHeaders = (h?: NonNullable<RequestInit['headers']>): Record<string, string | readonly string[]> => {
+    if (!h) return {};
+    if (h instanceof Headers) return Object.fromEntries(h.entries());
+    if (Symbol.iterator in h) {
+      return Object.fromEntries(
+        Array.from(h as Iterable<Iterable<string>>, (entry) => Array.from(entry) as [string, string]),
+      );
+    }
+    const headers: Record<string, string | readonly string[]> = {};
+    for (const [name, value] of Object.entries<string | readonly string[] | undefined>(h)) {
+      if (value !== undefined) headers[name] = value;
+    }
+    return headers;
+  };
+return customFetch<RoomMediaUploadUrl>(getRequestSkillSyncRoomMediaUploadUrl(roomId),
+  {
+    ...options,
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json', ...getHeaders(options?.headers) },
+    body: JSON.stringify(roomMediaUploadInput)
+  }
+);}
+
+
+
+
+
+export const getRequestSkillSyncRoomMediaUploadMutationKey = () => ['requestSkillSyncRoomMediaUpload'] as const;
+
+export const getRequestSkillSyncRoomMediaUploadMutationOptions = <TError = ErrorType<void>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof requestSkillSyncRoomMediaUpload>>, TError,RequestSkillSyncRoomMediaUploadMutationVariables, TContext>, request?: SecondParameter<typeof customFetch>}
+): UseMutationOptions<Awaited<ReturnType<typeof requestSkillSyncRoomMediaUpload>>, TError,RequestSkillSyncRoomMediaUploadMutationVariables, TContext> => {
+
+const mutationKey = getRequestSkillSyncRoomMediaUploadMutationKey();
+const {mutation: mutationOptions, request: requestOptions} = options ?
+      options.mutation && 'mutationKey' in options.mutation && options.mutation.mutationKey ?
+      options
+      : {...options, mutation: {...options.mutation, mutationKey}}
+      : {mutation: { mutationKey, }, request: undefined};
+
+
+
+
+      const mutationFn: MutationFunction<Awaited<ReturnType<typeof requestSkillSyncRoomMediaUpload>>, RequestSkillSyncRoomMediaUploadMutationVariables> = (props) => {
+          const {roomId,data} = props ?? {};
+
+          return  requestSkillSyncRoomMediaUpload(roomId,data,requestOptions)
+        }
+
+
+
+
+
+
+  return  { mutationFn, ...mutationOptions }}
+
+    export type RequestSkillSyncRoomMediaUploadMutationResult = NonNullable<Awaited<ReturnType<typeof requestSkillSyncRoomMediaUpload>>>
+    export type RequestSkillSyncRoomMediaUploadMutationBody = BodyType<RoomMediaUploadInput>
+    export type RequestSkillSyncRoomMediaUploadMutationError = ErrorType<void>
+    export type RequestSkillSyncRoomMediaUploadMutationVariables = {roomId: string;data: BodyType<RoomMediaUploadInput>}
+
+    /**
+ * @summary Create a short-lived upload URL for a room image or voice note
+ */
+export const useRequestSkillSyncRoomMediaUpload = <TError = ErrorType<void>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof requestSkillSyncRoomMediaUpload>>, TError,RequestSkillSyncRoomMediaUploadMutationVariables, TContext>, request?: SecondParameter<typeof customFetch>}
+ , queryClient?: QueryClient): UseMutationResult<
+        Awaited<ReturnType<typeof requestSkillSyncRoomMediaUpload>>,
+        TError,
+        RequestSkillSyncRoomMediaUploadMutationVariables,
+        TContext
+      > => {
+      return useMutation(getRequestSkillSyncRoomMediaUploadMutationOptions(options), queryClient);
+    }
+
+export const getGetSkillSyncRoomMediaUrl = (roomId: string,
+    mediaId: string,) => {
+
+
+
+
+  return `/api/skillsync/rooms/${roomId}/media/${mediaId}`
+}
+
+/**
+ * @summary Stream a private room attachment to an authorized participant
+ */
+export const getSkillSyncRoomMedia = async (roomId: string,
+    mediaId: string, options?: Parameters<typeof customFetch>[1]): Promise<Blob> => {
+
+  return customFetch<Blob>(getGetSkillSyncRoomMediaUrl(roomId,mediaId),
+  {
+    ...options,
+    method: 'GET'
+
+
+  }
+);}
+
+
+
+
+
+export const getGetSkillSyncRoomMediaQueryKey = (roomId: string,
+    mediaId: string,) => {
+    return [
+    `/api/skillsync/rooms/${roomId}/media/${mediaId}`
+    ] as const;
+    }
+
+
+export const getGetSkillSyncRoomMediaQueryOptions = <TData = Awaited<ReturnType<typeof getSkillSyncRoomMedia>>, TError = ErrorType<void>>(roomId: string,
+    mediaId: string, options?: { query?:Partial<UseQueryOptions<Awaited<ReturnType<typeof getSkillSyncRoomMedia>>, TError, TData>>, request?: SecondParameter<typeof customFetch>}
+) => {
+
+const {query: queryOptions, request: requestOptions} = options ?? {};
+
+  const queryKey =  queryOptions?.queryKey ?? getGetSkillSyncRoomMediaQueryKey(roomId,mediaId);
+
+
+
+    const queryFn: QueryFunction<Awaited<ReturnType<typeof getSkillSyncRoomMedia>>> = ({ signal }) => getSkillSyncRoomMedia(roomId,mediaId, { signal, ...requestOptions });
+
+
+
+
+
+   return  { queryKey, queryFn, enabled: roomId !== null && roomId !== undefined && mediaId !== null && mediaId !== undefined, ...queryOptions} as UseQueryOptions<Awaited<ReturnType<typeof getSkillSyncRoomMedia>>, TError, TData> & { queryKey: DataTag<QueryKey, TData, TError> }
+}
+
+export type GetSkillSyncRoomMediaQueryResult = NonNullable<Awaited<ReturnType<typeof getSkillSyncRoomMedia>>>
+export type GetSkillSyncRoomMediaQueryError = ErrorType<void>
+
+
+export function useGetSkillSyncRoomMedia<TData = Awaited<ReturnType<typeof getSkillSyncRoomMedia>>, TError = ErrorType<void>>(
+ roomId: string,
+    mediaId: string, options: { query:Partial<UseQueryOptions<Awaited<ReturnType<typeof getSkillSyncRoomMedia>>, TError, TData>> & Pick<
+        DefinedInitialDataOptions<
+          Awaited<ReturnType<typeof getSkillSyncRoomMedia>>,
+          TError,
+          Awaited<ReturnType<typeof getSkillSyncRoomMedia>>
+        > , 'initialData'
+      >, request?: SecondParameter<typeof customFetch>}
+ , queryClient?: QueryClient
+  ):  DefinedUseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> }
+export function useGetSkillSyncRoomMedia<TData = Awaited<ReturnType<typeof getSkillSyncRoomMedia>>, TError = ErrorType<void>>(
+ roomId: string,
+    mediaId: string, options?: { query?:Partial<UseQueryOptions<Awaited<ReturnType<typeof getSkillSyncRoomMedia>>, TError, TData>> & Pick<
+        UndefinedInitialDataOptions<
+          Awaited<ReturnType<typeof getSkillSyncRoomMedia>>,
+          TError,
+          Awaited<ReturnType<typeof getSkillSyncRoomMedia>>
+        > , 'initialData'
+      >, request?: SecondParameter<typeof customFetch>}
+ , queryClient?: QueryClient
+  ):  UseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> }
+export function useGetSkillSyncRoomMedia<TData = Awaited<ReturnType<typeof getSkillSyncRoomMedia>>, TError = ErrorType<void>>(
+ roomId: string,
+    mediaId: string, options?: { query?:Partial<UseQueryOptions<Awaited<ReturnType<typeof getSkillSyncRoomMedia>>, TError, TData>>, request?: SecondParameter<typeof customFetch>}
+ , queryClient?: QueryClient
+  ):  UseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> }
+/**
+ * @summary Stream a private room attachment to an authorized participant
+ */
+
+export function useGetSkillSyncRoomMedia<TData = Awaited<ReturnType<typeof getSkillSyncRoomMedia>>, TError = ErrorType<void>>(
+ roomId: string,
+    mediaId: string, options?: { query?:Partial<UseQueryOptions<Awaited<ReturnType<typeof getSkillSyncRoomMedia>>, TError, TData>>, request?: SecondParameter<typeof customFetch>}
+ , queryClient?: QueryClient
+ ):  UseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> } {
+
+  const queryOptions = getGetSkillSyncRoomMediaQueryOptions(roomId,mediaId,options)
+
+  const query = useQuery(queryOptions, queryClient) as  UseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> };
+
+  return withQueryKey(query, queryOptions.queryKey);
+}
+
+
+
+
+
+
+
+export const getDeletePendingSkillSyncRoomMediaUrl = (roomId: string,
+    mediaId: string,) => {
+
+
+
+
+  return `/api/skillsync/rooms/${roomId}/media/${mediaId}`
+}
+
+/**
+ * @summary Remove an uploaded attachment that has not been sent
+ */
+export const deletePendingSkillSyncRoomMedia = async (roomId: string,
+    mediaId: string, options?: Parameters<typeof customFetch>[1]): Promise<void> => {
+
+  return customFetch<void>(getDeletePendingSkillSyncRoomMediaUrl(roomId,mediaId),
+  {
+    ...options,
+    method: 'DELETE'
+
+
+  }
+);}
+
+
+
+
+
+export const getDeletePendingSkillSyncRoomMediaMutationKey = () => ['deletePendingSkillSyncRoomMedia'] as const;
+
+export const getDeletePendingSkillSyncRoomMediaMutationOptions = <TError = ErrorType<void>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof deletePendingSkillSyncRoomMedia>>, TError,DeletePendingSkillSyncRoomMediaMutationVariables, TContext>, request?: SecondParameter<typeof customFetch>}
+): UseMutationOptions<Awaited<ReturnType<typeof deletePendingSkillSyncRoomMedia>>, TError,DeletePendingSkillSyncRoomMediaMutationVariables, TContext> => {
+
+const mutationKey = getDeletePendingSkillSyncRoomMediaMutationKey();
+const {mutation: mutationOptions, request: requestOptions} = options ?
+      options.mutation && 'mutationKey' in options.mutation && options.mutation.mutationKey ?
+      options
+      : {...options, mutation: {...options.mutation, mutationKey}}
+      : {mutation: { mutationKey, }, request: undefined};
+
+
+
+
+      const mutationFn: MutationFunction<Awaited<ReturnType<typeof deletePendingSkillSyncRoomMedia>>, DeletePendingSkillSyncRoomMediaMutationVariables> = (props) => {
+          const {roomId,mediaId} = props ?? {};
+
+          return  deletePendingSkillSyncRoomMedia(roomId,mediaId,requestOptions)
+        }
+
+
+
+
+
+
+  return  { mutationFn, ...mutationOptions }}
+
+    export type DeletePendingSkillSyncRoomMediaMutationResult = NonNullable<Awaited<ReturnType<typeof deletePendingSkillSyncRoomMedia>>>
+
+    export type DeletePendingSkillSyncRoomMediaMutationError = ErrorType<void>
+    export type DeletePendingSkillSyncRoomMediaMutationVariables = {roomId: string;mediaId: string}
+
+    /**
+ * @summary Remove an uploaded attachment that has not been sent
+ */
+export const useDeletePendingSkillSyncRoomMedia = <TError = ErrorType<void>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof deletePendingSkillSyncRoomMedia>>, TError,DeletePendingSkillSyncRoomMediaMutationVariables, TContext>, request?: SecondParameter<typeof customFetch>}
+ , queryClient?: QueryClient): UseMutationResult<
+        Awaited<ReturnType<typeof deletePendingSkillSyncRoomMedia>>,
+        TError,
+        DeletePendingSkillSyncRoomMediaMutationVariables,
+        TContext
+      > => {
+      return useMutation(getDeletePendingSkillSyncRoomMediaMutationOptions(options), queryClient);
+    }
+
+export const getTranscribeSkillSyncVoiceNoteUrl = (roomId: string,
+    messageId: string,) => {
+
+
+
+
+  return `/api/skillsync/rooms/${roomId}/messages/${messageId}/transcription`
+}
+
+/**
+ * @summary Transcribe a sent voice note on request
+ */
+export const transcribeSkillSyncVoiceNote = async (roomId: string,
+    messageId: string, options?: Parameters<typeof customFetch>[1]): Promise<VoiceNoteTranscriptResponse> => {
+
+  return customFetch<VoiceNoteTranscriptResponse>(getTranscribeSkillSyncVoiceNoteUrl(roomId,messageId),
+  {
+    ...options,
+    method: 'POST'
+
+
+  }
+);}
+
+
+
+
+
+export const getTranscribeSkillSyncVoiceNoteMutationKey = () => ['transcribeSkillSyncVoiceNote'] as const;
+
+export const getTranscribeSkillSyncVoiceNoteMutationOptions = <TError = ErrorType<void | AiLimitedResponse>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof transcribeSkillSyncVoiceNote>>, TError,TranscribeSkillSyncVoiceNoteMutationVariables, TContext>, request?: SecondParameter<typeof customFetch>}
+): UseMutationOptions<Awaited<ReturnType<typeof transcribeSkillSyncVoiceNote>>, TError,TranscribeSkillSyncVoiceNoteMutationVariables, TContext> => {
+
+const mutationKey = getTranscribeSkillSyncVoiceNoteMutationKey();
+const {mutation: mutationOptions, request: requestOptions} = options ?
+      options.mutation && 'mutationKey' in options.mutation && options.mutation.mutationKey ?
+      options
+      : {...options, mutation: {...options.mutation, mutationKey}}
+      : {mutation: { mutationKey, }, request: undefined};
+
+
+
+
+      const mutationFn: MutationFunction<Awaited<ReturnType<typeof transcribeSkillSyncVoiceNote>>, TranscribeSkillSyncVoiceNoteMutationVariables> = (props) => {
+          const {roomId,messageId} = props ?? {};
+
+          return  transcribeSkillSyncVoiceNote(roomId,messageId,requestOptions)
+        }
+
+
+
+
+
+
+  return  { mutationFn, ...mutationOptions }}
+
+    export type TranscribeSkillSyncVoiceNoteMutationResult = NonNullable<Awaited<ReturnType<typeof transcribeSkillSyncVoiceNote>>>
+
+    export type TranscribeSkillSyncVoiceNoteMutationError = ErrorType<void | AiLimitedResponse>
+    export type TranscribeSkillSyncVoiceNoteMutationVariables = {roomId: string;messageId: string}
+
+    /**
+ * @summary Transcribe a sent voice note on request
+ */
+export const useTranscribeSkillSyncVoiceNote = <TError = ErrorType<void | AiLimitedResponse>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof transcribeSkillSyncVoiceNote>>, TError,TranscribeSkillSyncVoiceNoteMutationVariables, TContext>, request?: SecondParameter<typeof customFetch>}
+ , queryClient?: QueryClient): UseMutationResult<
+        Awaited<ReturnType<typeof transcribeSkillSyncVoiceNote>>,
+        TError,
+        TranscribeSkillSyncVoiceNoteMutationVariables,
+        TContext
+      > => {
+      return useMutation(getTranscribeSkillSyncVoiceNoteMutationOptions(options), queryClient);
     }
 
 export const getRequestSkillSyncCallCopilotUrl = (roomId: string,) => {

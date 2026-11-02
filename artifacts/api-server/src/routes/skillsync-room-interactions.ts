@@ -5,6 +5,8 @@ import {
   SubmitSkillSyncActivityAttemptBody, SubmitSkillSyncActivityAttemptResponse,
   ListSkillSyncActivitiesResponse, RequestSkillSyncCallCopilotBody, RequestSkillSyncCallCopilotResponse,
   GenerateSkillSyncSimulatorSolutionParams, GenerateSkillSyncSimulatorSolutionResponse,
+  RequestSkillSyncRoomMediaUploadBody, RequestSkillSyncRoomMediaUploadResponse,
+  TranscribeSkillSyncVoiceNoteResponse,
 } from "@workspace/api-zod";
 import {
   db, skillSyncMessagesTable as messages, skillSyncActivitiesTable as activities,
@@ -17,9 +19,47 @@ import { answerRoomQuestion, generateCallCopilotText, generateCallSummary, gener
 import { withAiBudget } from "../lib/skillsync-ai-limits";
 import { logger } from "../lib/logger";
 import { evaluateSimulatorResponse } from "../lib/skillsync-simulator-evaluation";
+import {
+  createRoomMediaUploadUrl, deleteRoomMediaFile, getRoomMediaFile, newRoomMediaId,
+  readRoomMediaFile, roomMediaObjectPath,
+} from "../lib/skillsync-media-storage";
 
 const router: IRouter = Router();
 type Kind = "quiz" | "flashcards" | "simulator";
+const imageContentTypes = new Set(["image/jpeg", "image/png", "image/webp", "image/gif", "image/avif"]);
+const audioContentTypes = new Set(["audio/mp4", "audio/aac", "audio/m4a", "audio/x-m4a", "audio/webm", "audio/ogg", "audio/mpeg", "audio/wav", "audio/x-wav"]);
+const MAX_ROOM_MEDIA_BYTES = 25_000_000;
+
+function mediaKind(contentType: string): "image" | "audio" | null {
+  if (imageContentTypes.has(contentType)) return "image";
+  if (audioContentTypes.has(contentType)) return "audio";
+  return null;
+}
+
+function safeMediaName(name: string | null | undefined): string | null {
+  const normalized = name?.replace(/[\u0000-\u001f\u007f]/g, "").trim().slice(0, 255);
+  return normalized || null;
+}
+
+function replySnapshot(message: typeof messages.$inferSelect) {
+  return {
+    id: message.id,
+    senderName: message.senderType === "student" ? message.senderName : "SkillSync AI",
+    contentSnippet: (message.content.trim() || message.transcript?.trim() || "").slice(0, 180),
+    mediaType: mediaKind(message.mediaType ?? "") as "image" | "audio" | null,
+  };
+}
+
+function quoteContext(message: typeof messages.$inferSelect): string {
+  const parts = [
+    `Original sender: ${message.senderType === "student" ? message.senderName : "SkillSync AI"}`,
+    message.content.trim() ? `Message text: ${message.content.trim()}` : "",
+    message.transcript?.trim() ? `Voice note transcript: ${message.transcript.trim()}` : "",
+    message.mediaType === "image" ? "This message includes an image attachment; its pixels are not available to the text-only tutor." : "",
+    message.mediaType === "audio" && !message.transcript?.trim() ? "This message includes a voice note that has not been transcribed yet." : "",
+  ].filter(Boolean);
+  return parts.join("\n");
+}
 export function explicitlyInvokesAi(content: string, replyId?: string | null) {
   return Boolean(replyId) || /(^|\s)@(AI|SkillSync)(?=$|[\s,.!?،:])/iu.test(content);
 }
@@ -60,36 +100,71 @@ async function createActivity(context: RoomContext, kind: Kind, prompt: string, 
 function sendChat(channel: "partner" | "ai"): RequestHandler {
   return async (req, res) => {
     const body = SendSkillSyncMessageBody.safeParse(req.body);
-    if (!body.success || !body.data.content.trim()) { res.status(400).json({ error: "Enter a message." }); return; }
+    if (!body.success) { res.status(400).json({ error: body.error.message }); return; }
     const context = await roomContext(String(req.params.roomId), res.locals.userId);
     if (!context) { res.status(404).json({ error: "Room not found." }); return; }
     if (context.room.status === "unmatched") { res.status(409).json({ error: "This pair has been unmatched. The transcript is read-only." }); return; }
     let speaker;
     try { speaker = resolveSpeaker(context, res.locals.userId, body.data.simulatedUserId); }
     catch (error) { res.status(403).json({ error: (error as Error).message }); return; }
+    const prompt = body.data.content.trim();
+    if (!prompt && !body.data.mediaObjectPath) { res.status(400).json({ error: "Enter a message or attach an image or voice note." }); return; }
     const [quote] = body.data.replyToMessageId
       ? await db.select().from(messages).where(and(eq(messages.id, body.data.replyToMessageId), eq(messages.roomId, context.room.id)))
       : [];
     if (body.data.replyToMessageId && !quote) { res.status(400).json({ error: "Quoted message is not in this room." }); return; }
-    const invokesAi = channel === "ai" || explicitlyInvokesAi(body.data.content.trim(), quote?.id);
+    const invokesAi = channel === "ai" || explicitlyInvokesAi(prompt, quote?.id);
+    let attachedMedia: { id: string; file: NonNullable<Awaited<ReturnType<typeof getRoomMediaFile>>>; type: "image" | "audio"; contentType: string; size: number; name: string | null } | null = null;
+    if (body.data.mediaObjectPath) {
+      if (context.room.isDemo) { res.status(403).json({ error: "Attachments are disabled in demo rooms. / مشاركة الوسائط معطلة في الغرف التجريبية." }); return; }
+      const mediaId = body.data.mediaObjectPath.split("/").at(-1) ?? "";
+      let expectedPath = "";
+      try { expectedPath = roomMediaObjectPath(context.room.id, mediaId); }
+      catch { /* The path will be rejected below. */ }
+      if (!mediaId || body.data.mediaObjectPath !== expectedPath) {
+        res.status(400).json({ error: "This upload does not belong to the current room." }); return;
+      }
+      const file = await getRoomMediaFile(context.room.id, mediaId);
+      if (!file) { res.status(400).json({ error: "The attachment upload is missing. Upload it again and retry." }); return; }
+      const [metadata] = await file.getMetadata();
+      const contentType = String(metadata.contentType ?? "").split(";")[0].trim().toLowerCase();
+      const type = mediaKind(contentType);
+      const size = Number(metadata.size);
+      if (!type || !Number.isSafeInteger(size) || size < 1 || size > MAX_ROOM_MEDIA_BYTES) {
+        res.status(400).json({ error: "The uploaded attachment is not a supported image or audio file." }); return;
+      }
+      attachedMedia = {
+        id: mediaId, file, type, contentType, size,
+        name: safeMediaName(body.data.mediaName),
+      };
+    }
     const send = async () => {
-      const prompt = body.data.content.trim();
       let assistantMessage = null;
       let aiPowered = false;
       let content: string | null = null;
       let activityId: string | null = null;
+      let transcript: string | null = null;
       // Ordinary partner messages never enter the AI budget or load AI memory.
       if (invokesAi) {
+        if (attachedMedia?.type === "audio") {
+          const locale = /[\u0600-\u06ff]/u.test(prompt) || req.get("accept-language")?.toLowerCase().startsWith("ar") ? "ar" : "en";
+          transcript = await transcribeCallAudio(await readRoomMediaFile(attachedMedia.file), attachedMedia.contentType, locale);
+        }
+        const aiPrompt = [
+          prompt,
+          transcript ? `Voice note transcript: ${transcript}` : "",
+          attachedMedia?.type === "image" ? "The message includes an image attachment, but its pixels are not available to the text-only tutor. Use only the caption and ask for a description if needed." : "",
+        ].filter(Boolean).join("\n\n");
         const kind = quote ? null : requestedActivity(prompt);
         if (kind) {
-          const result = await createActivity(context, kind, prompt, res.locals.userId);
+          const result = await createActivity(context, kind, aiPrompt, res.locals.userId);
           activityId = result.activity.id;
           aiPowered = result.aiPowered;
           content = /[\u0600-\u06ff]/.test(prompt)
             ? "أعددت نشاطاً مشتركاً لكما. افتحا تبويب الكويزات والمحاكيات للبدء."
             : "I created a shared activity for you both. Open Quizzes & Simulators to begin.";
         } else {
-          const result = await answerRoomQuestion(prompt, await roomMemory(context), quote?.content);
+          const result = await answerRoomQuestion(aiPrompt, await roomMemory(context), quote ? quoteContext(quote) : undefined);
           content = result.answer;
           aiPowered = result.aiPowered;
           recordAiUseNonBlocking(context, res.locals.userId, quote ? "verification" : "shared_chat", aiPowered);
@@ -99,11 +174,20 @@ function sendChat(channel: "partner" | "ai"): RequestHandler {
       const [saved] = await db.insert(messages).values({
         id: randomUUID(), roomId: context.room.id, senderId: speaker.userId, senderName: speaker.displayName,
         senderType: "student", channel, content: prompt, replyToMessageId: quote?.id ?? null,
+        replyTo: quote ? replySnapshot(quote) : null,
+        mediaObjectPath: attachedMedia ? body.data.mediaObjectPath : null,
+        mediaType: attachedMedia?.type ?? null,
+        mediaName: attachedMedia?.name ?? null,
+        mediaSize: attachedMedia?.size ?? null,
+        mediaDurationSeconds: attachedMedia?.type === "audio" ? body.data.mediaDurationSeconds ?? null : null,
+        transcript,
       }).returning();
       if (content !== null) {
+        const repliedMessage = quote ?? saved;
         const [response] = await db.insert(messages).values({
           id: randomUUID(), roomId: context.room.id, senderId: null, senderName: "SkillSync AI",
-          senderType: "assistant", channel, content, activityId, replyToMessageId: quote?.id ?? saved.id,
+          senderType: "assistant", channel, content, activityId, replyToMessageId: repliedMessage.id,
+          replyTo: replySnapshot(repliedMessage),
         }).returning();
         assistantMessage = messageDto(response);
       }
@@ -118,6 +202,140 @@ function sendChat(channel: "partner" | "ai"): RequestHandler {
 }
 router.post("/skillsync/rooms/:roomId/messages", sendChat("partner"));
 router.post("/skillsync/rooms/:roomId/ai-messages", sendChat("ai"));
+router.post("/skillsync/rooms/:roomId/media/upload-url", async (req, res): Promise<void> => {
+  const body = RequestSkillSyncRoomMediaUploadBody.safeParse(req.body);
+  if (!body.success) { res.status(400).json({ error: body.error.message }); return; }
+  const context = await roomContext(String(req.params.roomId), res.locals.userId);
+  if (!context) { res.status(404).json({ error: "Room not found." }); return; }
+  if (context.room.status === "unmatched") { res.status(409).json({ error: "This room is read-only." }); return; }
+  if (context.room.isDemo) { res.status(403).json({ error: "Attachments are disabled in demo rooms. / مشاركة الوسائط معطلة في الغرف التجريبية." }); return; }
+  const type = mediaKind(body.data.contentType);
+  if (!type || body.data.size > MAX_ROOM_MEDIA_BYTES) {
+    res.status(400).json({ error: "Choose a supported attachment under 25 MB." }); return;
+  }
+  try {
+    const mediaId = newRoomMediaId();
+    const upload = await createRoomMediaUploadUrl(context.room.id, mediaId);
+    res.json(RequestSkillSyncRoomMediaUploadResponse.parse(upload));
+  } catch (error) {
+    req.log.error({ err: error, roomId: context.room.id }, "Could not create room media upload URL");
+    res.status(503).json({ error: "Media storage is temporarily unavailable. Please try again." });
+  }
+});
+
+router.get("/skillsync/rooms/:roomId/media/:mediaId", async (req, res): Promise<void> => {
+  const context = await roomContext(String(req.params.roomId), res.locals.userId);
+  if (!context) { res.status(404).json({ error: "Room not found." }); return; }
+  const mediaId = String(req.params.mediaId);
+  let objectPath = "";
+  try { objectPath = roomMediaObjectPath(context.room.id, mediaId); }
+  catch { res.status(404).json({ error: "Attachment not found." }); return; }
+  const [message] = await db.select().from(messages).where(and(
+    eq(messages.roomId, context.room.id),
+    eq(messages.mediaObjectPath, objectPath),
+  ));
+  if (!message || !mediaKind(message.mediaType ?? "")) { res.status(404).json({ error: "Attachment not found in this room." }); return; }
+  const file = await getRoomMediaFile(context.room.id, mediaId);
+  if (!file) { res.status(404).json({ error: "Attachment not found." }); return; }
+  const [metadata] = await file.getMetadata();
+  const contentType = String(metadata.contentType ?? "application/octet-stream").split(";")[0].trim().toLowerCase();
+  const size = Number(metadata.size);
+  if (!mediaKind(contentType) || !Number.isSafeInteger(size) || size < 1) {
+    res.status(404).json({ error: "Attachment not found." }); return;
+  }
+  const filename = safeMediaName(message.mediaName) ?? (message.mediaType === "image" ? "shared-image" : "voice-note");
+  res.setHeader("Content-Type", contentType);
+  res.setHeader("Content-Disposition", `inline; filename*=UTF-8''${encodeURIComponent(filename)}`);
+  res.setHeader("Accept-Ranges", "bytes");
+  res.setHeader("Cache-Control", "private, no-store");
+  res.setHeader("X-Content-Type-Options", "nosniff");
+
+  let start: number | undefined;
+  let end: number | undefined;
+  const range = req.get("range");
+  if (range) {
+    const match = /^bytes=(\d*)-(\d*)$/i.exec(range);
+    if (!match || (!match[1] && !match[2])) {
+      res.status(416).setHeader("Content-Range", `bytes */${size}`).end(); return;
+    }
+    if (match[1]) {
+      start = Number(match[1]);
+      end = match[2] ? Number(match[2]) : size - 1;
+    } else {
+      const suffixLength = Number(match[2]);
+      start = Math.max(size - suffixLength, 0);
+      end = size - 1;
+    }
+    if (!Number.isSafeInteger(start) || !Number.isSafeInteger(end) || start < 0 || end < start || start >= size) {
+      res.status(416).setHeader("Content-Range", `bytes */${size}`).end(); return;
+    }
+    end = Math.min(end, size - 1);
+    res.status(206);
+    res.setHeader("Content-Range", `bytes ${start}-${end}/${size}`);
+    res.setHeader("Content-Length", String(end - start + 1));
+  } else {
+    res.setHeader("Content-Length", String(size));
+  }
+
+  const stream = file.createReadStream(start === undefined ? undefined : { start, end });
+  stream.on("error", (error) => {
+    req.log.error({ err: error, roomId: context.room.id, mediaId }, "Could not stream room attachment");
+    if (res.headersSent) res.destroy(error);
+    else res.status(500).json({ error: "Could not load this attachment." });
+  });
+  stream.pipe(res);
+});
+
+router.delete("/skillsync/rooms/:roomId/media/:mediaId", async (req, res): Promise<void> => {
+  const context = await roomContext(String(req.params.roomId), res.locals.userId);
+  if (!context) { res.status(404).json({ error: "Room not found." }); return; }
+  if (context.room.status === "unmatched") { res.status(409).json({ error: "This room is read-only." }); return; }
+  if (context.room.isDemo) { res.status(403).json({ error: "Attachments are disabled in demo rooms." }); return; }
+  const mediaId = String(req.params.mediaId);
+  let objectPath = "";
+  try { objectPath = roomMediaObjectPath(context.room.id, mediaId); }
+  catch { res.status(404).json({ error: "Pending attachment not found." }); return; }
+  const [sentMessage] = await db.select({ id: messages.id }).from(messages).where(and(
+    eq(messages.roomId, context.room.id),
+    eq(messages.mediaObjectPath, objectPath),
+  ));
+  if (sentMessage) { res.status(409).json({ error: "This attachment has already been sent." }); return; }
+  await deleteRoomMediaFile(context.room.id, mediaId);
+  res.sendStatus(204);
+});
+
+router.post("/skillsync/rooms/:roomId/messages/:messageId/transcription", async (req, res): Promise<void> => {
+  const context = await roomContext(String(req.params.roomId), res.locals.userId);
+  if (!context) { res.status(404).json({ error: "Room not found." }); return; }
+  const [message] = await db.select().from(messages).where(and(
+    eq(messages.id, String(req.params.messageId)),
+    eq(messages.roomId, context.room.id),
+  ));
+  if (!message || message.mediaType !== "audio" || !message.mediaObjectPath) {
+    res.status(404).json({ error: "Voice note not found in this room." }); return;
+  }
+  if (message.transcript !== null && message.transcript !== undefined) {
+    res.json(TranscribeSkillSyncVoiceNoteResponse.parse({ messageId: message.id, transcript: message.transcript }));
+    return;
+  }
+  const mediaId = message.mediaObjectPath.split("/").at(-1) ?? "";
+  const file = await getRoomMediaFile(context.room.id, mediaId);
+  if (!file) { res.status(404).json({ error: "Voice note audio is missing." }); return; }
+  const [metadata] = await file.getMetadata();
+  const contentType = String(metadata.contentType ?? "").split(";")[0].trim().toLowerCase();
+  const size = Number(metadata.size);
+  if (mediaKind(contentType) !== "audio" || !Number.isSafeInteger(size) || size < 1 || size > MAX_ROOM_MEDIA_BYTES) {
+    res.status(415).json({ error: "This voice note uses an unsupported audio format." }); return;
+  }
+  const locale = req.get("accept-language")?.split(",")[0]?.trim().toLowerCase().startsWith("ar") ? "ar" : "en";
+  const transcript = await withAiBudget(
+    async () => transcribeCallAudio(await readRoomMediaFile(file), contentType, locale),
+    { userId: res.locals.userId, roomId: context.room.id },
+  );
+  const [updated] = await db.update(messages).set({ transcript }).where(eq(messages.id, message.id)).returning();
+  recordAiUseNonBlocking(context, res.locals.userId, "voice_note_transcription", true);
+  res.json(TranscribeSkillSyncVoiceNoteResponse.parse({ messageId: updated.id, transcript: updated.transcript ?? "" }));
+});
 router.post("/skillsync/rooms/:roomId/call-copilot", async (req, res) => {
   const body = RequestSkillSyncCallCopilotBody.safeParse(req.body);
   if (!body.success) { res.status(400).json({ error: body.error.message }); return; }

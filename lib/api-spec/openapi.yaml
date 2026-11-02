@@ -196,6 +196,95 @@ paths:
           content:
             application/json:
               schema: { $ref: "#/components/schemas/ChatSendResult" }
+  /skillsync/rooms/{roomId}/media/upload-url:
+    post:
+      operationId: requestSkillSyncRoomMediaUpload
+      tags: [skillsync]
+      summary: Create a short-lived upload URL for a room image or voice note
+      parameters:
+        - name: roomId
+          in: path
+          required: true
+          schema: { type: string }
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: "#/components/schemas/RoomMediaUploadInput" }
+      responses:
+        "200":
+          description: Short-lived private object upload URL
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/RoomMediaUploadUrl" }
+        "400":
+          description: Invalid file metadata
+        "403":
+          description: Room is in demo mode or user lacks access
+  /skillsync/rooms/{roomId}/media/{mediaId}:
+    get:
+      operationId: getSkillSyncRoomMedia
+      tags: [skillsync]
+      summary: Stream a private room attachment to an authorized participant
+      parameters:
+        - name: roomId
+          in: path
+          required: true
+          schema: { type: string }
+        - name: mediaId
+          in: path
+          required: true
+          schema: { type: string, format: uuid }
+      responses:
+        "200":
+          description: Image or audio content
+          content:
+            application/octet-stream:
+              schema: { type: string, format: binary }
+        "404":
+          description: Attachment not found in this room
+    delete:
+      operationId: deletePendingSkillSyncRoomMedia
+      tags: [skillsync]
+      summary: Remove an uploaded attachment that has not been sent
+      parameters:
+        - name: roomId
+          in: path
+          required: true
+          schema: { type: string }
+        - name: mediaId
+          in: path
+          required: true
+          schema: { type: string, format: uuid }
+      responses:
+        "204":
+          description: Pending attachment removed
+        "404":
+          description: Pending attachment not found
+  /skillsync/rooms/{roomId}/messages/{messageId}/transcription:
+    post:
+      operationId: transcribeSkillSyncVoiceNote
+      tags: [skillsync]
+      summary: Transcribe a sent voice note on request
+      parameters:
+        - name: roomId
+          in: path
+          required: true
+          schema: { type: string }
+        - name: messageId
+          in: path
+          required: true
+          schema: { type: string, format: uuid }
+      responses:
+        "200":
+          description: Transcript for the voice note
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/VoiceNoteTranscriptResponse" }
+        "404":
+          description: Voice note not found in this room
+        "429":
+          $ref: "#/components/responses/AiLimited"
   /skillsync/rooms/{roomId}/call-copilot:
     post:
       operationId: requestSkillSyncCallCopilot
@@ -751,7 +840,7 @@ components:
           items: { type: string }
     ChatMessage:
       type: object
-      required: [id, roomId, senderId, senderName, senderType, channel, replyToMessageId, activityId, content, createdAt]
+      required: [id, roomId, senderId, senderName, senderType, channel, replyToMessageId, replyTo, activityId, content, mediaType, mediaUrl, mediaName, mediaSize, mediaDurationSeconds, transcript, createdAt]
       properties:
         id: { type: string }
         roomId: { type: string }
@@ -760,9 +849,48 @@ components:
         senderType: { type: string, enum: [student, assistant, moderator] }
         channel: { type: string, enum: [partner, ai] }
         replyToMessageId: { type: ["string", "null"] }
+        replyTo:
+          oneOf:
+            - $ref: "#/components/schemas/MessageReplySnapshot"
+            - type: "null"
         activityId: { type: ["string", "null"] }
         content: { type: string }
+        mediaType: { type: ["string", "null"], enum: [image, audio, null] }
+        mediaUrl: { type: ["string", "null"] }
+        mediaName: { type: ["string", "null"] }
+        mediaSize: { type: ["integer", "null"], minimum: 0 }
+        mediaDurationSeconds: { type: ["integer", "null"], minimum: 0 }
+        transcript: { type: ["string", "null"] }
         createdAt: { type: string, format: date-time }
+    MessageReplySnapshot:
+      type: object
+      required: [id, senderName, contentSnippet, mediaType]
+      properties:
+        id: { type: string }
+        senderName: { type: string }
+        contentSnippet: { type: string, maxLength: 180 }
+        mediaType: { type: ["string", "null"], enum: [image, audio, null] }
+    RoomMediaUploadInput:
+      type: object
+      required: [fileName, size, contentType]
+      properties:
+        fileName: { type: string, minLength: 1, maxLength: 255 }
+        size: { type: integer, minimum: 1, maximum: 25000000 }
+        contentType:
+          type: string
+          enum: [image/jpeg, image/png, image/webp, image/gif, image/avif, audio/mp4, audio/aac, audio/m4a, audio/x-m4a, audio/webm, audio/ogg, audio/mpeg, audio/wav, audio/x-wav]
+    RoomMediaUploadUrl:
+      type: object
+      required: [uploadUrl, mediaObjectPath]
+      properties:
+        uploadUrl: { type: string, format: uri }
+        mediaObjectPath: { type: string }
+    VoiceNoteTranscriptResponse:
+      type: object
+      required: [messageId, transcript]
+      properties:
+        messageId: { type: string }
+        transcript: { type: string, maxLength: 10000 }
     Challenge:
       type: object
       required: [id, prompt, hint, dayNumber, completed, aiPowered]
@@ -862,9 +990,12 @@ components:
       type: object
       required: [content]
       properties:
-        content: { type: string, minLength: 1, maxLength: 4000 }
+        content: { type: string, maxLength: 4000 }
         replyToMessageId: { type: ["string", "null"] }
         simulatedUserId: { type: ["string", "null"] }
+        mediaObjectPath: { type: ["string", "null"] }
+        mediaName: { type: ["string", "null"], maxLength: 255 }
+        mediaDurationSeconds: { type: ["integer", "null"], minimum: 0, maximum: 3600 }
     ActivityQuestion:
       type: object
       required: [id, prompt, choices, answerIndex, explanation]

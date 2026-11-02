@@ -160,6 +160,37 @@ export const ChatMessageChannel = {
   ai: 'ai',
 } as const;
 
+/**
+ * @nullable
+ */
+export type ChatMessageMediaType = typeof ChatMessageMediaType[keyof typeof ChatMessageMediaType] | null;
+
+
+export const ChatMessageMediaType = {
+  image: 'image',
+  audio: 'audio',
+} as const;
+
+/**
+ * @nullable
+ */
+export type MessageReplySnapshotMediaType = typeof MessageReplySnapshotMediaType[keyof typeof MessageReplySnapshotMediaType] | null;
+
+
+export const MessageReplySnapshotMediaType = {
+  image: 'image',
+  audio: 'audio',
+} as const;
+
+export interface MessageReplySnapshot {
+  id: string;
+  senderName: string;
+  /** @maxLength 180 */
+  contentSnippet: string;
+  /** @nullable */
+  mediaType: MessageReplySnapshotMediaType;
+}
+
 export interface ChatMessage {
   id: string;
   roomId: string;
@@ -170,10 +201,74 @@ export interface ChatMessage {
   channel: ChatMessageChannel;
   /** @nullable */
   replyToMessageId: string | null;
+  replyTo: MessageReplySnapshot | null;
   /** @nullable */
   activityId: string | null;
   content: string;
+  /** @nullable */
+  mediaType: ChatMessageMediaType;
+  /** @nullable */
+  mediaUrl: string | null;
+  /** @nullable */
+  mediaName: string | null;
+  /**
+     * @minimum 0
+     * @nullable
+     */
+  mediaSize: number | null;
+  /**
+     * @minimum 0
+     * @nullable
+     */
+  mediaDurationSeconds: number | null;
+  /** @nullable */
+  transcript: string | null;
   createdAt: string;
+}
+
+export type RoomMediaUploadInputContentType = typeof RoomMediaUploadInputContentType[keyof typeof RoomMediaUploadInputContentType];
+
+
+export const RoomMediaUploadInputContentType = {
+  'image/jpeg': 'image/jpeg',
+  'image/png': 'image/png',
+  'image/webp': 'image/webp',
+  'image/gif': 'image/gif',
+  'image/avif': 'image/avif',
+  'audio/mp4': 'audio/mp4',
+  'audio/aac': 'audio/aac',
+  'audio/m4a': 'audio/m4a',
+  'audio/x-m4a': 'audio/x-m4a',
+  'audio/webm': 'audio/webm',
+  'audio/ogg': 'audio/ogg',
+  'audio/mpeg': 'audio/mpeg',
+  'audio/wav': 'audio/wav',
+  'audio/x-wav': 'audio/x-wav',
+} as const;
+
+export interface RoomMediaUploadInput {
+  /**
+     * @minLength 1
+     * @maxLength 255
+     */
+  fileName: string;
+  /**
+     * @minimum 1
+     * @maximum 25000000
+     */
+  size: number;
+  contentType: RoomMediaUploadInputContentType;
+}
+
+export interface RoomMediaUploadUrl {
+  uploadUrl: string;
+  mediaObjectPath: string;
+}
+
+export interface VoiceNoteTranscriptResponse {
+  messageId: string;
+  /** @maxLength 10000 */
+  transcript: string;
 }
 
 export interface Challenge {
@@ -354,15 +449,25 @@ export interface Dashboard {
 }
 
 export interface ChatMessageInput {
-  /**
-     * @minLength 1
-     * @maxLength 4000
-     */
+  /** @maxLength 4000 */
   content: string;
   /** @nullable */
   replyToMessageId?: string | null;
   /** @nullable */
   simulatedUserId?: string | null;
+  /** @nullable */
+  mediaObjectPath?: string | null;
+  /**
+     * @maxLength 255
+     * @nullable
+     */
+  mediaName?: string | null;
+  /**
+     * @minimum 0
+     * @maximum 3600
+     * @nullable
+     */
+  mediaDurationSeconds?: number | null;
 }
 
 export interface SimulatorSolution {
