@@ -131,57 +131,123 @@ async function ensureDemoProfiles(): Promise<void> {
     .onConflictDoNothing();
 }
 
-function skillOverlap(left: string, right: string): number {
-  const normalize = (value: string) =>
-    value
-      .normalize("NFKC")
-      .toLocaleLowerCase()
-      .replace(/[\u064B-\u065F\u0670]/gu, "")
-      .replace(/[^\p{L}\p{N}]+/gu, " ")
-      .trim();
-  const a = normalize(left);
-  const b = normalize(right);
-  if (a === b) return 1;
-  const wordsA = new Set(a.split(/\s+/).filter((word) => word.length > 1));
-  const wordsB = new Set(b.split(/\s+/).filter((word) => word.length > 1));
-  const aliases = [
-    { key: "programming", words: ["programming", "program", "coding", "code", "python", "javascript", "برمجة", "البرمجة", "كود"] },
-    { key: "web", words: ["web", "website", "frontend", "ويب", "مواقع", "المواقع"] },
-    { key: "english", words: ["english", "انجليزي", "الانجليزية", "الإنجليزية"] },
-    { key: "arabic", words: ["arabic", "عربي", "العربية"] },
-    { key: "design", words: ["design", "تصميم", "التصميم"] },
-  ];
-  for (const alias of aliases) {
-    if (alias.words.some((word) => a.includes(word))) wordsA.add(alias.key);
-    if (alias.words.some((word) => b.includes(word))) wordsB.add(alias.key);
+const SKILL_CONCEPTS: Array<{ key: string; terms: string[] }> = [
+  { key: "programming", terms: ["programming", "coding", "software development", "python", "javascript", "برمجة", "برمجه", "تطوير البرمجيات", "تطوير البرامج", "كود", "تكويد"] },
+  { key: "web-development", terms: ["web development", "website", "frontend", "front end", "backend", "back end", "تطوير الويب", "تطوير مواقع", "مواقع ويب", "برمجة المواقع"] },
+  { key: "english", terms: ["english", "انجليزي", "الانجليزية", "الإنجليزية"] },
+  { key: "arabic", terms: ["arabic", "عربي", "العربية"] },
+  { key: "design", terms: ["design", "ui ux", "user interface", "تصميم", "واجهات المستخدم", "تجربة المستخدم"] },
+  { key: "artificial-intelligence", terms: ["artificial intelligence", "machine learning", "data science", "ذكاء اصطناعي", "تعلم آلي", "علوم البيانات"] },
+  { key: "writing", terms: ["writing", "content writing", "copywriting", "كتابة", "كتابة المحتوى", "تحرير"] },
+  { key: "math", terms: ["mathematics", "math", "statistics", "رياضيات", "إحصاء", "احصاء"] },
+  { key: "communication", terms: ["communication", "public speaking", "presentation", "تواصل", "تحدث أمام الجمهور", "إلقاء"] },
+];
+
+const SKILL_STOP_WORDS = new Set([
+  "a", "an", "and", "the", "to", "of", "in", "with", "for", "basics", "beginner",
+  "learn", "learning", "skill", "skills", "و", "في", "من", "مع", "على", "تعلم",
+  "مهارة", "مهارات", "اساسيات", "مبتدئ", "مبتدئة",
+]);
+
+function normalizeSkill(value: unknown): string {
+  if (typeof value !== "string") return "";
+  return value
+    .normalize("NFKD")
+    .replace(/\p{M}/gu, "")
+    .replace(/ـ/gu, "")
+    .toLocaleLowerCase()
+    .replace(/[أإآٱ]/gu, "ا")
+    .replace(/ى/gu, "ي")
+    .replace(/ة/gu, "ه")
+    .replace(/[^\p{L}\p{N}]+/gu, " ")
+    .trim();
+}
+
+function skillConcepts(normalized: string): Set<string> {
+  const padded = ` ${normalized} `;
+  return new Set(
+    SKILL_CONCEPTS
+      .filter(({ terms }) => terms.some((term) => {
+        const normalizedTerm = normalizeSkill(term);
+        return normalizedTerm.length > 0 && padded.includes(` ${normalizedTerm} `);
+      }))
+      .map(({ key }) => key),
+  );
+}
+
+function tokenSimilarity(a: Set<string>, b: Set<string>): number {
+  if (!a.size || !b.size) return 0;
+  const used = new Set<string>();
+  let matched = 0;
+  for (const left of a) {
+    const right = [...b].find((candidate) =>
+      !used.has(candidate) &&
+      (candidate === left ||
+        (Math.min(candidate.length, left.length) >= 4 &&
+          (candidate.startsWith(left) || left.startsWith(candidate)))),
+    );
+    if (right) {
+      used.add(right);
+      matched += 1;
+    }
   }
-  if (!wordsA.size || !wordsB.size) return 0;
-  const common = [...wordsA].filter((word) => wordsB.has(word)).length;
-  return common / Math.max(wordsA.size, wordsB.size);
+  return matched / Math.max(a.size, b.size);
+}
+
+function characterSimilarity(a: string, b: string): number {
+  const grams = (value: string) => {
+    const chars = Array.from(value.replace(/\s+/gu, ""));
+    if (chars.length < 3) return new Set<string>();
+    return new Set(chars.slice(0, -2).map((_, index) => chars.slice(index, index + 3).join("")));
+  };
+  const gramsA = grams(a);
+  const gramsB = grams(b);
+  if (!gramsA.size || !gramsB.size) return 0;
+  const common = [...gramsA].filter((gram) => gramsB.has(gram)).length;
+  return (2 * common) / (gramsA.size + gramsB.size);
+}
+
+function skillOverlap(left: string, right: string): number {
+  const a = normalizeSkill(left);
+  const b = normalizeSkill(right);
+  if (!a || !b) return 0;
+  if (a === b) return 1;
+
+  const words = (value: string) =>
+    new Set(value.split(/\s+/u).filter((word) => word.length > 1 && !SKILL_STOP_WORDS.has(word)));
+  const lexicalScore = tokenSimilarity(words(a), words(b));
+  const conceptScore = tokenSimilarity(skillConcepts(a), skillConcepts(b));
+  const fuzzyScore = characterSimilarity(a, b) * 0.75;
+  return Math.min(1, Math.max(lexicalScore, conceptScore, fuzzyScore));
 }
 
 function deterministicRecommendations(
   current: SkillSyncProfile,
   profiles: SkillSyncProfile[],
   locale = "en",
+  options: { includeNoOverlap?: boolean; limit?: number } = {},
 ): CandidateForMatch[] {
   return profiles
     .map((candidate) => {
       const learnFromCandidate = skillOverlap(current.learnSkill, candidate.teachSkill);
       const candidateLearnsFromCurrent = skillOverlap(current.teachSkill, candidate.learnSkill);
-      if (learnFromCandidate === 0 && candidateLearnsFromCurrent === 0) return null;
+      if (!options.includeNoOverlap && learnFromCandidate === 0 && candidateLearnsFromCurrent === 0) return null;
       const reciprocalFit = learnFromCandidate > 0 && candidateLearnsFromCurrent > 0;
-      const score = Math.min(
-        99,
-        Math.round(
-          50 +
-            learnFromCandidate * 28 +
-            candidateLearnsFromCurrent * 21 +
-            (reciprocalFit ? 8 : 0),
-        ),
-      );
+      const score = learnFromCandidate === 0 && candidateLearnsFromCurrent === 0
+        ? 35
+        : Math.min(
+            99,
+            Math.round(
+              50 +
+                learnFromCandidate * 28 +
+                candidateLearnsFromCurrent * 21 +
+                (reciprocalFit ? 8 : 0),
+            ),
+          );
       const whyMatch = locale === "ar"
-        ? learnFromCandidate > 0 && candidateLearnsFromCurrent > 0
+        ? learnFromCandidate === 0 && candidateLearnsFromCurrent === 0
+          ? "قد يقدّم هذا الملف توافقاً تكميلياً؛ قيّم المهارات والهدفين معاً."
+          : learnFromCandidate > 0 && candidateLearnsFromCurrent > 0
           ? `يمكنك تعليم ${current.teachSkill} وتعلّم ${candidate.teachSkill} من هذا الشريك.`
           : learnFromCandidate > 0
             ? `تتوافق مهارة ${candidate.teachSkill} مع هدفك في التعلّم.`
@@ -190,7 +256,9 @@ function deterministicRecommendations(
           ? `You can teach ${current.teachSkill} while learning ${candidate.teachSkill}.`
           : learnFromCandidate > 0
             ? `Their ${candidate.teachSkill} connects with what you want to learn.`
-            : `They want to learn ${candidate.learnSkill}, which you can teach.`;
+            : candidateLearnsFromCurrent > 0
+              ? `They want to learn ${candidate.learnSkill}, which you can teach.`
+              : "Potential complementary exchange; assess both goals and skill areas.";
       return {
         userId: candidate.userId,
         displayName: candidate.displayName,
@@ -204,18 +272,44 @@ function deterministicRecommendations(
     })
     .filter((candidate): candidate is CandidateForMatch => candidate !== null)
     .sort((a, b) => b.compatibilityScore - a.compatibilityScore)
-    .slice(0, 8);
+    .slice(0, options.limit ?? 8);
 }
 
 async function getCandidateProfiles(userId: string): Promise<SkillSyncProfile[]> {
   await ensureDemoProfiles();
-  const restricted = await db.select().from(skillSyncSuspensionsTable);
-  const blocked = new Set(restricted.filter((s) => !s.endsAt || s.endsAt > new Date()).map((s) => s.userId));
-  const candidates = await db
-    .select()
-    .from(skillSyncProfilesTable)
-    .where(ne(skillSyncProfilesTable.userId, userId));
-  return candidates.filter((p) => !blocked.has(p.userId));
+  const [restricted, existingPairs, candidates] = await Promise.all([
+    db.select().from(skillSyncSuspensionsTable),
+    db
+      .select({
+        userAId: skillSyncMatchesTable.userAId,
+        userBId: skillSyncMatchesTable.userBId,
+      })
+      .from(skillSyncMatchesTable)
+      .where(
+        or(
+          eq(skillSyncMatchesTable.userAId, userId),
+          eq(skillSyncMatchesTable.userBId, userId),
+        ),
+      ),
+    db
+      .select()
+      .from(skillSyncProfilesTable)
+      .where(ne(skillSyncProfilesTable.userId, userId))
+      .orderBy(desc(skillSyncProfilesTable.updatedAt)),
+  ]);
+  const now = new Date();
+  const blocked = new Set(
+    restricted.filter((s) => !s.endsAt || s.endsAt > now).map((s) => s.userId),
+  );
+  const alreadyPaired = new Set(
+    existingPairs.map((pair) => pair.userAId === userId ? pair.userBId : pair.userAId),
+  );
+  return candidates.filter((profile) =>
+    !blocked.has(profile.userId) &&
+    !alreadyPaired.has(profile.userId) &&
+    typeof profile.teachSkill === "string" && profile.teachSkill.trim().length > 0 &&
+    typeof profile.learnSkill === "string" && profile.learnSkill.trim().length > 0,
+  );
 }
 
 async function listRoomSummaries(userId: string) {
@@ -360,7 +454,11 @@ router.get("/skillsync/matches", async (req, res): Promise<void> => {
   const locale = req.get("accept-language")?.toLowerCase().startsWith("ar") ? "ar" : "en";
   const current = await getProfile(userId);
   if (!current) {
-    res.status(409).json({ error: "Complete your profile to see skill matches." });
+    res.status(409).json({
+      error: locale === "ar"
+        ? "أكمل ملفك الشخصي لعرض تطابقات المهارات."
+        : "Complete your profile to see skill matches.",
+    });
     return;
   }
   const profiles = await getCandidateProfiles(userId);
@@ -374,12 +472,20 @@ router.post("/skillsync/matches/recommendations", async (req, res): Promise<void
   const locale = req.get("accept-language")?.toLowerCase().startsWith("ar") ? "ar" : "en";
   const current = await getProfile(userId);
   if (!current) {
-    res.status(409).json({ error: "Complete your profile before generating matches." });
+    res.status(409).json({
+      error: locale === "ar"
+        ? "أكمل ملفك الشخصي قبل إنشاء توصيات المطابقة."
+        : "Complete your profile before generating matches.",
+    });
     return;
   }
   const profiles = await getCandidateProfiles(userId);
   const baseline = deterministicRecommendations(current, profiles, locale);
-  if (!baseline.length) {
+  const candidatePool = deterministicRecommendations(current, profiles, locale, {
+    includeNoOverlap: true,
+    limit: 24,
+  });
+  if (!candidatePool.length) {
     res.json(
       GenerateSkillSyncRecommendationsResponse.parse({
         recommendations: [],
@@ -394,7 +500,7 @@ router.post("/skillsync/matches/recommendations", async (req, res): Promise<void
   let rankingTimer: ReturnType<typeof setTimeout> | undefined;
   try {
     rankings = await Promise.race([
-      generateMatchRankings(current, baseline, locale),
+      generateMatchRankings(current, candidatePool, locale),
       new Promise<null>((resolve) => {
         rankingTimer = setTimeout(() => {
           rankingTimedOut = true;
@@ -414,12 +520,12 @@ router.post("/skillsync/matches/recommendations", async (req, res): Promise<void
   }
   if (!rankingFailed) {
     try {
-      await recordAiUse(userId, "matching", Boolean(rankings));
+      await recordAiUse(userId, "matching", Boolean(rankings?.length));
     } catch (error) {
       req.log.warn({ err: error, userId }, "Could not record AI match-ranking usage");
     }
   }
-  if (!rankings) {
+  if (!rankings?.length) {
     res.json(
       GenerateSkillSyncRecommendationsResponse.parse({
         recommendations: baseline,
@@ -429,7 +535,7 @@ router.post("/skillsync/matches/recommendations", async (req, res): Promise<void
     return;
   }
 
-  const candidatesById = new Map(baseline.map((candidate) => [candidate.userId, candidate]));
+  const candidatesById = new Map(candidatePool.map((candidate) => [candidate.userId, candidate]));
   const recommendations = rankings
     .map((ranking) => {
       const candidate = candidatesById.get(ranking.userId);
@@ -464,11 +570,19 @@ router.post("/skillsync/matches/connect", async (req, res): Promise<void> => {
     getProfile(parsed.data.partnerUserId),
   ]);
   if (!current) {
-    res.status(409).json({ error: "Complete your profile before starting a room." });
+    res.status(409).json({
+      error: locale === "ar"
+        ? "أكمل ملفك الشخصي قبل بدء غرفة تعلّم."
+        : "Complete your profile before starting a room.",
+    });
     return;
   }
   if (!partner) {
-    res.status(404).json({ error: "That student profile could not be found." });
+    res.status(404).json({
+      error: locale === "ar"
+        ? "تعذر العثور على ملف الطالب المطلوب."
+        : "That student profile could not be found.",
+    });
     return;
   }
   const [restriction] = await db.select().from(skillSyncSuspensionsTable).where(eq(skillSyncSuspensionsTable.userId, partner.userId));
@@ -476,13 +590,9 @@ router.post("/skillsync/matches/connect", async (req, res): Promise<void> => {
     res.status(409).json({ error: "This student is not available for matching." }); return;
   }
 
-  const [existing] = await db
-    .select({ roomId: skillSyncRoomsTable.id })
+  const [existingMatch] = await db
+    .select({ matchId: skillSyncMatchesTable.id })
     .from(skillSyncMatchesTable)
-    .innerJoin(
-      skillSyncRoomsTable,
-      eq(skillSyncMatchesTable.id, skillSyncRoomsTable.matchId),
-    )
     .where(
       or(
         and(
@@ -496,15 +606,26 @@ router.post("/skillsync/matches/connect", async (req, res): Promise<void> => {
       ),
     )
     .limit(1);
-  if (existing) {
+  if (existingMatch) {
+    const [existingRoom] = await db
+      .select({ roomId: skillSyncRoomsTable.id })
+      .from(skillSyncRoomsTable)
+      .where(eq(skillSyncRoomsTable.matchId, existingMatch.matchId))
+      .limit(1);
+    if (!existingRoom) {
+      res.status(409).json({ error: "This pair already has a connection, but its room is unavailable." });
+      return;
+    }
     const summary = (await listRoomSummaries(userId)).find(
-      (room) => room.roomId === existing.roomId,
+      (room) => room.roomId === existingRoom.roomId,
     );
     if (summary) {
       if (summary.status === "unmatched") { res.status(409).json({ error: "This pair was unmatched by an administrator." }); return; }
       res.status(201).json(ConnectSkillSyncMatchResponse.parse(summary));
       return;
     }
+    res.status(409).json({ error: "This pair is already connected." });
+    return;
   }
 
   const fallbackCurriculum = buildFallbackCurriculum(current, partner, locale);
