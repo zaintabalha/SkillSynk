@@ -1,5 +1,5 @@
 import { aiErrorMessage } from '@/lib/ai-error';
-import { runJavaScriptInSandbox, type SimulatorRunResult } from '@/lib/simulator-sandbox';
+import { createSimulatorPreviewDocument, runJavaScriptInSandbox, type SimulatorRunResult } from '@/lib/simulator-sandbox';
 import { useEffect, useRef, useState, type FormEvent, type KeyboardEvent } from 'react';
 import { useQueryClient } from '@tanstack/react-query';
 import { Check, CircleDashed, Code2, Eye, EyeOff, Languages, Layers, ListChecks, LoaderCircle, Play, RotateCcw, Sparkles, Terminal, WandSparkles, X } from 'lucide-react';
@@ -138,10 +138,13 @@ function SimulatorRunner({ activity, room, actingUserId, onDone }: RunnerProps) 
   const coding = sim.mode === 'coding';
   const score = submit.data?.score;
   const lineCount = Math.max(14, value.split('\n').length);
-  const generateCode = () => generateSolution.mutate(
-    { roomId: room.roomId, activityId: activity.id },
-    { onSuccess: (result) => { setValue(result.code); setRunResult(null); } },
-  );
+  const generateCode = () => {
+    setRunResult(null);
+    generateSolution.mutate(
+      { roomId: room.roomId, activityId: activity.id },
+      { onSuccess: (result) => setValue(result.code) },
+    );
+  };
   const runCode = async () => {
     setRunResult(null);
     setIsRunning(true);
@@ -230,8 +233,10 @@ function SimulatorRunner({ activity, room, actingUserId, onDone }: RunnerProps) 
         {!runResult && <p className="sim-output-placeholder">{t('simOutputPlaceholder')}</p>}
         {runResult?.logs.map((entry, index) => <div className="sim-output-line" key={`${entry.level}-${index}`}><span>{entry.level}</span><pre>{entry.text}</pre></div>)}
         {runResult?.value && <div className="sim-output-value"><small>{t('simReturnValue')}</small><pre>{runResult.value}</pre></div>}
+        {runResult?.previewHtml && <div className="sim-output-preview"><small>{t('simPreview')}</small><iframe title={t('simPreview')} sandbox="" referrerPolicy="no-referrer" srcDoc={createSimulatorPreviewDocument(runResult.previewHtml)} /></div>}
+        {runResult?.sourceOutputOmitted && <p className="sim-output-placeholder">{t('simSourceOutputOmitted')}</p>}
         {runResult?.error && <p className="sim-output-error">{runResult.timedOut ? t('simRunTimeoutDetail') : runResult.error}</p>}
-        {runResult?.ok && !runResult.logs.length && !runResult.value && <p className="sim-output-placeholder">{t('simNoOutput')}</p>}
+        {runResult?.ok && !runResult.logs.length && !runResult.value && !runResult.previewHtml && !runResult.sourceOutputOmitted && <p className="sim-output-placeholder">{t('simNoOutput')}</p>}
       </div>
       <footer className="sim-output-footer">{t('simSandboxNote')}</footer>
     </section>}

@@ -3,6 +3,8 @@ export type SimulatorRunResult = {
   ok: boolean;
   logs: SimulatorConsoleEntry[];
   value?: string;
+  previewHtml?: string;
+  sourceOutputOmitted?: boolean;
   error?: string;
   timedOut?: boolean;
 };
@@ -23,12 +25,23 @@ function format(value) {
   try { return (JSON.stringify(value) ?? String(value)).slice(0, MAX_ENTRY); }
   catch { return String(value).slice(0, MAX_ENTRY); }
 }
+function isSourceLike(text, source) {
+  const trimmed = text.trim();
+  return trimmed === source.trim() ||
+    /(?:\\b(?:const|let|var|function|class|import|export|return)\\s+[\\w$({]|=>|\\bconsole\\.(?:log|info|warn|error)\\s*\\(|^[\\w$.[\\]]+\\s*(?:=|\\+\\+|--)|^\\s*<\\/?[a-z][\\w-]*(?:\\s|>|\\/))/imu.test(trimmed);
+}
+function isHtml(text) {
+  return /^\\s*(?:<!doctype\\s+html|<html\\b|<(?:main|section|div|article|button|form|input|label|select|textarea|ul|ol|table|h[1-6]|p|span|header|footer|nav|a|img|svg|details|summary)\\b)/iu.test(text);
+}
 self.onmessage = async (event) => {
   const message = event.data;
   if (!message || message.type !== "run" || typeof message.code !== "string") return;
   const logs = [];
+  let sourceOutputOmitted = false;
   const write = (level, values) => {
-    if (logs.length < MAX_LOGS) logs.push({ level, text: values.map(format).join(" ").slice(0, MAX_ENTRY) });
+    const text = values.map(format).join(" ").slice(0, MAX_ENTRY);
+    if (isSourceLike(text, message.code)) { sourceOutputOmitted = true; return; }
+    if (logs.length < MAX_LOGS) logs.push({ level, text });
   };
   const safeConsole = {
     log: (...values) => write("log", values),
@@ -42,7 +55,24 @@ self.onmessage = async (event) => {
   try {
     const execute = new Function("console", '"use strict"; return (async () => {\\n' + message.code + '\\n})()');
     const result = await execute(safeConsole);
-    self.postMessage({ runId: message.runId, ok: true, logs, ...(typeof result === "undefined" ? {} : { value: format(result) }) });
+    const previewHtml = typeof result === "string"
+      ? (isHtml(result) ? result.slice(0, 10000) : undefined)
+      : result && typeof result === "object" && typeof result.html === "string" && isHtml(result.html)
+        ? result.html.slice(0, 10000)
+        : undefined;
+    const formattedResult = typeof result === "undefined" || typeof previewHtml === "string" ? undefined : format(result);
+    const value = typeof formattedResult === "string" && isSourceLike(formattedResult, message.code)
+      ? undefined
+      : formattedResult;
+    if (formattedResult !== undefined && value === undefined) sourceOutputOmitted = true;
+    self.postMessage({
+      runId: message.runId,
+      ok: true,
+      logs,
+      ...(typeof previewHtml === "string" ? { previewHtml } : {}),
+      ...(typeof value === "string" ? { value } : {}),
+      ...(sourceOutputOmitted ? { sourceOutputOmitted: true } : {}),
+    });
   } catch (error) {
     self.postMessage({
       runId: message.runId,
@@ -131,6 +161,8 @@ export function runJavaScriptInSandbox(code: string): Promise<SimulatorRunResult
             typeof entry.level === "string" && typeof entry.text === "string"),
         ).slice(0, 40),
         ...(typeof result.value === "string" ? { value: result.value.slice(0, 4000) } : {}),
+        ...(typeof result.previewHtml === "string" ? { previewHtml: result.previewHtml.slice(0, 10000) } : {}),
+        ...(result.sourceOutputOmitted === true ? { sourceOutputOmitted: true } : {}),
         ...(typeof result.error === "string" ? { error: result.error.slice(0, 1000) } : {}),
       });
     };
@@ -144,4 +176,23 @@ export function runJavaScriptInSandbox(code: string): Promise<SimulatorRunResult
     }, { once: true });
     document.body.appendChild(frame);
   });
+}
+
+export function createSimulatorPreviewDocument(markup: string): string {
+  const doc = new DOMParser().parseFromString(markup.slice(0, 10_000), "text/html");
+  doc.querySelectorAll("script, iframe, frame, object, embed, link, base, meta[http-equiv='refresh']").forEach((node) => node.remove());
+  for (const element of Array.from(doc.body.querySelectorAll("*"))) {
+    for (const attribute of Array.from(element.attributes)) {
+      const name = attribute.name.toLowerCase();
+      const value = attribute.value.trim().toLowerCase();
+      if (name.startsWith("on")) {
+        element.removeAttribute(attribute.name);
+      } else if (["src", "srcset", "href", "action", "formaction", "poster", "xlink:href"].includes(name) &&
+        !(value.startsWith("#") || value.startsWith("data:image/"))) {
+        element.removeAttribute(attribute.name);
+      }
+    }
+  }
+  const csp = "default-src 'none'; script-src 'none'; connect-src 'none'; img-src data:; style-src 'unsafe-inline'; font-src data:; media-src data:; object-src 'none'; base-uri 'none'; form-action 'none'; frame-src 'none'";
+  return `<!doctype html><html><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1"><meta http-equiv="Content-Security-Policy" content="${csp}"><style>body{margin:0;padding:16px;font:14px system-ui,sans-serif;color:#24372d;background:#fff}*{box-sizing:border-box}</style></head><body>${doc.body.innerHTML}</body></html>`;
 }
