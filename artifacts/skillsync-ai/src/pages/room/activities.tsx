@@ -193,7 +193,7 @@ function SimulatorRunner({ activity, room, actingUserId, onDone }: RunnerProps) 
           onKeyDown={handleEditorKeyDown}
           onScroll={(event) => { if (lineGutter.current) lineGutter.current.scrollTop = event.currentTarget.scrollTop; }}
           rows={coding ? 18 : 14}
-          maxLength={4000}
+          maxLength={12000}
           spellCheck={!coding}
           dir={coding ? 'ltr' : 'auto'}
           className="sim-editor-input"
@@ -203,7 +203,7 @@ function SimulatorRunner({ activity, room, actingUserId, onDone }: RunnerProps) 
       </div>
       <footer className="sim-editor-footer">
         <span>{t('simulatorGradingNote')}</span>
-        <span className="sim-char-count">{value.length}/4000</span>
+        <span className="sim-char-count">{value.length}/12000</span>
       </footer>
     </section>
     {coding && generateSolution.isSuccess && <p className="sim-inline-success" role="status"><Check size={13} />{t('simSolutionGenerated')}</p>}
@@ -231,11 +231,12 @@ function SimulatorRunner({ activity, room, actingUserId, onDone }: RunnerProps) 
       </header>
       <div className="sim-output-content">
         {!runResult && <p className="sim-output-placeholder">{t('simOutputPlaceholder')}</p>}
-        {runResult?.logs.map((entry, index) => <div className="sim-output-line" key={`${entry.level}-${index}`}><span>{entry.level}</span><pre>{entry.text}</pre></div>)}
+        {runResult?.logs.map((entry, index) => <div className="sim-output-line" data-level={entry.level} key={`${entry.level}-${index}`}><span>{entry.level}</span><pre>{entry.text}</pre></div>)}
         {runResult?.value && <div className="sim-output-value"><small>{t('simReturnValue')}</small><pre>{runResult.value}</pre></div>}
         {runResult?.previewHtml && <div className="sim-output-preview"><small>{t('simPreview')}</small><iframe title={t('simPreview')} sandbox="" referrerPolicy="no-referrer" srcDoc={createSimulatorPreviewDocument(runResult.previewHtml)} /></div>}
         {runResult?.sourceOutputOmitted && <p className="sim-output-placeholder">{t('simSourceOutputOmitted')}</p>}
-        {runResult?.error && <p className="sim-output-error">{runResult.timedOut ? t('simRunTimeoutDetail') : runResult.error}</p>}
+        {runResult?.logsTruncated && <p className="sim-output-placeholder">{t('simLogLimitReached')}</p>}
+        {runResult?.error && <div className="sim-output-error" role="alert"><b>{t('simError')}</b><pre>{runResult.timedOut ? t('simRunTimeoutDetail') : runResult.error}</pre></div>}
         {runResult?.ok && !runResult.logs.length && !runResult.value && !runResult.previewHtml && !runResult.sourceOutputOmitted && <p className="sim-output-placeholder">{t('simNoOutput')}</p>}
       </div>
       <footer className="sim-output-footer">{t('simSandboxNote')}</footer>

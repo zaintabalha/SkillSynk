@@ -650,7 +650,7 @@ export const GenerateSkillSyncSimulatorSolutionParams = zod.object({
   "activityId": zod.coerce.string()
 })
 
-export const generateSkillSyncSimulatorSolutionResponseCodeMax = 4000;
+export const generateSkillSyncSimulatorSolutionResponseCodeMax = 12000;
 
 
 
@@ -667,7 +667,7 @@ export const SubmitSkillSyncActivityAttemptParams = zod.object({
   "activityId": zod.coerce.string()
 })
 
-export const submitSkillSyncActivityAttemptBodyResponsesItemMax = 4000;
+export const submitSkillSyncActivityAttemptBodyResponsesItemMax = 12000;
 
 export const submitSkillSyncActivityAttemptBodyResponsesMax = 30;
 

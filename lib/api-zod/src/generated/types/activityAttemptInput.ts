@@ -12,7 +12,7 @@ export interface ActivityAttemptInput {
   /**
      * @minItems 1
      * @maxItems 30
-     * @items.maxLength 4000
+     * @items.maxLength 12000
      */
   responses: string[];
 }

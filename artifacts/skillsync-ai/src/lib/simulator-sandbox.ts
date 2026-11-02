@@ -5,25 +5,27 @@ export type SimulatorRunResult = {
   value?: string;
   previewHtml?: string;
   sourceOutputOmitted?: boolean;
+  logsTruncated?: boolean;
   error?: string;
   timedOut?: boolean;
 };
 
 const EXECUTION_LIMIT_MS = 2_000;
-const MAX_SOURCE_LENGTH = 4_000;
+const MAX_SOURCE_LENGTH = 12_000;
+const HTML_MARKUP_PATTERN = /^\s*(?:<!doctype\s+html|<html\b|<(?:main|section|div|article|button|form|input|label|select|textarea|ul|ol|table|h[1-6]|p|span|header|footer|nav|a|img|svg|details|summary)\b)/iu;
 
 const workerSource = `
 for (const name of ["fetch", "XMLHttpRequest", "WebSocket", "EventSource", "importScripts", "Worker", "SharedWorker", "BroadcastChannel"]) {
   try { Object.defineProperty(globalThis, name, { value: undefined, configurable: false, writable: false }); } catch {}
 }
-const MAX_LOGS = 40;
-const MAX_ENTRY = 1200;
-function format(value) {
-  if (typeof value === "string") return value.slice(0, MAX_ENTRY);
+const MAX_LOGS = 100;
+const MAX_ENTRY = 2000;
+function format(value, limit = MAX_ENTRY) {
+  if (typeof value === "string") return value.slice(0, limit);
   if (typeof value === "undefined") return "undefined";
   if (value instanceof Error) return value.name + ": " + value.message;
-  try { return (JSON.stringify(value) ?? String(value)).slice(0, MAX_ENTRY); }
-  catch { return String(value).slice(0, MAX_ENTRY); }
+  try { return (JSON.stringify(value) ?? String(value)).slice(0, limit); }
+  catch { return String(value).slice(0, limit); }
 }
 function isSourceLike(text, source) {
   const trimmed = text.trim();
@@ -38,10 +40,14 @@ self.onmessage = async (event) => {
   if (!message || message.type !== "run" || typeof message.code !== "string") return;
   const logs = [];
   let sourceOutputOmitted = false;
+  let logsTruncated = false;
   const write = (level, values) => {
-    const text = values.map(format).join(" ").slice(0, MAX_ENTRY);
+    const combined = values.map((value) => format(value)).join(" ");
+    const text = combined.slice(0, MAX_ENTRY);
+    if (combined.length > MAX_ENTRY) logsTruncated = true;
     if (isSourceLike(text, message.code)) { sourceOutputOmitted = true; return; }
     if (logs.length < MAX_LOGS) logs.push({ level, text });
+    else logsTruncated = true;
   };
   const safeConsole = {
     log: (...values) => write("log", values),
@@ -60,7 +66,7 @@ self.onmessage = async (event) => {
       : result && typeof result === "object" && typeof result.html === "string" && isHtml(result.html)
         ? result.html.slice(0, 10000)
         : undefined;
-    const formattedResult = typeof result === "undefined" || typeof previewHtml === "string" ? undefined : format(result);
+    const formattedResult = typeof result === "undefined" || typeof previewHtml === "string" ? undefined : format(result, 12000);
     const value = typeof formattedResult === "string" && isSourceLike(formattedResult, message.code)
       ? undefined
       : formattedResult;
@@ -72,6 +78,7 @@ self.onmessage = async (event) => {
       ...(typeof previewHtml === "string" ? { previewHtml } : {}),
       ...(typeof value === "string" ? { value } : {}),
       ...(sourceOutputOmitted ? { sourceOutputOmitted: true } : {}),
+      ...(logsTruncated ? { logsTruncated: true } : {}),
     });
   } catch (error) {
     self.postMessage({
@@ -120,7 +127,10 @@ function createSandboxDocument(): string {
 export function runJavaScriptInSandbox(code: string): Promise<SimulatorRunResult> {
   const source = code.trim();
   if (!source) return Promise.resolve({ ok: false, logs: [], error: "Add JavaScript code before running it." });
-  if (source.length > MAX_SOURCE_LENGTH) return Promise.resolve({ ok: false, logs: [], error: "Code exceeds the 4,000 character limit." });
+  if (source.length > MAX_SOURCE_LENGTH) return Promise.resolve({ ok: false, logs: [], error: "Code exceeds the 12,000 character limit." });
+  if (HTML_MARKUP_PATTERN.test(source)) {
+    return Promise.resolve({ ok: true, logs: [], previewHtml: source });
+  }
 
   return new Promise((resolve) => {
     const runId = `${Date.now()}-${Math.random().toString(36).slice(2)}`;
@@ -159,10 +169,11 @@ export function runJavaScriptInSandbox(code: string): Promise<SimulatorRunResult
         logs: result.logs.filter((entry: unknown): entry is SimulatorConsoleEntry =>
           Boolean(entry && typeof entry === "object" && "level" in entry && "text" in entry &&
             typeof entry.level === "string" && typeof entry.text === "string"),
-        ).slice(0, 40),
-        ...(typeof result.value === "string" ? { value: result.value.slice(0, 4000) } : {}),
-        ...(typeof result.previewHtml === "string" ? { previewHtml: result.previewHtml.slice(0, 10000) } : {}),
+        ).slice(0, 100),
+        ...(typeof result.value === "string" ? { value: result.value.slice(0, 12000) } : {}),
+        ...(typeof result.previewHtml === "string" ? { previewHtml: result.previewHtml.slice(0, 12000) } : {}),
         ...(result.sourceOutputOmitted === true ? { sourceOutputOmitted: true } : {}),
+        ...(result.logsTruncated === true ? { logsTruncated: true } : {}),
         ...(typeof result.error === "string" ? { error: result.error.slice(0, 1000) } : {}),
       });
     };
@@ -179,7 +190,7 @@ export function runJavaScriptInSandbox(code: string): Promise<SimulatorRunResult
 }
 
 export function createSimulatorPreviewDocument(markup: string): string {
-  const doc = new DOMParser().parseFromString(markup.slice(0, 10_000), "text/html");
+  const doc = new DOMParser().parseFromString(markup.slice(0, 12_000), "text/html");
   doc.querySelectorAll("script, iframe, frame, object, embed, link, base, meta[http-equiv='refresh']").forEach((node) => node.remove());
   for (const element of Array.from(doc.body.querySelectorAll("*"))) {
     for (const attribute of Array.from(element.attributes)) {

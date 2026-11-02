@@ -211,13 +211,17 @@ html[lang='ar'] .display { line-height: 1.25; }
 .sim-output-placeholder { margin: 0; color: #9bad9e; font: 11px/1.6 var(--app-font-sans); }
 .sim-output-line { display: grid; grid-template-columns: 42px minmax(0, 1fr); gap: 8px; align-items: start; }
 .sim-output-line > span { color: #90b09a; font-size: 9px; text-transform: uppercase; }
+.sim-output-line[data-level="error"] > span, .sim-output-line[data-level="error"] pre { color: #f0a99c; }
+.sim-output-line[data-level="warn"] > span, .sim-output-line[data-level="warn"] pre { color: #e3bd83; }
 .sim-output-line pre, .sim-output-value pre { min-width: 0; margin: 0; overflow-wrap: anywhere; white-space: pre-wrap; color: #e5ecdF; font: inherit; }
 .sim-output-value { display: grid; gap: 5px; padding-top: 8px; border-top: 1px solid rgba(213, 230, 212, .12); }
 .sim-output-value small { color: #96b69c; font: 700 9px var(--app-font-mono); text-transform: uppercase; }
 .sim-output-preview { display: grid; gap: 7px; padding-top: 8px; border-top: 1px solid rgba(213, 230, 212, .12); }
 .sim-output-preview > small { color: #96b69c; font: 700 9px var(--app-font-mono); text-transform: uppercase; }
 .sim-output-preview iframe { width: 100%; min-height: 220px; border: 0; border-radius: 6px; background: #fff; }
-.sim-output-error { margin: 0; color: #f0a99c; white-space: pre-wrap; overflow-wrap: anywhere; }
+.sim-output-error { display: grid; grid-template-columns: 36px minmax(0, 1fr); gap: 8px; align-items: start; margin: 0; color: #f0a99c; }
+.sim-output-error b { color: #ee9c90; font-size: 9px; }
+.sim-output-error pre { min-width: 0; margin: 0; white-space: pre-wrap; overflow-wrap: anywhere; font: inherit; color: inherit; }
 .sim-output-footer { padding: 8px 15px 11px; border-top: 1px solid rgba(213, 230, 212, .1); color: #9bad9e; font-size: 9px; line-height: 1.5; }
 .sim-result { display: grid; gap: 9px; padding: 15px 17px; border: 1px solid #dbe5d8; border-radius: 8px 16px 8px 16px; background: #f2f5ec; color: #425e49; }
 .sim-result-heading { display: flex; align-items: center; justify-content: space-between; gap: 12px; }

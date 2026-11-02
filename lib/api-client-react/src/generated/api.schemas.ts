@@ -368,7 +368,7 @@ export interface ChatMessageInput {
 export interface SimulatorSolution {
   /**
      * @minLength 1
-     * @maxLength 4000
+     * @maxLength 12000
      */
   code: string;
 }
@@ -397,7 +397,7 @@ export interface ActivityAttemptInput {
   /**
      * @minItems 1
      * @maxItems 30
-     * @items.maxLength 4000
+     * @items.maxLength 12000
      */
   responses: string[];
 }

@@ -9,7 +9,7 @@
 export interface SimulatorSolution {
   /**
      * @minLength 1
-     * @maxLength 4000
+     * @maxLength 12000
      */
   code: string;
 }
