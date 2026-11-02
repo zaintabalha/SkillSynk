@@ -14,8 +14,8 @@ const SYSTEM_INSTRUCTION =
 
 export class GeminiProviderError extends Error {
   constructor(
-    readonly code: "AI_MODEL_UNAVAILABLE" | "AI_PROVIDER_ERROR",
-    readonly httpStatus: 502 | 503 | 504,
+    readonly code: "AI_MODEL_UNAVAILABLE" | "AI_PROVIDER_ERROR" | "AI_QUOTA_EXCEEDED",
+    readonly httpStatus: 429 | 502 | 503 | 504,
     message: string,
     readonly providerDetails?: string,
   ) {
@@ -188,6 +188,14 @@ async function generateJsonWithinBudget(
         "AI_MODEL_UNAVAILABLE",
         503,
         "SkillSync AI is unavailable because its configured model cannot be reached. / خدمة SkillSync AI غير متاحة لأن النموذج المُعدّ غير قابل للوصول.",
+        providerDetails,
+      );
+    }
+    if (providerStatus === 429) {
+      throw new GeminiProviderError(
+        "AI_QUOTA_EXCEEDED",
+        429,
+        "SkillSync AI has reached its current AI request quota. Try again after it resets, or check the project's AI quota and billing. / وصلت SkillSync AI إلى حدّ الطلبات الحالي. حاول مجدداً بعد إعادة تعيين الحصة، أو راجع حصة المشروع وفوترته.",
         providerDetails,
       );
     }
