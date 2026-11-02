@@ -98,23 +98,26 @@ export async function generateRoomActivity(kind: "quiz" | "flashcards" | "simula
   const topic = memory.curriculum.title;
   const promptMemory = kind === "quiz"
     ? {
-        students: memory.students.map(({ teachSkill, learnSkill }) => ({ teachSkill, learnSkill })),
+        students: memory.students.slice(0, 2).map(({ teachSkill, learnSkill }) => ({
+          teachSkill: compactPrompt(teachSkill, 100),
+          learnSkill: compactPrompt(learnSkill, 100),
+        })),
         curriculum: {
-          title: memory.curriculum.title,
-          goal: memory.curriculum.goal,
-          stages: memory.curriculum.stages.slice(0, 2),
+          title: compactPrompt(memory.curriculum.title, 140),
+          goal: compactPrompt(memory.curriculum.goal, 180),
+          stages: memory.curriculum.stages.slice(0, 2).map((stage) => compactPrompt(stage, 120)),
         },
       }
     : compactSharedMemory(memory, { maxMessages: 5, maxMessageChars: 280 });
   const activityInstructions = kind === "quiz"
-    ? "Create exactly 4 concise questions, each with 3 short choices, one answerIndex, and a one-sentence explanation."
+    ? "Create exactly 4 short questions. Each has 3 brief choices, answerIndex, and an explanation under 12 words."
     : kind === "flashcards"
       ? "Create exactly 8 concise flashcards with short fronts and backs."
       : "Create one concise text-based simulation with short fields.";
   const groundingInstruction = kind === "quiz"
     ? "Ground it in the requested topic and compact learning plan."
     : "Ground it in the learning plan and recent student messages.";
-  const maxOutputTokens = kind === "quiz" ? 1000 : kind === "flashcards" ? 900 : 800;
+  const maxOutputTokens = kind === "quiz" ? 750 : kind === "flashcards" ? 900 : 800;
   const fallback: SkillSyncActivityContent = kind === "quiz" ? {
     questions: [
       { id: "q1", prompt: `What is the best first step for ${topic}?`, choices: ["Agree on one small, testable goal", "Build unrelated parts without discussing them", "Skip partner feedback"], answerIndex: 0, explanation: "A shared, testable goal keeps both skills connected." },
@@ -131,7 +134,7 @@ export async function generateRoomActivity(kind: "quiz" | "flashcards" | "simula
     simulator: { mode: "language", scenario: `Explain one part of ${topic} to a new partner.`, prompt: "Rewrite an unclear handoff into one precise sentence.", starter: "Do the thing and send it.", expected: "Please review the first example and send one specific improvement.", hint: "Name the action, the object, and the expected feedback." },
   };
   const result = await generateJson(
-    `Create a ${kind} in the language of the request or recent student messages. ${groundingInstruction} ${activityInstructions} Request: ${JSON.stringify(compactPrompt(prompt, 1200))}. Return concise JSON {"title":"...","instructions":"...","content":...}. For quiz, content is {"questions":[{"id":"q1","prompt":"...","choices":["...","...","..."],"answerIndex":0,"explanation":"..."}]}; for flashcards, {"flashcards":[{"front":"...","back":"..."}]}; for simulator, {"simulator":{"mode":"coding or language","scenario":"...","prompt":"...","starter":"...","expected":"...","hint":"..."}}. Coding simulations are text exercises, not executable code. Relevant shared memory: ${JSON.stringify(promptMemory)}`,
+    `Create a concise ${kind} in the request's language. ${groundingInstruction} ${activityInstructions} Request: ${JSON.stringify(compactPrompt(prompt, 600))}. Return JSON only with title, instructions, and content. Quiz content shape: {"questions":[{"id":"q1","prompt":"...","choices":["...","...","..."],"answerIndex":0,"explanation":"..."}]}. Flashcard shape: {"flashcards":[{"front":"...","back":"..."}]}. Simulator shape: {"simulator":{"mode":"coding or language","scenario":"...","prompt":"...","starter":"...","expected":"...","hint":"..."}}. Coding simulations are text exercises, not executable code. Memory: ${JSON.stringify(promptMemory)}`,
     { maxOutputTokens },
   );
   const parsed = contentSchema.safeParse(result?.content);
