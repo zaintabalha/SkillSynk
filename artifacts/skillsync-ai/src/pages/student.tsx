@@ -95,6 +95,7 @@ export function MatchesPage() {
   const { t, locale } = useI18n();
   const request = { headers: { 'Accept-Language': locale } };
   const query = useGetSkillSyncMatches({ request });
+  const profileQuery = useGetSkillSyncProfile({ request });
   const generate = useGenerateSkillSyncRecommendations({ request });
   const connect = useConnectSkillSyncMatch({ request });
   const client = useQueryClient();
@@ -102,8 +103,12 @@ export function MatchesPage() {
   const [connectingId, setConnectingId] = useState('');
   const [errorId, setErrorId] = useState('');
   const recommendations = generate.data?.recommendations || query.data || [];
+  const hasProfile = Boolean(profileQuery.data?.profile);
   const profileRequired =
-    isProfileRequired(query.error) || isProfileRequired(generate.error);
+    profileQuery.isSuccess
+      ? !hasProfile
+      : !profileQuery.isLoading && !profileQuery.isError &&
+        (isProfileRequired(query.error) || isProfileRequired(generate.error));
   const startRoom = (candidate: MatchCandidate) => {
     setConnectingId(candidate.userId); setErrorId('');
     connect.mutate({ data: { partnerUserId: candidate.userId } }, {
@@ -116,9 +121,11 @@ export function MatchesPage() {
     <SectionHeader eyebrow={t('matchesEyebrow')} title={t('matchesTitle')} detail={t('matchesDetail')} action={<button className="button button-secondary" onClick={() => generate.mutate(undefined, { onSuccess: () => client.invalidateQueries({ queryKey: getGetSkillSyncMatchesQueryKey() }) })} disabled={generate.isPending} data-testid="button-refresh-matches">{generate.isPending ? <LoaderCircle className="spin" size={15} /> : <WandSparkles size={15} />}{generate.isPending ? t('lookingAround') : t('findFresh')}</button>} />
     <div className="match-intro-strip"><div className="match-intro-icon"><HeartHandshake size={21} /></div><div><b>{t('matchIntroTitle')}</b><span>{t('matchIntroDetail')}</span></div><Plus className="intro-star" size={20} /></div>
     {generate.isError && (profileRequired ? <p className="inline-error">{t('matchProfileRequired')} <Link href="/profile">{t('setupProfile')}</Link></p> : <p className="inline-error">{aiErrorMessage(generate.error, t('actionError'))}</p>)}
-    {query.isLoading && !generate.data ? <div className="match-grid">{[1, 2, 3, 4].map((i) => <div className="skeleton match-skeleton" key={i} />)}</div> : query.isError && !generate.data ? profileRequired
-      ? <EmptyState title={t('matchProfileTitle')} detail={t('matchProfileRequired')} action={<Link href="/profile" className="button button-secondary">{t('setupProfile')} <ArrowRight size={15} className="flip-rtl" /></Link>} />
-      : <ErrorState onRetry={() => query.refetch()} /> : recommendations.length ? <div className="match-grid">{recommendations.map((c, index) => <article className={`match-card ${index === 0 ? 'match-card-lead' : ''}`} key={c.userId} data-testid={`card-match-${c.userId}`}>
+    {query.isLoading || profileQuery.isLoading ? <div className="match-grid">{[1, 2, 3, 4].map((i) => <div className="skeleton match-skeleton" key={i} />)}</div> : profileQuery.isError
+      ? <ErrorState onRetry={() => profileQuery.refetch()} />
+      : profileRequired ? <EmptyState title={t('matchProfileTitle')} detail={t('matchProfileRequired')} action={<Link href="/profile" className="button button-secondary">{t('setupProfile')} <ArrowRight size={15} className="flip-rtl" /></Link>} />
+      : query.isError && !generate.data ? <ErrorState onRetry={() => query.refetch()} />
+      : recommendations.length ? <div className="match-grid">{recommendations.map((c, index) => <article className={`match-card ${index === 0 ? 'match-card-lead' : ''}`} key={c.userId} data-testid={`card-match-${c.userId}`}>
       <div className="match-card-top"><div className="match-avatar">{initials(c.displayName)}</div><div className="match-score"><span>{t('goodFit')}</span><b dir="ltr">{c.compatibilityScore}<small>%</small></b></div></div>
       <div className="match-name" dir="auto">{c.displayName}</div><div className="match-campus"><GraduationCap size={14} /> <span dir="auto">{c.university}</span></div>
       <div className="exchange-pair"><div><small>{t('theyShare')}</small><b dir="auto">{c.teachSkill}</b></div><ArrowLeftRight size={16} className="exchange-arrow" /><div><small>{t('theyLearn')}</small><b dir="auto">{c.learnSkill}</b></div></div>
