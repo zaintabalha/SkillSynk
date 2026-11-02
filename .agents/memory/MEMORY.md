@@ -1,3 +1,5 @@
 - [AI admission scope](ai-admission.md) — limits protect authenticated callers, not simulated partners; process-local budgets need shared storage before scaling out.
 - [AI provider access](ai-provider.md) — SkillSync AI calls use Groq server-side; keep all feature calls on the shared provider transport.
 - [Simulator safety](simulator-evaluation.md) — keep grading static; interactive local runs use an opaque iframe with network restrictions and strict session/output limits.
+- [Jitsi audio boundary](jitsi-audio-boundary.md) — browser capture of the local mic cannot reliably transcribe remote participants inside the cross-origin Jitsi frame.
+- [Provider limiter tests](provider-limiter-tests.md) — exercise rate-limit behavior with an isolated limiter, not the shared provider limiter used by live requests.

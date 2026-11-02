@@ -1,6 +1,6 @@
 import { test } from "node:test";
 import assert from "node:assert/strict";
-import { AiLimiter, AiLimitError, withAiBudget, acquireProviderSlot } from "../lib/skillsync-ai-limits";
+import { AiLimiter, AiLimitError, withAiBudget } from "../lib/skillsync-ai-limits";
 import { generateJson, isAiProviderEnabled } from "../lib/skillsync-ai";
 
 test("rolling rate limits expire, rejection is atomic, release is idempotent", () => {
@@ -52,9 +52,11 @@ test("room rate budgets span different users", async () => {
 });
 
 test("provider attempts have bounded concurrency and rate, with no queue", () => {
-  const releases = Array.from({ length: 4 }, () => acquireProviderSlot());
-  assert.throws(acquireProviderSlot, AiLimitError);
+  const providerLimiter = new AiLimiter();
+  const acquireProvider = () => providerLimiter.acquire([{ key: "provider", rate: 60, concurrency: 4 }]);
+  const releases = Array.from({ length: 4 }, () => acquireProvider());
+  assert.throws(acquireProvider, AiLimitError);
   releases.forEach((release) => release());
-  for (let i = 4; i < 60; i++) acquireProviderSlot()();
-  assert.throws(acquireProviderSlot, AiLimitError);
+  for (let i = 4; i < 60; i++) acquireProvider()();
+  assert.throws(acquireProvider, AiLimitError);
 });
