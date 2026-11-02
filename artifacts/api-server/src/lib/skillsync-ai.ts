@@ -32,7 +32,7 @@ export const geminiProviderErrorHandler: ErrorRequestHandler = (error, _req, res
 };
 
 function getGeminiClient(): GoogleGenAI {
-  const apiKey = process.env.GEMINI_API_KEY || process.env.GOOGLE_API_KEY;
+  const apiKey = process.env.GEMINI_API_KEY;
   if (!apiKey) {
     throw new GeminiProviderError(
       "AI_PROVIDER_ERROR",
@@ -49,7 +49,7 @@ function getProviderStatus(error: unknown): number | undefined {
 }
 
 export function isGeminiEnabled(): boolean {
-  return Boolean(process.env.GEMINI_API_KEY || process.env.GOOGLE_API_KEY);
+  return Boolean(process.env.GEMINI_API_KEY);
 }
 
 export async function generateJson(prompt: string): Promise<Record<string, unknown>> {
@@ -61,7 +61,7 @@ async function generateJsonWithinBudget(prompt: string): Promise<Record<string, 
   const release = acquireProviderSlot();
   try {
     const response = await gemini.models.generateContent({
-        model: "gemini-2.0-flash",
+        model: "gemini-1.5-flash",
         contents: prompt,
         config: {
           httpOptions: { timeout: 30_000 },
