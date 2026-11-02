@@ -274,6 +274,11 @@ function SimulatorRunner({ activity, room, actingUserId, onDone }: RunnerProps) 
         : execution?.status === 'error' ? t('simRunFailed')
           : execution ? t('simRunning') : '';
   const statusIsError = execution?.status === 'error' || execution?.status === 'timedOut';
+  const consoleMode = Boolean(
+    execution &&
+    !execution.uiVisible &&
+    (execution.logs.length > 0 || ['complete', 'error', 'stopped', 'timedOut'].includes(execution.status)),
+  );
   const handleEditorChange = (nextValue: string) => {
     setValue(nextValue);
     resetExecution();
@@ -354,9 +359,9 @@ function SimulatorRunner({ activity, room, actingUserId, onDone }: RunnerProps) 
       <header className="sim-output-heading"><div><Terminal size={15} /><b>{t('simOutput')}</b></div>
         {execution && <span className={`sim-output-status ${statusIsError ? 'is-error' : execution.status === 'complete' ? 'is-ok' : ''}`}>{statusLabel}</span>}
       </header>
-      <div className="sim-output-content">
+      <div className={`sim-output-content ${consoleMode ? 'console-mode' : ''}`}>
         {!execution && <p className="sim-output-placeholder">{t('simOutputPlaceholder')}</p>}
-        {execution && <div className={`sim-live-preview ${execution.uiVisible ? 'has-ui' : ''}`}>
+        {execution && <div className={`sim-live-preview ${execution.uiVisible ? 'has-ui' : ''} ${consoleMode ? 'console-mode' : ''}`}>
           {execution.live && <SimulatorSandboxFrame key={execution.id} code={execution.code} runId={execution.id} onMessage={handleSandboxMessage} />}
           {!execution.uiVisible && <div className="sim-live-preview-placeholder">{execution.status === 'starting' || execution.status === 'running' ? t('simPreviewStarting') : t('simNoUi')}</div>}
         </div>}
