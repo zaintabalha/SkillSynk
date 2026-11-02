@@ -61,7 +61,7 @@ async function generateJsonWithinBudget(prompt: string): Promise<Record<string, 
   const release = acquireProviderSlot();
   try {
     const response = await gemini.models.generateContent({
-        model: "gemini-1.5-flash",
+        model: "gemini-3.8-flash",
         contents: prompt,
         config: {
           httpOptions: { timeout: 30_000 },
