@@ -1,1 +1,2 @@
 - [AI admission scope](ai-admission.md) — limits protect authenticated callers, not simulated partners; process-local budgets need shared storage before scaling out.
+- [Gemini model access](gemini-model-access.md) — SkillSync uses the user-selected Gemini 3.8 Flash because their newly configured API account could not access 2.5 Flash.
