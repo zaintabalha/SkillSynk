@@ -196,6 +196,29 @@ paths:
           content:
             application/json:
               schema: { $ref: "#/components/schemas/ChatSendResult" }
+  /skillsync/rooms/{roomId}/call-copilot:
+    post:
+      operationId: requestSkillSyncCallCopilot
+      tags: [skillsync]
+      summary: Run a transcript-based SkillSync AI call co-pilot action
+      parameters:
+        - name: roomId
+          in: path
+          required: true
+          schema: { type: string }
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: "#/components/schemas/CallCopilotInput" }
+      responses:
+        "429":
+          $ref: "#/components/responses/AiLimited"
+        "200":
+          description: Speaking prompt, live hint, activity, or saved call-summary card
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/CallCopilotResult" }
   /skillsync/rooms/{roomId}/activities:
     get:
       operationId: listSkillSyncActivities
@@ -698,10 +721,12 @@ components:
           type: array
           items:
             type: object
-            required: [userId, displayName]
+            required: [userId, displayName, teachSkill, learnSkill]
             properties:
               userId: { type: string }
               displayName: { type: string }
+              teachSkill: { type: string }
+              learnSkill: { type: string }
         roomId: { type: string }
         partnerUserId: { type: string }
         partnerName: { type: string }
@@ -853,6 +878,30 @@ components:
             - $ref: "#/components/schemas/ChatMessage"
             - type: "null"
         aiPowered: { type: boolean }
+    CallCopilotInput:
+      type: object
+      required: [action, transcript, locale]
+      properties:
+        action: { type: string, enum: [speaking_prompt, hint, quiz, summary] }
+        transcript: { type: string, maxLength: 10000 }
+        locale: { type: string, enum: [en, ar] }
+    CallSummary:
+      type: object
+      required: [takeaways, terms, corrections, nextSteps]
+      properties:
+        takeaways: { type: array, minItems: 1, maxItems: 6, items: { type: string } }
+        terms: { type: array, maxItems: 10, items: { type: string } }
+        corrections: { type: array, maxItems: 6, items: { type: string } }
+        nextSteps: { type: array, minItems: 1, maxItems: 6, items: { type: string } }
+    CallCopilotResult:
+      type: object
+      required: [action, text, aiPowered]
+      properties:
+        action: { type: string, enum: [speaking_prompt, hint, quiz, summary] }
+        text: { type: string }
+        aiPowered: { type: boolean }
+        activity: { $ref: "#/components/schemas/SharedActivity" }
+        summary: { $ref: "#/components/schemas/CallSummary" }
     DailyChallenge:
       type: object
       required: [id, prompt, hint, dayNumber, completed, aiPowered]

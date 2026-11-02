@@ -3,7 +3,7 @@ import {
   SendSkillSyncMessageBody, SendSkillSyncMessageResponse,
   GenerateSkillSyncActivityBody, GenerateSkillSyncActivityResponse,
   SubmitSkillSyncActivityAttemptBody, SubmitSkillSyncActivityAttemptResponse,
-  ListSkillSyncActivitiesResponse,
+  ListSkillSyncActivitiesResponse, RequestSkillSyncCallCopilotBody, RequestSkillSyncCallCopilotResponse,
 } from "@workspace/api-zod";
 import {
   db, skillSyncMessagesTable as messages, skillSyncActivitiesTable as activities,
@@ -12,7 +12,7 @@ import {
 import { and, eq } from "drizzle-orm";
 import { randomUUID } from "node:crypto";
 import { roomContext, resolveSpeaker, roomMemory, messageDto, roomActivities, attemptDto, recordAiUse, type RoomContext } from "../lib/skillsync-room-service";
-import { answerRoomQuestion, generateRoomActivity } from "../lib/skillsync-room-ai";
+import { answerRoomQuestion, generateCallCopilotText, generateCallSummary, generateRoomActivity } from "../lib/skillsync-room-ai";
 import { withAiBudget } from "../lib/skillsync-ai-limits";
 
 const router: IRouter = Router();
@@ -30,8 +30,9 @@ export function requestedActivity(content: string): Kind | null {
   if (/simulat|محاكا/iu.test(content)) return "simulator";
   return null;
 }
-async function createActivity(context: RoomContext, kind: Kind, prompt: string, userId: string) {
-  const generated = await generateRoomActivity(kind, prompt, await roomMemory(context));
+async function createActivity(context: RoomContext, kind: Kind, prompt: string, userId: string, transcript?: string) {
+  const activityPrompt = transcript ? `${prompt}\n\nRecent call transcript to use as source material:\n${transcript}` : prompt;
+  const generated = await generateRoomActivity(kind, activityPrompt, await roomMemory(context));
   const id = randomUUID();
   await db.insert(activities).values({
     id, roomId: context.room.id, kind, title: generated.title, instructions: generated.instructions,
@@ -102,6 +103,51 @@ function sendChat(channel: "partner" | "ai"): RequestHandler {
 }
 router.post("/skillsync/rooms/:roomId/messages", sendChat("partner"));
 router.post("/skillsync/rooms/:roomId/ai-messages", sendChat("ai"));
+router.post("/skillsync/rooms/:roomId/call-copilot", async (req, res) => {
+  const body = RequestSkillSyncCallCopilotBody.safeParse(req.body);
+  if (!body.success) { res.status(400).json({ error: body.error.message }); return; }
+  const context = await roomContext(String(req.params.roomId), res.locals.userId);
+  if (!context) { res.status(404).json({ error: "Room not found." }); return; }
+  if (context.room.status === "unmatched") { res.status(409).json({ error: "This room is read-only." }); return; }
+  if (body.data.action !== "speaking_prompt" && !body.data.transcript.trim()) {
+    res.status(400).json({ error: "Add or transcribe a little call conversation first." }); return;
+  }
+  const result = await withAiBudget(async () => {
+    const memory = await roomMemory(context);
+    if (body.data.action === "speaking_prompt" || body.data.action === "hint") {
+      const answer = await generateCallCopilotText(body.data.action, body.data.transcript.trim(), body.data.locale, memory);
+      await recordAiUse(res.locals.userId, `call_${body.data.action}`, answer.aiPowered, context.room.isDemo);
+      return { action: body.data.action, text: answer.text, aiPowered: answer.aiPowered };
+    }
+    if (body.data.action === "quiz") {
+      const made = await createActivity(
+        context,
+        "quiz",
+        body.data.locale === "ar" ? "أنشئ اختباراً قصيراً عن أهم ما ورد في نص المكالمة." : "Create a short quiz from the important details in the call transcript.",
+        res.locals.userId,
+        body.data.transcript.trim(),
+      );
+      return {
+        action: "quiz",
+        text: body.data.locale === "ar" ? "أنشأت اختباراً مشتركاً من نص المكالمة." : "I created a shared quiz from your call.",
+        aiPowered: made.aiPowered, activity: made.activity,
+      };
+    }
+    const { summary, aiPowered } = await generateCallSummary(body.data.transcript.trim(), body.data.locale, memory);
+    const marker = "SKILLSYNC_CALL_SUMMARY:";
+    const content = marker + JSON.stringify(summary);
+    const [message] = await db.insert(messages).values({
+      id: randomUUID(), roomId: context.room.id, senderId: null, senderName: "SkillSync AI",
+      senderType: "assistant", channel: "partner", content,
+    }).returning();
+    await recordAiUse(res.locals.userId, "call_summary", aiPowered, context.room.isDemo);
+    return {
+      action: "summary", text: body.data.locale === "ar" ? "نُشر ملخص المكالمة في المحادثة المشتركة." : "The call summary was posted to Partner Chat.",
+      aiPowered, summary, message: messageDto(message),
+    };
+  }, { userId: res.locals.userId, roomId: context.room.id });
+  res.json(RequestSkillSyncCallCopilotResponse.parse(result));
+});
 router.get("/skillsync/rooms/:roomId/activities", async (req, res) => {
   const context = await roomContext(String(req.params.roomId), res.locals.userId);
   if (!context) { res.status(404).json({ error: "Room not found." }); return; }

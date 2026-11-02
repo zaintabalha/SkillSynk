@@ -327,3 +327,79 @@ html[lang='ar'] .display { line-height: 1.25; }
   .admin-root { background: #fff; }
   .admin-card, .kpi { break-inside: avoid; }
 }
+
+/* ---------- Live video room + co-pilot ---------- */
+.room-stage > .room-tab-panel { display: flex; min-width: 0; flex: 1; }
+.room-tab-panel[hidden] { display: none !important; }
+.video-workspace { display: grid; grid-template-columns: minmax(0, 1.35fr) minmax(340px, .85fr); gap: 0; width: 100%; min-height: 720px; background: #f8f8f2; }
+.video-workspace-wide { grid-template-columns: minmax(0, 1fr); }
+.video-column { display: flex; min-width: 0; flex-direction: column; padding: 18px; border-inline-end: 1px solid #e1e3d8; }
+.video-toolbar, .video-toolbar-actions { display: flex; align-items: center; justify-content: space-between; gap: 12px; }
+.video-toolbar h2 { margin: 5px 0 12px; color: #2f4d3c; font: 700 18px var(--app-font-serif); }
+.video-toolbar-actions { justify-content: flex-end; }
+.video-frame-wrap { flex: 1; min-height: 460px; overflow: hidden; border: 1px solid #dfe4d8; border-radius: 14px 5px; background: #17231d; }
+.video-frame-wrap iframe { width: 100%; height: 100%; min-height: 460px; border: 0; }
+.video-join-card { display: flex; min-height: 460px; flex-direction: column; align-items: center; justify-content: center; gap: 16px; padding: 24px; border: 1px dashed #cdd8c8; border-radius: 14px 5px; background: #eef1e8; text-align: center; }
+.video-join-card > p { max-width: 420px; margin: 0; color: #617364; font-size: 12px; line-height: 1.65; }
+.video-symbol { display: grid; width: 58px; height: 58px; place-items: center; border-radius: 18px 5px; background: #dce9d9; color: #3d7558; }
+.video-privacy { display: inline-flex; align-items: flex-start; gap: 7px; color: #956448; font-size: 10px; line-height: 1.5; }
+.video-privacy svg { flex: 0 0 auto; margin-top: 1px; }
+.video-link-row { display: flex; align-items: center; justify-content: space-between; gap: 10px; padding-top: 12px; }
+.video-link-row a { display: inline-flex; align-items: center; gap: 4px; color: #477555; font-size: 10px; font-weight: 700; text-decoration: none; }
+.copilot-panel { display: flex; min-width: 0; max-height: 760px; flex-direction: column; overflow: auto; }
+.copilot-tabs { display: flex; gap: 4px; padding: 10px 12px; border-bottom: 1px solid #e1e3d8; }
+.copilot-tabs button { display: inline-flex; align-items: center; gap: 6px; padding: 8px 10px; border: 0; border-radius: 8px; background: transparent; color: #758276; font-size: 10px; font-weight: 700; }
+.copilot-tabs button[aria-selected='true'] { background: #e7ece1; color: #365c43; }
+.copilot-companion { min-height: 350px; border-bottom: 1px solid #e1e3d8; }
+.copilot-companion[hidden] { display: none !important; }
+.copilot-companion .chat-pane { height: 370px; min-height: 340px; }
+.copilot-companion .message-feed { padding: 12px; }
+.copilot-companion .chat-message { max-width: 95%; }
+.copilot-companion .conversation-intro { padding: 10px 12px; }
+.copilot-companion .activities-layout { min-height: 340px; }
+.copilot-companion .activity-rail { padding: 12px; gap: 9px; }
+.copilot-companion .activity-stage { padding: 14px; }
+.copilot-companion .activity-body { gap: 12px; }
+.copilot-tools { display: grid; gap: 10px; padding: 14px; }
+.role-card { display: grid; gap: 7px; padding: 12px; border: 1px solid #e1e5d9; border-radius: 10px 4px; background: #fffef9; }
+.role-card header, .role-card header span, .transcript-heading { display: flex; align-items: center; justify-content: space-between; gap: 8px; }
+.role-card header span, .transcript-heading > span { justify-content: flex-start; color: #44654d; font-size: 10px; font-weight: 700; }
+.role-card header b { color: #b26e4f; font-size: 13px; }
+.role-card p { margin: 0; color: #506552; font-size: 12px; line-height: 1.5; }
+.role-card > small { color: #829083; font-size: 9px; }
+.call-tool-actions { display: flex; flex-wrap: wrap; align-items: center; gap: 7px; }
+.call-tool-actions .button-small { font-size: 9px; }
+.call-tool-actions .quiet-button { font-size: 9px; }
+.transcript-heading { margin-top: 3px; }
+.listening-pill { display: inline-flex; align-items: center; gap: 6px; color: #ab5647; font-size: 9px; }
+.listening-pill i { width: 7px; height: 7px; border-radius: 50%; background: #ca6550; animation: pulse 1.1s infinite; }
+.transcript-consent { display: flex; align-items: flex-start; gap: 7px; color: #68796b; font-size: 10px; line-height: 1.4; }
+.transcript-consent input { accent-color: #3f745e; }
+.transcript-controls { display: flex; flex-wrap: wrap; align-items: center; gap: 8px; }
+.transcript-controls .quiet-button { padding: 3px; font-size: 10px; }
+.transcript-note { margin: 0; color: #829083; font-size: 9px; line-height: 1.5; }
+.call-transcript { width: 100%; min-height: 68px; padding: 9px; border: 1px solid #e0e4d8; border-radius: 8px 3px; background: #fffef9; color: #465a4a; font-size: 11px; resize: vertical; }
+.call-tool-grid { display: flex; flex-wrap: wrap; gap: 7px; }
+.call-tool-grid button { font-size: 9px; }
+.whisper-card { display: flex; align-items: flex-start; gap: 8px; padding: 10px; border: 1px solid #dce7d9; border-inline-start: 3px solid #77a47d; border-radius: 4px 12px; background: #edf3e8; color: #416a4c; }
+.whisper-card p { margin: 0; font-size: 11px; line-height: 1.55; }
+.call-end-button { justify-content: center; background: #aa5b49; border-color: #aa5b49; }
+.video-restore { justify-self: center; align-self: start; margin: 12px; }
+.call-summary-card { display: grid; gap: 9px; margin: 8px 0; padding: 13px; border: 1px solid #dbe5d7; border-inline-start: 3px solid #63906d; border-radius: 5px 15px; background: #f0f4eb; color: #3c5742; }
+.call-summary-card h3 { display: flex; align-items: center; gap: 6px; margin: 0; font-size: 12px; }
+.call-summary-card > div > b { font-size: 10px; }
+.call-summary-card ul { margin: 4px 0 0; padding-inline-start: 19px; color: #596b5a; font-size: 11px; line-height: 1.5; }
+@keyframes pulse { 50% { opacity: .35; transform: scale(.8); } }
+@media (max-width: 1100px) {
+  .video-workspace { grid-template-columns: minmax(0, 1fr); }
+  .copilot-panel { max-height: none; border-top: 1px solid #e1e3d8; }
+}
+@media (max-width: 760px) {
+  .video-column { padding: 10px; }
+  .video-toolbar { align-items: flex-start; }
+  .video-toolbar h2 { max-width: 190px; font-size: 15px; }
+  .video-toolbar-actions { flex-direction: column; align-items: flex-end; gap: 0; }
+  .video-frame-wrap, .video-frame-wrap iframe, .video-join-card { min-height: 360px; }
+  .video-link-row { align-items: flex-start; flex-direction: column; }
+  .copilot-companion .chat-pane { height: 360px; min-height: 330px; }
+}

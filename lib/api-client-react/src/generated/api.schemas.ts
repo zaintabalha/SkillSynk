@@ -192,6 +192,8 @@ export interface ProjectSubmission {
 export type LearningRoomParticipantsItem = {
   userId: string;
   displayName: string;
+  teachSkill: string;
+  learnSkill: string;
 };
 
 export type LearningRoomStatus = typeof LearningRoomStatus[keyof typeof LearningRoomStatus];
@@ -364,6 +366,66 @@ export interface ChatSendResult {
   message: ChatMessage;
   assistantMessage: ChatMessage | null;
   aiPowered: boolean;
+}
+
+export type CallCopilotInputAction = typeof CallCopilotInputAction[keyof typeof CallCopilotInputAction];
+
+
+export const CallCopilotInputAction = {
+  speaking_prompt: 'speaking_prompt',
+  hint: 'hint',
+  quiz: 'quiz',
+  summary: 'summary',
+} as const;
+
+export type CallCopilotInputLocale = typeof CallCopilotInputLocale[keyof typeof CallCopilotInputLocale];
+
+
+export const CallCopilotInputLocale = {
+  en: 'en',
+  ar: 'ar',
+} as const;
+
+export interface CallCopilotInput {
+  action: CallCopilotInputAction;
+  /** @maxLength 10000 */
+  transcript: string;
+  locale: CallCopilotInputLocale;
+}
+
+export interface CallSummary {
+  /**
+     * @minItems 1
+     * @maxItems 6
+     */
+  takeaways: string[];
+  /** @maxItems 10 */
+  terms: string[];
+  /** @maxItems 6 */
+  corrections: string[];
+  /**
+     * @minItems 1
+     * @maxItems 6
+     */
+  nextSteps: string[];
+}
+
+export type CallCopilotResultAction = typeof CallCopilotResultAction[keyof typeof CallCopilotResultAction];
+
+
+export const CallCopilotResultAction = {
+  speaking_prompt: 'speaking_prompt',
+  hint: 'hint',
+  quiz: 'quiz',
+  summary: 'summary',
+} as const;
+
+export interface CallCopilotResult {
+  action: CallCopilotResultAction;
+  text: string;
+  aiPowered: boolean;
+  activity?: SharedActivity;
+  summary?: CallSummary;
 }
 
 export interface DailyChallenge {

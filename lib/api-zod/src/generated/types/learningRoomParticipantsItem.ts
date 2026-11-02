@@ -9,4 +9,6 @@
 export type LearningRoomParticipantsItem = {
   userId: string;
   displayName: string;
+  teachSkill: string;
+  learnSkill: string;
 };

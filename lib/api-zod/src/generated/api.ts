@@ -238,7 +238,9 @@ export const getSkillSyncRoomResponseActivitiesItemAttemptsItemScoreMax = 100;
 export const GetSkillSyncRoomResponse = zod.object({
   "participants": zod.array(zod.object({
   "userId": zod.string(),
-  "displayName": zod.string()
+  "displayName": zod.string(),
+  "teachSkill": zod.string(),
+  "learnSkill": zod.string()
 })).optional(),
   "roomId": zod.string(),
   "partnerUserId": zod.string(),
@@ -418,6 +420,90 @@ export const SendSkillSyncAiMessageResponse = zod.object({
   "createdAt": zod.coerce.date()
 }),zod.null()]),
   "aiPowered": zod.boolean()
+})
+
+
+/**
+ * @summary Run a transcript-based SkillSync AI call co-pilot action
+ */
+export const RequestSkillSyncCallCopilotParams = zod.object({
+  "roomId": zod.coerce.string()
+})
+
+export const requestSkillSyncCallCopilotBodyTranscriptMax = 10000;
+
+
+
+export const RequestSkillSyncCallCopilotBody = zod.object({
+  "action": zod.enum(['speaking_prompt', 'hint', 'quiz', 'summary']),
+  "transcript": zod.string().max(requestSkillSyncCallCopilotBodyTranscriptMax),
+  "locale": zod.enum(['en', 'ar'])
+})
+
+export const requestSkillSyncCallCopilotResponseActivityContentQuestionsItemAnswerIndexMin = 0;
+
+export const requestSkillSyncCallCopilotResponseActivityAttemptsItemScoreMin = 0;
+export const requestSkillSyncCallCopilotResponseActivityAttemptsItemScoreMax = 100;
+
+export const requestSkillSyncCallCopilotResponseSummaryTakeawaysMax = 6;
+
+export const requestSkillSyncCallCopilotResponseSummaryTermsMax = 10;
+
+export const requestSkillSyncCallCopilotResponseSummaryCorrectionsMax = 6;
+
+export const requestSkillSyncCallCopilotResponseSummaryNextStepsMax = 6;
+
+
+
+export const RequestSkillSyncCallCopilotResponse = zod.object({
+  "action": zod.enum(['speaking_prompt', 'hint', 'quiz', 'summary']),
+  "text": zod.string(),
+  "aiPowered": zod.boolean(),
+  "activity": zod.object({
+  "id": zod.string(),
+  "roomId": zod.string(),
+  "kind": zod.enum(['quiz', 'flashcards', 'simulator']),
+  "title": zod.string(),
+  "instructions": zod.string(),
+  "content": zod.object({
+  "questions": zod.array(zod.object({
+  "id": zod.string(),
+  "prompt": zod.string(),
+  "choices": zod.array(zod.string()),
+  "answerIndex": zod.number().int().min(requestSkillSyncCallCopilotResponseActivityContentQuestionsItemAnswerIndexMin),
+  "explanation": zod.string()
+})).optional(),
+  "flashcards": zod.array(zod.object({
+  "front": zod.string(),
+  "back": zod.string()
+})).optional(),
+  "simulator": zod.object({
+  "mode": zod.enum(['coding', 'language']),
+  "scenario": zod.string(),
+  "prompt": zod.string(),
+  "starter": zod.string(),
+  "expected": zod.string(),
+  "hint": zod.string()
+}).optional()
+}),
+  "isDemo": zod.boolean(),
+  "createdAt": zod.coerce.date(),
+  "attempts": zod.array(zod.object({
+  "id": zod.string(),
+  "activityId": zod.string(),
+  "userId": zod.string(),
+  "displayName": zod.string(),
+  "responses": zod.array(zod.string()),
+  "score": zod.number().int().min(requestSkillSyncCallCopilotResponseActivityAttemptsItemScoreMin).max(requestSkillSyncCallCopilotResponseActivityAttemptsItemScoreMax).nullable(),
+  "createdAt": zod.coerce.date()
+}))
+}).optional(),
+  "summary": zod.object({
+  "takeaways": zod.array(zod.string()).min(1).max(requestSkillSyncCallCopilotResponseSummaryTakeawaysMax),
+  "terms": zod.array(zod.string()).max(requestSkillSyncCallCopilotResponseSummaryTermsMax),
+  "corrections": zod.array(zod.string()).max(requestSkillSyncCallCopilotResponseSummaryCorrectionsMax),
+  "nextSteps": zod.array(zod.string()).min(1).max(requestSkillSyncCallCopilotResponseSummaryNextStepsMax)
+}).optional()
 })
 
 

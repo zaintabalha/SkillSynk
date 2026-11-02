@@ -10,6 +10,60 @@ const contentSchema = z.object({
   flashcards: z.array(z.object({ front: z.string(), back: z.string() })).min(1).max(20).optional(),
   simulator: z.object({ mode: z.enum(["coding", "language"]), scenario: z.string(), prompt: z.string(), starter: z.string(), expected: z.string(), hint: z.string() }).optional(),
 });
+export const callSummarySchema = z.object({
+  takeaways: z.array(z.string().min(1).max(500)).min(1).max(6),
+  terms: z.array(z.string().min(1).max(160)).max(10),
+  corrections: z.array(z.string().min(1).max(500)).max(6),
+  nextSteps: z.array(z.string().min(1).max(500)).min(1).max(6),
+});
+export type CallSummary = z.infer<typeof callSummarySchema>;
+
+export async function generateCallCopilotText(
+  action: "speaking_prompt" | "hint",
+  transcript: string,
+  locale: "en" | "ar",
+  memory: Memory,
+) {
+  const language = locale === "ar" ? "Arabic" : "English";
+  const task = action === "speaking_prompt"
+    ? "Create one short, practical speaking prompt that alternates teaching and learning between these partners."
+    : "Give a precise, concise rescue hint based only on the transcript. Explain or translate the last difficult term. Say when the transcript lacks enough evidence; do not invent context.";
+  const result = await generateJson(
+    `${task} Respond entirely in ${language}, without student names or provider names. Return JSON {"text":"..."}. Recent speech transcript: ${JSON.stringify(transcript)}. Full shared memory (profiles, plan, entire conversation): ${JSON.stringify(memory)}`,
+  );
+  const fallback = action === "speaking_prompt"
+    ? locale === "ar"
+      ? "مهمة نقاش: يشرح أحدكما فكرة من خطته في دقيقة، ثم يعيد الآخر شرحها بمثال من مشروعكما."
+      : "Speaking prompt: one partner explains an idea from the plan in a minute; the other restates it with an example from your project."
+    : locale === "ar"
+      ? "التلميح التجريبي: قسّما الفكرة إلى خطوة صغيرة واشرحا معناها بكلماتكما. يحتاج التلميح المباشر إلى تفعيل الاتصال الآمن بالذكاء الاصطناعي."
+      : "Demo hint: break the idea into one small step and explain it in your own words. A live tailored hint needs the secure AI connection.";
+  return {
+    text: sanitizeText(typeof result?.text === "string" ? result.text : fallback, memory.students),
+    aiPowered: Boolean(result && typeof result.text === "string"),
+  };
+}
+
+export async function generateCallSummary(
+  transcript: string,
+  locale: "en" | "ar",
+  memory: Memory,
+) {
+  const language = locale === "ar" ? "Arabic" : "English";
+  const result = await generateJson(
+    `Summarize these study partners' call transcript in ${language}. Use only transcript evidence and their full shared learning memory. Do not invent errors. Return JSON {"takeaways":["..."],"terms":["..."],"corrections":["..."],"nextSteps":["..."]}; at least one takeaway and next step. Avoid personal names and provider names. Transcript: ${JSON.stringify(transcript)}. Shared memory: ${JSON.stringify(memory)}`,
+  );
+  const parsed = callSummarySchema.safeParse(result);
+  if (parsed.success) {
+    const clean = JSON.parse(sanitizeText(JSON.stringify(parsed.data), memory.students)) as CallSummary;
+    return { summary: clean, aiPowered: true };
+  }
+  const excerpts = transcript.split(/(?<=[.!?؟۔])\s+/u).map((line) => line.trim()).filter(Boolean).slice(-2);
+  const summary: CallSummary = locale === "ar"
+    ? { takeaways: [excerpts[0] || "لم يتوفر نص كافٍ لتحديد ما تعلّمه الشريكان."], terms: [], corrections: [], nextSteps: ["راجعا الخطة المشتركة واختارا خطوة صغيرة تالية."] }
+    : { takeaways: [excerpts[0] || "There was not enough transcript to identify a learning takeaway."], terms: [], corrections: [], nextSteps: ["Review the shared plan and choose one small next step."] };
+  return { summary, aiPowered: false };
+}
 
 export async function answerRoomQuestion(prompt: string, memory: Memory, quoted?: string) {
   const result = await generateJson(

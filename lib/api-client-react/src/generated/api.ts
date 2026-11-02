@@ -35,6 +35,8 @@ import type {
   AdminRoom,
   AdminUser,
   AiLimitedResponse,
+  CallCopilotInput,
+  CallCopilotResult,
   ChatMessageInput,
   ChatSendResult,
   ConnectInput,
@@ -1121,6 +1123,95 @@ export const useSendSkillSyncAiMessage = <TError = ErrorType<AiLimitedResponse>,
         TContext
       > => {
       return useMutation(getSendSkillSyncAiMessageMutationOptions(options), queryClient);
+    }
+
+export const getRequestSkillSyncCallCopilotUrl = (roomId: string,) => {
+
+
+
+
+  return `/api/skillsync/rooms/${roomId}/call-copilot`
+}
+
+/**
+ * @summary Run a transcript-based SkillSync AI call co-pilot action
+ */
+export const requestSkillSyncCallCopilot = async (roomId: string,
+    callCopilotInput: CallCopilotInput, options?: Parameters<typeof customFetch>[1]): Promise<CallCopilotResult> => {
+
+    const getHeaders = (h?: NonNullable<RequestInit['headers']>): Record<string, string | readonly string[]> => {
+    if (!h) return {};
+    if (h instanceof Headers) return Object.fromEntries(h.entries());
+    if (Symbol.iterator in h) {
+      return Object.fromEntries(
+        Array.from(h as Iterable<Iterable<string>>, (entry) => Array.from(entry) as [string, string]),
+      );
+    }
+    const headers: Record<string, string | readonly string[]> = {};
+    for (const [name, value] of Object.entries<string | readonly string[] | undefined>(h)) {
+      if (value !== undefined) headers[name] = value;
+    }
+    return headers;
+  };
+return customFetch<CallCopilotResult>(getRequestSkillSyncCallCopilotUrl(roomId),
+  {
+    ...options,
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json', ...getHeaders(options?.headers) },
+    body: JSON.stringify(callCopilotInput)
+  }
+);}
+
+
+
+
+
+export const getRequestSkillSyncCallCopilotMutationKey = () => ['requestSkillSyncCallCopilot'] as const;
+
+export const getRequestSkillSyncCallCopilotMutationOptions = <TError = ErrorType<AiLimitedResponse>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof requestSkillSyncCallCopilot>>, TError,RequestSkillSyncCallCopilotMutationVariables, TContext>, request?: SecondParameter<typeof customFetch>}
+): UseMutationOptions<Awaited<ReturnType<typeof requestSkillSyncCallCopilot>>, TError,RequestSkillSyncCallCopilotMutationVariables, TContext> => {
+
+const mutationKey = getRequestSkillSyncCallCopilotMutationKey();
+const {mutation: mutationOptions, request: requestOptions} = options ?
+      options.mutation && 'mutationKey' in options.mutation && options.mutation.mutationKey ?
+      options
+      : {...options, mutation: {...options.mutation, mutationKey}}
+      : {mutation: { mutationKey, }, request: undefined};
+
+
+
+
+      const mutationFn: MutationFunction<Awaited<ReturnType<typeof requestSkillSyncCallCopilot>>, RequestSkillSyncCallCopilotMutationVariables> = (props) => {
+          const {roomId,data} = props ?? {};
+
+          return  requestSkillSyncCallCopilot(roomId,data,requestOptions)
+        }
+
+
+
+
+
+
+  return  { mutationFn, ...mutationOptions }}
+
+    export type RequestSkillSyncCallCopilotMutationResult = NonNullable<Awaited<ReturnType<typeof requestSkillSyncCallCopilot>>>
+    export type RequestSkillSyncCallCopilotMutationBody = BodyType<CallCopilotInput>
+    export type RequestSkillSyncCallCopilotMutationError = ErrorType<AiLimitedResponse>
+    export type RequestSkillSyncCallCopilotMutationVariables = {roomId: string;data: BodyType<CallCopilotInput>}
+
+    /**
+ * @summary Run a transcript-based SkillSync AI call co-pilot action
+ */
+export const useRequestSkillSyncCallCopilot = <TError = ErrorType<AiLimitedResponse>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof requestSkillSyncCallCopilot>>, TError,RequestSkillSyncCallCopilotMutationVariables, TContext>, request?: SecondParameter<typeof customFetch>}
+ , queryClient?: QueryClient): UseMutationResult<
+        Awaited<ReturnType<typeof requestSkillSyncCallCopilot>>,
+        TError,
+        RequestSkillSyncCallCopilotMutationVariables,
+        TContext
+      > => {
+      return useMutation(getRequestSkillSyncCallCopilotMutationOptions(options), queryClient);
     }
 
 export const getListSkillSyncActivitiesUrl = (roomId: string,) => {

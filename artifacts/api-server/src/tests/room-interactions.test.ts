@@ -10,7 +10,7 @@ import {
 } from "@workspace/db";
 import interactionRouter, { explicitlyInvokesAi, requestedActivity } from "../routes/skillsync-room-interactions";
 import { isGeminiEnabled } from "../lib/skillsync-ai";
-import type { ChatSendResult, SharedActivity, ActivityAttempt } from "@workspace/api-zod";
+import type { ChatSendResult, SharedActivity, ActivityAttempt, CallCopilotResult } from "@workspace/api-zod";
 import "./ai-limits.test";
 import { aiLimitErrorHandler, withAiBudget } from "../lib/skillsync-ai-limits";
 
@@ -103,8 +103,21 @@ test("partner chat, shared activities, and simulation permission boundaries", as
       assert.equal(verify.body.assistantMessage?.replyToMessageId, simulated.body.message.id);
       assert.match(verify.body.assistantMessage?.content ?? "", /not been verified/);
     }
+    const speakingPrompt = await request<CallCopilotResult>("/call-copilot", { action: "speaking_prompt", transcript: "", locale: "en" });
+    assert.equal(speakingPrompt.status, 200);
+    assert.equal(speakingPrompt.body.action, "speaking_prompt");
+    const liveHint = await request<CallCopilotResult>("/call-copilot", { action: "hint", transcript: "We discussed an array of flashcards.", locale: "en" });
+    assert.equal(liveHint.status, 200);
+    const callQuiz = await request<CallCopilotResult>("/call-copilot", { action: "quiz", transcript: "A JavaScript array stores related flashcard objects.", locale: "en" });
+    assert.equal(callQuiz.status, 200);
+    assert.equal(callQuiz.body.activity?.kind, "quiz");
+    const callSummary = await request<CallCopilotResult>("/call-copilot", { action: "summary", transcript: "We learned that arrays store a sequence of values.", locale: "en" });
+    assert.equal(callSummary.status, 200);
+    assert.ok(callSummary.body.summary);
+    assert.ok((await db.select().from(messages).where(eq(messages.roomId, id))).some((message) => message.content.startsWith("SKILLSYNC_CALL_SUMMARY:")));
     await db.update(rooms).set({ status: "unmatched" }).where(eq(rooms.id, id));
     assert.equal((await request("/messages", { content: "Read-only check" })).status, 409);
+    assert.equal((await request("/call-copilot", { action: "hint", transcript: "Text", locale: "en" })).status, 409);
   } finally {
     await new Promise<void>((resolve) => server.close(() => resolve()));
     await db.delete(attempts).where(eq(attempts.roomId, id));

@@ -10,6 +10,17 @@ import { aiErrorMessage } from '@/lib/ai-error';
 export const AI_MENTION = /(^|\s)@(ai|skillsync)\b/i;
 
 type ChatProps = { room: LearningRoom; actingUserId: string | null; viewerId: string | null; onOpenActivity: (id: string) => void };
+const CALL_SUMMARY_MARKER = 'SKILLSYNC_CALL_SUMMARY:';
+type CallSummary = { takeaways: string[]; terms: string[]; corrections: string[]; nextSteps: string[] };
+
+function callSummary(content: string): CallSummary | null {
+  if (!content.startsWith(CALL_SUMMARY_MARKER)) return null;
+  try {
+    const value = JSON.parse(content.slice(CALL_SUMMARY_MARKER.length)) as Partial<CallSummary>;
+    if (![value.takeaways, value.terms, value.corrections, value.nextSteps].every((items) => Array.isArray(items) && items.every((item) => typeof item === 'string'))) return null;
+    return value as CallSummary;
+  } catch { return null; }
+}
 
 function useSendHelpers(roomId: string) {
   const client = useQueryClient();
@@ -23,13 +34,22 @@ function MessageBubble({ message, own, quoted, onVerify, onOpenActivity }: { mes
   const { t, locale } = useI18n();
   const isAi = message.senderType === 'assistant';
   const isMod = message.senderType === 'moderator';
+  const summary = callSummary(message.content);
   const name = isAi ? t('aiName') : isMod ? t('guide') : message.senderName;
   return <div className={`chat-message ${own ? 'own-message' : ''} ${isAi ? 'ai-message' : ''} ${isMod ? 'moderator-message' : ''}`} data-testid={`message-${message.id}`}>
     <span className="message-avatar">{isAi ? <Sparkles size={13} /> : isMod ? <ShieldCheck size={13} /> : initials(message.senderName)}</span>
     <div className="message-content">
       <div className="message-meta"><b>{name}</b><time>{formatTime(message.createdAt, locale)}</time></div>
       {quoted && <div className="message-quote"><Quote size={11} /><span><b>{t('repliedTo', { name: quoted.senderType === 'assistant' ? t('aiName') : quoted.senderName })}</b><span dir="auto">{quoted.content}</span></span></div>}
-      <p dir="auto">{message.content}</p>
+      {summary ? <section className="call-summary-card">
+        <h3><Sparkles size={14} />{t('callSummaryTitle')}</h3>
+        {([
+          [t('summaryTakeaways'), summary.takeaways],
+          [t('summaryTerms'), summary.terms],
+          [t('summaryCorrections'), summary.corrections],
+          [t('summaryNextSteps'), summary.nextSteps],
+        ] as const).filter(([, items]) => items.length > 0).map(([title, items]) => <div key={title}><b>{title}</b><ul>{items.map((item, index) => <li key={index} dir="auto">{item}</li>)}</ul></div>)}
+      </section> : <p dir="auto">{message.content}</p>}
       <div className="message-actions">
         {message.activityId && <button className="message-chip chip-strong" onClick={() => onOpenActivity(message.activityId as string)} data-testid={`button-open-activity-${message.id}`}><SquareArrowOutUpRight size={12} /> {t('openActivity')}</button>}
         {onVerify && <button className="message-chip" onClick={onVerify} data-testid={`button-verify-${message.id}`}><AtSign size={12} /> {t('verifyWithAi')}</button>}

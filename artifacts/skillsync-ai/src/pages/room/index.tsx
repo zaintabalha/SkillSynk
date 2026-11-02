@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useState } from 'react';
 import { useUser } from '@clerk/react';
-import { ArrowLeft, Flag, FlaskConical, Layers, MessageCircle, Route, Sparkles } from 'lucide-react';
+import { ArrowLeft, Flag, FlaskConical, Layers, MessageCircle, Route, Sparkles, Video } from 'lucide-react';
 import { getGetSkillSyncRoomQueryKey, useGetSkillSyncRoom } from '@workspace/api-client-react';
 import { Link, useParams } from 'wouter';
 import { AppShell, ErrorState, LoadingScreen, StatusPill } from '@/components/shell';
@@ -9,13 +9,15 @@ import { useI18n, type DictKey } from '@/lib/i18n';
 import { AiChat, PartnerChat } from './chat';
 import { ActivitiesTab } from './activities';
 import { PlanTab } from './plan';
+import { VideoRoom } from './video';
 
-type Tab = 'partner' | 'ai' | 'activities' | 'plan';
+type Tab = 'partner' | 'ai' | 'activities' | 'plan' | 'video';
 const tabs: { id: Tab; label: DictKey; icon: typeof MessageCircle }[] = [
   { id: 'partner', label: 'tabPartner', icon: MessageCircle },
   { id: 'ai', label: 'tabAi', icon: Sparkles },
   { id: 'activities', label: 'tabActivities', icon: Layers },
   { id: 'plan', label: 'tabPlan', icon: Route },
+  { id: 'video', label: 'tabVideo', icon: Video },
 ];
 
 export function RoomDetailPage() {
@@ -39,7 +41,7 @@ export function RoomDetailPage() {
   if (query.isLoading) return <AppShell active="/rooms" wide><LoadingScreen /></AppShell>;
   if (query.isError || !room) return <AppShell active="/rooms" wide><ErrorState label={t('roomOpenErrorLabel')} onRetry={() => query.refetch()} /></AppShell>;
   const acting = simEnabled ? actingUserId : null;
-  const counts: Record<Tab, number | null> = { partner: room.messages.filter((m) => m.channel === 'partner').length, ai: room.messages.filter((m) => m.channel === 'ai').length, activities: room.activities.length, plan: null };
+  const counts: Record<Tab, number | null> = { partner: room.messages.filter((m) => m.channel === 'partner').length, ai: room.messages.filter((m) => m.channel === 'ai').length, activities: room.activities.length, plan: null, video: null };
 
   return <AppShell active="/rooms" wide><div className="room-full page-enter">
     <Link href="/rooms" className="back-link"><ArrowLeft size={14} className="flip-rtl" /> {t('allLearningRooms')}</Link>
@@ -49,10 +51,11 @@ export function RoomDetailPage() {
     <nav className="room-tabbar" role="tablist">{tabs.map(({ id, label, icon: Icon }) => <button key={id} role="tab" aria-selected={tab === id} className={tab === id ? 'tab-active' : ''} onClick={() => setTab(id)} data-testid={`tab-${id}`}><Icon size={15} /><span>{t(label)}</span>{counts[id] !== null && <em>{counts[id]}</em>}</button>)}</nav>
     {room.status === 'unmatched' && <p role="status">{t('roomReadOnly')}</p>}
     <div className="room-stage">
-      {tab === 'partner' && <PartnerChat room={room} actingUserId={acting} viewerId={user?.id ?? null} onOpenActivity={openActivity} />}
-      {tab === 'ai' && <AiChat room={room} actingUserId={acting} viewerId={user?.id ?? null} onOpenActivity={openActivity} />}
-      {tab === 'activities' && <ActivitiesTab room={room} actingUserId={acting} selectedId={activityId} onSelect={selectActivity} />}
-      {tab === 'plan' && <PlanTab room={room} />}
+      <div hidden={tab !== 'partner'} className="room-tab-panel">{tab === 'partner' && <PartnerChat room={room} actingUserId={acting} viewerId={user?.id ?? null} onOpenActivity={openActivity} />}</div>
+      <div hidden={tab !== 'ai'} className="room-tab-panel">{tab === 'ai' && <AiChat room={room} actingUserId={acting} viewerId={user?.id ?? null} onOpenActivity={openActivity} />}</div>
+      <div hidden={tab !== 'activities'} className="room-tab-panel">{tab === 'activities' && <ActivitiesTab room={room} actingUserId={acting} selectedId={activityId} onSelect={selectActivity} />}</div>
+      <div hidden={tab !== 'plan'} className="room-tab-panel">{tab === 'plan' && <PlanTab room={room} />}</div>
+      <div hidden={tab !== 'video'} className="room-tab-panel"><VideoRoom room={room} actingUserId={acting} viewerId={user?.id ?? null} onOpenActivity={openActivity} selectedId={activityId} onSelectActivity={selectActivity} /></div>
     </div>
     {reporting && <ReportDialog roomId={room.roomId} reportedUserId={room.partnerUserId} onClose={() => setReporting(false)} />}
   </div></AppShell>;

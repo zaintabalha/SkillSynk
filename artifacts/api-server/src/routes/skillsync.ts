@@ -507,7 +507,12 @@ router.get("/skillsync/rooms/:roomId", async (req, res): Promise<void> => {
       .where(eq(skillSyncSubmissionsTable.roomId, context.room.id))
       .orderBy(desc(skillSyncSubmissionsTable.submittedAt)),
     roomActivities(context.room.id),
-    db.select({ userId: skillSyncProfilesTable.userId, displayName: skillSyncProfilesTable.displayName }).from(skillSyncProfilesTable).where(inArray(skillSyncProfilesTable.userId, [context.match.userAId, context.match.userBId])),
+    db.select({
+      userId: skillSyncProfilesTable.userId,
+      displayName: skillSyncProfilesTable.displayName,
+      teachSkill: skillSyncProfilesTable.teachSkill,
+      learnSkill: skillSyncProfilesTable.learnSkill,
+    }).from(skillSyncProfilesTable).where(inArray(skillSyncProfilesTable.userId, [context.match.userAId, context.match.userBId])),
   ]);
   res.json(
     GetSkillSyncRoomResponse.parse({
