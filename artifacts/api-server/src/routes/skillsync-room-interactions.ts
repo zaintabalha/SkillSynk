@@ -14,6 +14,7 @@ import { randomUUID } from "node:crypto";
 import { roomContext, resolveSpeaker, roomMemory, messageDto, roomActivities, attemptDto, recordAiUse, type RoomContext } from "../lib/skillsync-room-service";
 import { answerRoomQuestion, generateCallCopilotText, generateCallSummary, generateRoomActivity } from "../lib/skillsync-room-ai";
 import { withAiBudget } from "../lib/skillsync-ai-limits";
+import { logger } from "../lib/logger";
 
 const router: IRouter = Router();
 type Kind = "quiz" | "flashcards" | "simulator";
@@ -30,6 +31,18 @@ export function requestedActivity(content: string): Kind | null {
   if (/simulat|محاكا/iu.test(content)) return "simulator";
   return null;
 }
+function recordAiUseNonBlocking(context: RoomContext, userId: string, feature: string, aiPowered: boolean) {
+  void (async () => {
+    try {
+      await recordAiUse(userId, feature, aiPowered, context.room.isDemo);
+    } catch (error) {
+      logger.warn(
+        { err: error, feature, roomId: context.room.id },
+        "AI usage telemetry failed; continuing the user request",
+      );
+    }
+  })();
+}
 async function createActivity(context: RoomContext, kind: Kind, prompt: string, userId: string, transcript?: string) {
   const activityPrompt = transcript ? `${prompt}\n\nRecent call transcript to use as source material:\n${transcript}` : prompt;
   const generated = await generateRoomActivity(kind, activityPrompt, await roomMemory(context));
@@ -38,7 +51,7 @@ async function createActivity(context: RoomContext, kind: Kind, prompt: string, 
     id, roomId: context.room.id, kind, title: generated.title, instructions: generated.instructions,
     content: generated.content, createdBy: userId, isDemo: !generated.aiPowered,
   });
-  await recordAiUse(userId, kind, generated.aiPowered, context.room.isDemo);
+  recordAiUseNonBlocking(context, userId, kind, generated.aiPowered);
   const activity = (await roomActivities(context.room.id)).find((item) => item.id === id)!;
   return { activity, aiPowered: generated.aiPowered };
 }
@@ -77,7 +90,7 @@ function sendChat(channel: "partner" | "ai"): RequestHandler {
           const result = await answerRoomQuestion(prompt, await roomMemory(context), quote?.content);
           content = result.answer;
           aiPowered = result.aiPowered;
-          await recordAiUse(res.locals.userId, quote ? "verification" : "shared_chat", aiPowered, context.room.isDemo);
+          recordAiUseNonBlocking(context, res.locals.userId, quote ? "verification" : "shared_chat", aiPowered);
         }
       }
       // Save only after admission, including provider admission, so 429 retries do not duplicate messages.
@@ -116,7 +129,7 @@ router.post("/skillsync/rooms/:roomId/call-copilot", async (req, res) => {
     const memory = await roomMemory(context);
     if (body.data.action === "speaking_prompt" || body.data.action === "hint") {
       const answer = await generateCallCopilotText(body.data.action, body.data.transcript.trim(), body.data.locale, memory);
-      await recordAiUse(res.locals.userId, `call_${body.data.action}`, answer.aiPowered, context.room.isDemo);
+      recordAiUseNonBlocking(context, res.locals.userId, `call_${body.data.action}`, answer.aiPowered);
       return { action: body.data.action, text: answer.text, aiPowered: answer.aiPowered };
     }
     if (body.data.action === "quiz") {
@@ -140,7 +153,7 @@ router.post("/skillsync/rooms/:roomId/call-copilot", async (req, res) => {
       id: randomUUID(), roomId: context.room.id, senderId: null, senderName: "SkillSync AI",
       senderType: "assistant", channel: "partner", content,
     }).returning();
-    await recordAiUse(res.locals.userId, "call_summary", aiPowered, context.room.isDemo);
+    recordAiUseNonBlocking(context, res.locals.userId, "call_summary", aiPowered);
     return {
       action: "summary", text: body.data.locale === "ar" ? "نُشر ملخص المكالمة في المحادثة المشتركة." : "The call summary was posted to Partner Chat.",
       aiPowered, summary, message: messageDto(message),

@@ -125,7 +125,7 @@ export function MatchesPage() {
       <p className="match-bio" dir="auto">{c.bio}</p><div className="why-match"><Sparkles size={14} /><span dir="auto">{c.whyMatch}</span></div>
       <button className="button match-action" onClick={() => startRoom(c)} disabled={connect.isPending} data-testid={`button-start-room-${c.userId}`}>{connectingId === c.userId ? <LoaderCircle className="spin" size={16} /> : <MessageCircle size={16} />}{connectingId === c.userId ? t('openingRoom') : t('startRoom')} <ArrowRight size={15} className="flip-rtl" /></button>
       {errorId === c.userId && <p className="inline-error">{aiErrorMessage(connect.error, t('roomOpenError'))}</p>}
-    </article>)}</div> : <EmptyState title={t('noMatchesTitle')} detail={t('noMatchesDetail')} action={<Link href="/profile" className="button button-secondary">{t('setupProfile')} <ArrowRight size={15} className="flip-rtl" /></Link>} />}
+     </article>)}</div> : <EmptyState title={t('noMatchesTitle')} detail={t('noMatchesDetail')} action={<Link href="/rooms" className="button button-secondary">{t('yourRooms')} <ArrowRight size={15} className="flip-rtl" /></Link>} />}
   </div></AppShell>;
 }
 

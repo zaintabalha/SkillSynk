@@ -117,7 +117,7 @@ export async function generateRoomActivity(kind: "quiz" | "flashcards" | "simula
   const groundingInstruction = kind === "quiz"
     ? "Ground it in the requested topic and compact learning plan."
     : "Ground it in the learning plan and recent student messages.";
-  const maxOutputTokens = kind === "quiz" ? 750 : kind === "flashcards" ? 900 : 800;
+  const maxOutputTokens = kind === "quiz" ? 1400 : kind === "flashcards" ? 900 : 800;
   const fallback: SkillSyncActivityContent = kind === "quiz" ? {
     questions: [
       { id: "q1", prompt: `What is the best first step for ${topic}?`, choices: ["Agree on one small, testable goal", "Build unrelated parts without discussing them", "Skip partner feedback"], answerIndex: 0, explanation: "A shared, testable goal keeps both skills connected." },
