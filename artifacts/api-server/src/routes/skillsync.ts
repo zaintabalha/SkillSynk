@@ -281,7 +281,7 @@ async function listRoomSummaries(userId: string) {
       projectTitle: row.projectTitle,
       status: row.status,
       progress: row.progress,
-      isDemo: row.isDemo,
+      isDemo: row.isDemo === true,
       lastMessage: latestMessages.get(row.roomId) ?? null,
       updatedAt: iso(row.updatedAt),
     };
