@@ -4,7 +4,7 @@ import {
   skillSyncActivitiesTable as activities, skillSyncActivityAttemptsTable as attempts,
   skillSyncAiUsageTable as usage,
 } from "@workspace/db";
-import { eq, inArray, asc } from "drizzle-orm";
+import { eq, inArray, asc, desc } from "drizzle-orm";
 import { randomUUID } from "node:crypto";
 import { ensureDemoData } from "./skillsync-demo";
 
@@ -37,13 +37,18 @@ export function messageDto(message: typeof messages.$inferSelect) {
   };
 }
 export async function roomMemory(context: RoomContext) {
-  const conversation = await db.select().from(messages).where(eq(messages.roomId, context.room.id)).orderBy(asc(messages.createdAt));
+  const conversation = await db
+    .select()
+    .from(messages)
+    .where(eq(messages.roomId, context.room.id))
+    .orderBy(desc(messages.createdAt))
+    .limit(12);
   return {
     students: context.students.map(({ userId, displayName, university, teachSkill, learnSkill, bio }) => ({
       userId, displayName, university, teachSkill, learnSkill, bio,
     })),
     curriculum: context.room.curriculum,
-    conversation: conversation.map(messageDto),
+    conversation: conversation.reverse().map(messageDto),
   };
 }
 export function attemptDto(attempt: typeof attempts.$inferSelect) {

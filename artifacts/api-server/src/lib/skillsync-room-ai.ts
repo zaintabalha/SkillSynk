@@ -1,6 +1,6 @@
 import { z } from "zod/v4";
 import type { SkillSyncActivityContent } from "@workspace/db";
-import { GeminiProviderError, generateJson, sanitizeText } from "./skillsync-ai";
+import { compactSharedMemory, GeminiProviderError, generateJson, sanitizeText } from "./skillsync-ai";
 import type { roomMemory } from "./skillsync-room-service";
 
 type Memory = Awaited<ReturnType<typeof roomMemory>>;
@@ -10,6 +10,14 @@ const contentSchema = z.object({
   flashcards: z.array(z.object({ front: z.string(), back: z.string() })).min(1).max(20).optional(),
   simulator: z.object({ mode: z.enum(["coding", "language"]), scenario: z.string(), prompt: z.string(), starter: z.string(), expected: z.string(), hint: z.string() }).optional(),
 });
+
+function compactPrompt(value: string, maxChars: number): string {
+  if (value.length <= maxChars) return value;
+  const prefixChars = Math.min(220, Math.floor(maxChars / 4));
+  const suffixChars = maxChars - prefixChars - 30;
+  return `${value.slice(0, prefixChars)}\n[...middle omitted...]\n${value.slice(-suffixChars)}`;
+}
+
 export const callSummarySchema = z.object({
   takeaways: z.array(z.string().min(1).max(500)).min(1).max(6),
   terms: z.array(z.string().min(1).max(160)).max(10),
@@ -25,11 +33,13 @@ export async function generateCallCopilotText(
   memory: Memory,
 ) {
   const language = locale === "ar" ? "Arabic" : "English";
+  const promptMemory = compactSharedMemory(memory, { maxMessages: 4, maxMessageChars: 240 });
   const task = action === "speaking_prompt"
     ? "Create one short, practical speaking prompt that alternates teaching and learning between these partners."
     : "Give a precise, concise rescue hint based only on the transcript. Explain or translate the last difficult term. Say when the transcript lacks enough evidence; do not invent context.";
   const result = await generateJson(
-    `${task} Respond entirely in ${language}, without student names or provider names. Return JSON {"text":"..."}. Recent speech transcript: ${JSON.stringify(transcript)}. Full shared memory (profiles, plan, entire conversation): ${JSON.stringify(memory)}`,
+    `${task} Respond entirely in ${language}, without student names or provider names. Return concise JSON {"text":"..."}. Recent speech transcript: ${JSON.stringify(transcript.slice(-5000))}. Relevant shared memory: ${JSON.stringify(promptMemory)}`,
+    { maxOutputTokens: 700 },
   );
   const fallback = action === "speaking_prompt"
     ? locale === "ar"
@@ -50,8 +60,10 @@ export async function generateCallSummary(
   memory: Memory,
 ) {
   const language = locale === "ar" ? "Arabic" : "English";
+  const promptMemory = compactSharedMemory(memory, { maxMessages: 4, maxMessageChars: 240 });
   const result = await generateJson(
-    `Summarize these study partners' call transcript in ${language}. Use only transcript evidence and their full shared learning memory. Do not invent errors. Return JSON {"takeaways":["..."],"terms":["..."],"corrections":["..."],"nextSteps":["..."]}; at least one takeaway and next step. Avoid personal names and provider names. Transcript: ${JSON.stringify(transcript)}. Shared memory: ${JSON.stringify(memory)}`,
+    `Summarize these study partners' call transcript in ${language}. Use only transcript evidence and relevant shared learning memory. Do not invent errors. Return concise JSON {"takeaways":["..."],"terms":["..."],"corrections":["..."],"nextSteps":["..."]}; at least one takeaway and next step. Avoid personal names and provider names. Transcript excerpt: ${JSON.stringify(transcript.slice(-8000))}. Shared memory: ${JSON.stringify(promptMemory)}`,
+    { maxOutputTokens: 1200 },
   );
   const parsed = callSummarySchema.safeParse(result);
   if (parsed.success) {
@@ -66,8 +78,10 @@ export async function generateCallSummary(
 }
 
 export async function answerRoomQuestion(prompt: string, memory: Memory, quoted?: string) {
+  const promptMemory = compactSharedMemory(memory, { maxMessages: 8, maxMessageChars: 400 });
   const result = await generateJson(
-    `Answer this explicit student request using the complete shared room memory below. Respond in the request's language. If a quoted message is supplied, quote it and verify only what can be established; be clear about uncertainty. Return JSON {"answer":"..."}. Request: ${JSON.stringify(prompt)}. Quoted message: ${JSON.stringify(quoted ?? null)}. Shared memory: ${JSON.stringify(memory)}`,
+    `Answer this explicit student request using the relevant shared room memory below. Respond in the request's language. If a quoted message is supplied, quote it and verify only what can be established; be clear about uncertainty. Return concise JSON {"answer":"..."}. Request: ${JSON.stringify(prompt.slice(0, 3000))}. Quoted message: ${JSON.stringify(quoted?.slice(0, 1000) ?? null)}. Shared memory: ${JSON.stringify(promptMemory)}`,
+    { maxOutputTokens: 1000 },
   );
   const answer = typeof result.answer === "string" ? result.answer.trim() : "";
   if (!answer) {
@@ -82,6 +96,13 @@ export async function answerRoomQuestion(prompt: string, memory: Memory, quoted?
 
 export async function generateRoomActivity(kind: "quiz" | "flashcards" | "simulator", prompt: string, memory: Memory) {
   const topic = memory.curriculum.title;
+  const promptMemory = compactSharedMemory(memory, { maxMessages: 5, maxMessageChars: 280 });
+  const activityInstructions = kind === "quiz"
+    ? "Create exactly 5 concise questions, each with 3 short choices, one answerIndex, and a brief explanation."
+    : kind === "flashcards"
+      ? "Create exactly 8 concise flashcards with short fronts and backs."
+      : "Create one concise text-based simulation with short fields.";
+  const maxOutputTokens = kind === "quiz" ? 1500 : kind === "flashcards" ? 1000 : 900;
   const fallback: SkillSyncActivityContent = kind === "quiz" ? {
     questions: [
       { id: "q1", prompt: `What is the best first step for ${topic}?`, choices: ["Agree on one small, testable goal", "Build unrelated parts without discussing them", "Skip partner feedback"], answerIndex: 0, explanation: "A shared, testable goal keeps both skills connected." },
@@ -98,7 +119,8 @@ export async function generateRoomActivity(kind: "quiz" | "flashcards" | "simula
     simulator: { mode: "language", scenario: `Explain one part of ${topic} to a new partner.`, prompt: "Rewrite an unclear handoff into one precise sentence.", starter: "Do the thing and send it.", expected: "Please review the first example and send one specific improvement.", hint: "Name the action, the object, and the expected feedback." },
   };
   const result = await generateJson(
-    `Create a ${kind} grounded in the students' whole conversation and plan. Request: ${JSON.stringify(prompt)}. Return JSON {"title":"...","instructions":"...","content":...}. For quiz, content is {"questions":[{"id":"q1","prompt":"...","choices":["...","..."],"answerIndex":0,"explanation":"..."}]}; for flashcards, {"flashcards":[{"front":"...","back":"..."}]}; for simulator, {"simulator":{"mode":"coding or language","scenario":"...","prompt":"...","starter":"...","expected":"...","hint":"..."}}. Coding simulations are text exercises, not executable code. Shared memory: ${JSON.stringify(memory)}`,
+    `Create a ${kind} in the language of the request or recent student messages. Ground it in the learning plan and relevant recent conversation. ${activityInstructions} Request: ${JSON.stringify(compactPrompt(prompt, 1200))}. Return concise JSON {"title":"...","instructions":"...","content":...}. For quiz, content is {"questions":[{"id":"q1","prompt":"...","choices":["...","...","..."],"answerIndex":0,"explanation":"..."}]}; for flashcards, {"flashcards":[{"front":"...","back":"..."}]}; for simulator, {"simulator":{"mode":"coding or language","scenario":"...","prompt":"...","starter":"...","expected":"...","hint":"..."}}. Coding simulations are text exercises, not executable code. Relevant shared memory: ${JSON.stringify(promptMemory)}`,
+    { maxOutputTokens },
   );
   const parsed = contentSchema.safeParse(result?.content);
   const key = kind === "quiz" ? "questions" : kind;
