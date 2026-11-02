@@ -3,3 +3,4 @@
 - [Simulator safety](simulator-evaluation.md) — keep grading static; interactive local runs use an opaque iframe with network restrictions and strict session/output limits.
 - [Jitsi audio boundary](jitsi-audio-boundary.md) — browser capture of the local mic cannot reliably transcribe remote participants inside the cross-origin Jitsi frame.
 - [Provider limiter tests](provider-limiter-tests.md) — exercise rate-limit behavior with an isolated limiter, not the shared provider limiter used by live requests.
+- [Room media type boundaries](room-media-types.md) — message media categories (`image`/`audio`) and storage MIME values (`image/png`, etc.) need separate validation.

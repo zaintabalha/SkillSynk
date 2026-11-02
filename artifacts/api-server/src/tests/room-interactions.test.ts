@@ -10,6 +10,7 @@ import {
 } from "@workspace/db";
 import interactionRouter, { explicitlyInvokesAi, requestedActivity } from "../routes/skillsync-room-interactions";
 import { isAiProviderEnabled } from "../lib/skillsync-ai";
+import { deleteRoomMediaFile } from "../lib/skillsync-media-storage";
 import type { ChatSendResult, SharedActivity, ActivityAttempt, CallCopilotResult } from "@workspace/api-zod";
 import "./ai-limits.test";
 import { aiLimitErrorHandler, aiRequestContext, withAiBudget } from "../lib/skillsync-ai-limits";
@@ -26,6 +27,7 @@ test("partner chat, shared activities, and simulation permission boundaries", as
   assert.equal(requestedActivity("@SkillSync أنشئ بطاقات للمراجعة"), "flashcards");
   const id = `test-${randomUUID()}`;
   const ids = [`${id}-a`, `${id}-b`];
+  let mediaId: string | null = null;
   let actingUser = ids[0];
   const app = express();
   app.use(express.json());
@@ -70,6 +72,39 @@ test("partner chat, shared activities, and simulation permission boundaries", as
     assert.equal((await db.select().from(messages).where(eq(messages.roomId, id))).length, 1);
     assert.equal((await request("/messages", { content: "Attempted impersonation", simulatedUserId: ids[1] })).status, 403);
     assert.equal((await request("/messages", { content: "Verify", replyToMessageId: "not-in-this-room" })).status, 400);
+    if (process.env.SKILLSYNC_MEDIA_E2E === "1") {
+      const pngDataUrl = "data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAIAAACQd1PeAAAADUlEQVR4nGP4z8AAAAMBAQDJ/pLvAAAAAElFTkSuQmCC";
+      const base64 = /^data:image\/png;base64,([a-z0-9+/]+={0,2})$/i.exec(pngDataUrl)?.[1];
+      assert.ok(base64);
+      const pngBytes = Buffer.from(base64, "base64");
+      const upload = await request<{ uploadUrl: string; mediaObjectPath: string }>("/media/upload-url", {
+        fileName: "fixture.png", size: pngBytes.length, contentType: "image/png",
+      });
+      assert.equal(upload.status, 200);
+      mediaId = upload.body.mediaObjectPath.split("/").at(-1) ?? null;
+      assert.ok(mediaId);
+      // Match the browser's data-URL decode, then upload bytes directly to private storage.
+      const put = await fetch(upload.body.uploadUrl, {
+        method: "PUT", headers: { "Content-Type": "image/png" }, body: pngBytes,
+      });
+      assert.equal(put.status, 200);
+      const sent = await request("/messages", {
+        content: "Synthetic image round-trip",
+        mediaObjectPath: upload.body.mediaObjectPath,
+        mediaName: "fixture.png",
+      });
+      assert.equal(sent.status, 201);
+      assert.equal(sent.body.message.mediaType, "image");
+      assert.ok(sent.body.message.mediaUrl);
+      const savedMedia = (await db.select().from(messages).where(eq(messages.id, sent.body.message.id)))[0];
+      assert.equal(savedMedia.roomId, id);
+      assert.equal(savedMedia.mediaObjectPath, upload.body.mediaObjectPath);
+      assert.equal(savedMedia.mediaType, "image");
+      const streamed = await fetch(`http://127.0.0.1:${address.port}/skillsync/rooms/${id}/media/${mediaId}`);
+      if (streamed.status !== 200) assert.fail(`Media GET returned ${streamed.status}: ${await streamed.text()}`);
+      assert.equal(streamed.headers.get("content-type"), "image/png");
+      assert.deepEqual(Buffer.from(await streamed.arrayBuffer()), pngBytes);
+    }
     actingUser = `${id}-outsider`;
     assert.equal((await request("/activities")).status, 404);
     await db.update(rooms).set({ isDemo: true }).where(eq(rooms.id, id));
@@ -173,6 +208,7 @@ test("partner chat, shared activities, and simulation permission boundaries", as
     assert.equal((await request("/call-copilot", { action: "hint", transcript: "Text", locale: "en" })).status, 409);
   } finally {
     await new Promise<void>((resolve) => server.close(() => resolve()));
+    if (mediaId) await deleteRoomMediaFile(id, mediaId).catch(() => undefined);
     await db.delete(attempts).where(eq(attempts.roomId, id));
     await db.delete(activities).where(eq(activities.roomId, id));
     await db.delete(messages).where(eq(messages.roomId, id));

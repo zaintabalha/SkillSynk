@@ -41,6 +41,10 @@ function mediaIdFromUrl(mediaUrl: string) {
   } catch { return ''; }
 }
 
+function isImageFile(file: File) {
+  return file.type.toLowerCase().startsWith('image/') || /\.(heic|heif)$/i.test(file.name);
+}
+
 function PrivateImage({ roomId, mediaUrl, name, onOpen, messageId }: { roomId: string; mediaUrl: string; name: string | null; onOpen: (url: string) => void; messageId: string }) {
   const { t } = useI18n();
   const [url, setUrl] = useState<string | null>(null);
@@ -63,7 +67,7 @@ function PrivateImage({ roomId, mediaUrl, name, onOpen, messageId }: { roomId: s
   return state === 'error' ? <button type="button" className="private-media-retry" onClick={() => setRetry((value) => value + 1)} data-testid={`button-retry-image-${messageId}`}><span role="alert">{t('mediaLoadError')}</span></button> :
     <button type="button" className="chat-image-button" disabled={!url} onClick={() => url && onOpen(url)} aria-label={t('openImage')} data-testid={`button-open-image-${messageId}`}>
     {state === 'loading' && <span className="private-media-state" role="status">{t('loadingAttachment')}</span>}
-    {url && <img src={url} alt={name || t('imageAttachment')} loading="lazy" />}
+    {url && <img src={url} alt={name || t('imageAttachment')} loading="lazy" onError={() => setState('error')} />}
   </button>;
 }
 
@@ -184,25 +188,49 @@ function ownFn(room: LearningRoom, actingUserId: string | null, viewerId: string
   };
 }
 
+const supportedImageTypes = new Set(['image/jpeg', 'image/png', 'image/webp', 'image/gif', 'image/avif', 'image/heic', 'image/heif']);
+
+async function originalImageFileFromDataUrl(file: File): Promise<File> {
+  const dataUrl = await new Promise<string>((resolve, reject) => {
+    const reader = new FileReader();
+    reader.onerror = () => reject(new Error('image-read'));
+    reader.onload = () => typeof reader.result === 'string' ? resolve(reader.result) : reject(new Error('image-read'));
+    reader.readAsDataURL(file);
+  });
+  const match = /^data:(image\/[a-z0-9.+-]+);base64,([a-z0-9+/]*={0,2})$/i.exec(dataUrl);
+  if (!match || !match[2]) throw new Error('invalid-image-data-url');
+  const contentType = match[1].toLowerCase();
+  if (!supportedImageTypes.has(contentType)) throw new Error('unsupported-image-type');
+  const binary = atob(match[2]);
+  if (!binary.length) throw new Error('empty-image');
+  const bytes = Uint8Array.from(binary, (character) => character.charCodeAt(0));
+  return new File([bytes], file.name || 'shared-image', { type: contentType, lastModified: file.lastModified || Date.now() });
+}
+
 async function compressImage(file: File): Promise<File> {
   const localUrl = URL.createObjectURL(file);
   try {
-    const image = new Image();
-    image.src = localUrl;
-    await new Promise<void>((resolve, reject) => {
-      image.onload = () => resolve();
-      image.onerror = () => reject(new Error('image-load'));
-    });
-    const scale = Math.min(1, 1280 / Math.max(image.naturalWidth, image.naturalHeight));
-    const canvas = document.createElement('canvas');
-    canvas.width = Math.max(1, Math.round(image.naturalWidth * scale));
-    canvas.height = Math.max(1, Math.round(image.naturalHeight * scale));
-    const context = canvas.getContext('2d');
-    if (!context) throw new Error('canvas-unavailable');
-    context.drawImage(image, 0, 0, canvas.width, canvas.height);
-    const blob = await new Promise<Blob>((resolve, reject) => canvas.toBlob((result) => result ? resolve(result) : reject(new Error('image-compress')), 'image/jpeg', 0.82));
-    const safeName = `${file.name.replace(/\.[^.]+$/, '') || 'image'}.jpg`;
-    return new File([blob], safeName, { type: 'image/jpeg', lastModified: Date.now() });
+    try {
+      const image = new Image();
+      image.src = localUrl;
+      await new Promise<void>((resolve, reject) => {
+        image.onload = () => resolve();
+        image.onerror = () => reject(new Error('image-load'));
+      });
+      const scale = Math.min(1, 1280 / Math.max(image.naturalWidth, image.naturalHeight));
+      const canvas = document.createElement('canvas');
+      canvas.width = Math.max(1, Math.round(image.naturalWidth * scale));
+      canvas.height = Math.max(1, Math.round(image.naturalHeight * scale));
+      const context = canvas.getContext('2d');
+      if (!context) throw new Error('canvas-unavailable');
+      context.drawImage(image, 0, 0, canvas.width, canvas.height);
+      const blob = await new Promise<Blob>((resolve, reject) => canvas.toBlob((result) => result ? resolve(result) : reject(new Error('image-compress')), 'image/jpeg', 0.82));
+      if (!blob.size || blob.type !== 'image/jpeg') throw new Error('invalid-compressed-image');
+      const safeName = `${file.name.replace(/\.[^.]+$/, '') || 'image'}.jpg`;
+      return new File([blob], safeName, { type: 'image/jpeg', lastModified: Date.now() });
+    } catch {
+      return await originalImageFileFromDataUrl(file);
+    }
   } finally { URL.revokeObjectURL(localUrl); }
 }
 
@@ -214,7 +242,7 @@ function bestRecorderType() {
 
 function typeForUpload(type: string): RoomMediaUploadInputContentType {
   const normalized = type.split(';')[0].trim().toLowerCase();
-  if (normalized === 'audio/mp4' || normalized === 'audio/aac' || normalized === 'audio/m4a' || normalized === 'audio/x-m4a' || normalized === 'audio/webm' || normalized === 'audio/ogg' || normalized === 'audio/mpeg' || normalized === 'audio/wav' || normalized === 'audio/x-wav' || normalized === 'image/png' || normalized === 'image/webp' || normalized === 'image/gif' || normalized === 'image/avif') return normalized;
+  if (normalized === 'audio/mp4' || normalized === 'audio/aac' || normalized === 'audio/m4a' || normalized === 'audio/x-m4a' || normalized === 'audio/webm' || normalized === 'audio/ogg' || normalized === 'audio/mpeg' || normalized === 'audio/wav' || normalized === 'audio/x-wav' || supportedImageTypes.has(normalized)) return normalized as RoomMediaUploadInputContentType;
   return 'image/jpeg';
 }
 
@@ -335,7 +363,7 @@ export function PartnerChat({ room, actingUserId, viewerId, onOpenActivity }: Ch
     setMediaError('');
     clearAudioDraft();
     try {
-      if (!file.type.startsWith('image/')) throw new Error('unsupported-image');
+      if (!isImageFile(file)) throw new Error('unsupported-image');
       const compressed = await compressImage(file);
       const url = URL.createObjectURL(compressed);
       setImageDraft((old) => { if (old) URL.revokeObjectURL(old.url); return { file: compressed, url }; });

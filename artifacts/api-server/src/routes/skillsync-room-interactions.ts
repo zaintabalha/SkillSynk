@@ -26,7 +26,7 @@ import {
 
 const router: IRouter = Router();
 type Kind = "quiz" | "flashcards" | "simulator";
-const imageContentTypes = new Set(["image/jpeg", "image/png", "image/webp", "image/gif", "image/avif"]);
+const imageContentTypes = new Set(["image/jpeg", "image/png", "image/webp", "image/gif", "image/avif", "image/heic", "image/heif"]);
 const audioContentTypes = new Set(["audio/mp4", "audio/aac", "audio/m4a", "audio/x-m4a", "audio/webm", "audio/ogg", "audio/mpeg", "audio/wav", "audio/x-wav"]);
 const MAX_ROOM_MEDIA_BYTES = 25_000_000;
 
@@ -234,7 +234,9 @@ router.get("/skillsync/rooms/:roomId/media/:mediaId", async (req, res): Promise<
     eq(messages.roomId, context.room.id),
     eq(messages.mediaObjectPath, objectPath),
   ));
-  if (!message || !mediaKind(message.mediaType ?? "")) { res.status(404).json({ error: "Attachment not found in this room." }); return; }
+  if (!message || (message.mediaType !== "image" && message.mediaType !== "audio")) {
+    res.status(404).json({ error: "Attachment not found in this room." }); return;
+  }
   const file = await getRoomMediaFile(context.room.id, mediaId);
   if (!file) { res.status(404).json({ error: "Attachment not found." }); return; }
   const [metadata] = await file.getMetadata();

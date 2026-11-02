@@ -235,6 +235,8 @@ export const RoomMediaUploadInputContentType = {
   'image/webp': 'image/webp',
   'image/gif': 'image/gif',
   'image/avif': 'image/avif',
+  'image/heic': 'image/heic',
+  'image/heif': 'image/heif',
   'audio/mp4': 'audio/mp4',
   'audio/aac': 'audio/aac',
   'audio/m4a': 'audio/m4a',

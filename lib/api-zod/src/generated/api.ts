@@ -564,7 +564,7 @@ export const requestSkillSyncRoomMediaUploadBodySizeMax = 25000000;
 export const RequestSkillSyncRoomMediaUploadBody = zod.object({
   "fileName": zod.string().min(1).max(requestSkillSyncRoomMediaUploadBodyFileNameMax),
   "size": zod.number().int().min(1).max(requestSkillSyncRoomMediaUploadBodySizeMax),
-  "contentType": zod.enum(['image/jpeg', 'image/png', 'image/webp', 'image/gif', 'image/avif', 'audio/mp4', 'audio/aac', 'audio/m4a', 'audio/x-m4a', 'audio/webm', 'audio/ogg', 'audio/mpeg', 'audio/wav', 'audio/x-wav'])
+  "contentType": zod.enum(['image/jpeg', 'image/png', 'image/webp', 'image/gif', 'image/avif', 'image/heic', 'image/heif', 'audio/mp4', 'audio/aac', 'audio/m4a', 'audio/x-m4a', 'audio/webm', 'audio/ogg', 'audio/mpeg', 'audio/wav', 'audio/x-wav'])
 })
 
 export const RequestSkillSyncRoomMediaUploadResponse = zod.object({
