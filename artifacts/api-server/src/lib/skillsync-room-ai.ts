@@ -74,7 +74,7 @@ export async function answerRoomQuestion(prompt: string, memory: Memory, quoted?
     throw new GeminiProviderError(
       "AI_PROVIDER_ERROR",
       502,
-      "SkillSync AI did not return a usable answer. Please try again.",
+      "SkillSync AI did not return a usable answer. Please try again. / لم تُرجع SkillSync AI إجابة صالحة للاستخدام. حاول مرة أخرى.",
     );
   }
   return { answer: sanitizeText(answer, memory.students), aiPowered: true };

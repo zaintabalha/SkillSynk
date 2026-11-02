@@ -37,7 +37,7 @@ function getGeminiClient(): GoogleGenAI {
     throw new GeminiProviderError(
       "AI_PROVIDER_ERROR",
       503,
-      "SkillSync AI is not configured. Please try again later.",
+      "SkillSync AI is not configured. Please try again later. / خدمة SkillSync AI غير مُهيّأة. يرجى المحاولة لاحقاً.",
     );
   }
   return new GoogleGenAI({ apiKey });
@@ -88,13 +88,13 @@ async function generateJsonWithinBudget(prompt: string): Promise<Record<string, 
       throw new GeminiProviderError(
         "AI_MODEL_UNAVAILABLE",
         503,
-        "SkillSync AI is unavailable because its configured model cannot be reached.",
+        "SkillSync AI is unavailable because its configured model cannot be reached. / خدمة SkillSync AI غير متاحة لأن النموذج المُعدّ غير قابل للوصول.",
       );
     }
     throw new GeminiProviderError(
       "AI_PROVIDER_ERROR",
       502,
-      "SkillSync AI could not complete the request. Please try again later.",
+      "SkillSync AI could not complete the request. Please try again later. / تعذّر على SkillSync AI إكمال الطلب. يرجى المحاولة لاحقاً.",
     );
   } finally {
     release();

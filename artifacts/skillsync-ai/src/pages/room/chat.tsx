@@ -7,7 +7,7 @@ import { initials } from '@/components/shell';
 import { formatTime, useI18n } from '@/lib/i18n';
 import { aiErrorMessage } from '@/lib/ai-error';
 
-export const AI_MENTION = /(^|\s)@(ai|skillsync)\b/i;
+export const AI_MENTION = /(^|\s)@(AI|SkillSync)(?=$|[\s,.!?،:])/iu;
 
 type ChatProps = { room: LearningRoom; actingUserId: string | null; viewerId: string | null; onOpenActivity: (id: string) => void };
 const CALL_SUMMARY_MARKER = 'SKILLSYNC_CALL_SUMMARY:';
