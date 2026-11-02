@@ -4,6 +4,7 @@ import {
   GenerateSkillSyncActivityBody, GenerateSkillSyncActivityResponse,
   SubmitSkillSyncActivityAttemptBody, SubmitSkillSyncActivityAttemptResponse,
   ListSkillSyncActivitiesResponse, RequestSkillSyncCallCopilotBody, RequestSkillSyncCallCopilotResponse,
+  GenerateSkillSyncSimulatorSolutionParams, GenerateSkillSyncSimulatorSolutionResponse,
 } from "@workspace/api-zod";
 import {
   db, skillSyncMessagesTable as messages, skillSyncActivitiesTable as activities,
@@ -12,7 +13,7 @@ import {
 import { and, eq } from "drizzle-orm";
 import { randomUUID } from "node:crypto";
 import { roomContext, resolveSpeaker, roomMemory, messageDto, roomActivities, attemptDto, recordAiUse, type RoomContext } from "../lib/skillsync-room-service";
-import { answerRoomQuestion, generateCallCopilotText, generateCallSummary, generateRoomActivity } from "../lib/skillsync-room-ai";
+import { answerRoomQuestion, generateCallCopilotText, generateCallSummary, generateRoomActivity, generateSimulatorSolution } from "../lib/skillsync-room-ai";
 import { withAiBudget } from "../lib/skillsync-ai-limits";
 import { logger } from "../lib/logger";
 import { evaluateSimulatorResponse } from "../lib/skillsync-simulator-evaluation";
@@ -178,6 +179,28 @@ router.post("/skillsync/rooms/:roomId/activities", async (req, res) => {
     { userId: res.locals.userId, roomId: context.room.id },
   );
   res.status(201).json(GenerateSkillSyncActivityResponse.parse(result.activity));
+});
+router.post("/skillsync/rooms/:roomId/activities/:activityId/solution", async (req, res): Promise<void> => {
+  const params = GenerateSkillSyncSimulatorSolutionParams.safeParse(req.params);
+  if (!params.success) { res.status(400).json({ error: params.error.message }); return; }
+  const context = await roomContext(params.data.roomId, res.locals.userId);
+  if (!context) { res.status(404).json({ error: "Room not found." }); return; }
+  if (context.room.status === "unmatched") { res.status(409).json({ error: "This room is read-only." }); return; }
+  const [activity] = await db.select().from(activities).where(and(
+    eq(activities.id, params.data.activityId),
+    eq(activities.roomId, context.room.id),
+  ));
+  if (!activity) { res.status(404).json({ error: "Activity not found." }); return; }
+  if (activity.kind !== "simulator" || !activity.content.simulator || activity.content.simulator.mode !== "coding") {
+    res.status(400).json({ error: "AI solutions are available only for coding simulators." });
+    return;
+  }
+  const code = await withAiBudget(
+    () => generateSimulatorSolution(activity.content.simulator!),
+    { userId: res.locals.userId, roomId: context.room.id },
+  );
+  recordAiUseNonBlocking(context, res.locals.userId, "simulator_solution", true);
+  res.json(GenerateSkillSyncSimulatorSolutionResponse.parse({ code }));
 });
 router.post("/skillsync/rooms/:roomId/activities/:activityId/attempts", async (req, res) => {
   const body = SubmitSkillSyncActivityAttemptBody.safeParse(req.body);

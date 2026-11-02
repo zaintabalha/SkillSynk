@@ -73,6 +73,7 @@ export * from './roomSummary';
 export * from './roomSummaryStatus';
 export * from './sharedActivity';
 export * from './sharedActivityKind';
+export * from './simulatorSolution';
 export * from './skillCount';
 export * from './submissionInput';
 export * from './suspensionInput';

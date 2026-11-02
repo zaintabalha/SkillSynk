@@ -365,6 +365,14 @@ export interface ChatMessageInput {
   simulatedUserId?: string | null;
 }
 
+export interface SimulatorSolution {
+  /**
+     * @minLength 1
+     * @maxLength 4000
+     */
+  code: string;
+}
+
 export type ActivityGenerationInputKind = typeof ActivityGenerationInputKind[keyof typeof ActivityGenerationInputKind];
 
 

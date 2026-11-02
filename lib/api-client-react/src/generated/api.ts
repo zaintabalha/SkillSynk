@@ -56,6 +56,7 @@ import type {
   ReportUpdateInput,
   RoomSummary,
   SharedActivity,
+  SimulatorSolution,
   SubmissionInput,
   SuspensionInput,
   UserNotice,
@@ -1402,6 +1403,82 @@ export const useGenerateSkillSyncActivity = <TError = ErrorType<AiLimitedRespons
         TContext
       > => {
       return useMutation(getGenerateSkillSyncActivityMutationOptions(options), queryClient);
+    }
+
+export const getGenerateSkillSyncSimulatorSolutionUrl = (roomId: string,
+    activityId: string,) => {
+
+
+
+
+  return `/api/skillsync/rooms/${roomId}/activities/${activityId}/solution`
+}
+
+/**
+ * @summary Generate a code solution for a shared coding simulator
+ */
+export const generateSkillSyncSimulatorSolution = async (roomId: string,
+    activityId: string, options?: Parameters<typeof customFetch>[1]): Promise<SimulatorSolution> => {
+
+  return customFetch<SimulatorSolution>(getGenerateSkillSyncSimulatorSolutionUrl(roomId,activityId),
+  {
+    ...options,
+    method: 'POST'
+
+
+  }
+);}
+
+
+
+
+
+export const getGenerateSkillSyncSimulatorSolutionMutationKey = () => ['generateSkillSyncSimulatorSolution'] as const;
+
+export const getGenerateSkillSyncSimulatorSolutionMutationOptions = <TError = ErrorType<void | AiLimitedResponse>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof generateSkillSyncSimulatorSolution>>, TError,GenerateSkillSyncSimulatorSolutionMutationVariables, TContext>, request?: SecondParameter<typeof customFetch>}
+): UseMutationOptions<Awaited<ReturnType<typeof generateSkillSyncSimulatorSolution>>, TError,GenerateSkillSyncSimulatorSolutionMutationVariables, TContext> => {
+
+const mutationKey = getGenerateSkillSyncSimulatorSolutionMutationKey();
+const {mutation: mutationOptions, request: requestOptions} = options ?
+      options.mutation && 'mutationKey' in options.mutation && options.mutation.mutationKey ?
+      options
+      : {...options, mutation: {...options.mutation, mutationKey}}
+      : {mutation: { mutationKey, }, request: undefined};
+
+
+
+
+      const mutationFn: MutationFunction<Awaited<ReturnType<typeof generateSkillSyncSimulatorSolution>>, GenerateSkillSyncSimulatorSolutionMutationVariables> = (props) => {
+          const {roomId,activityId} = props ?? {};
+
+          return  generateSkillSyncSimulatorSolution(roomId,activityId,requestOptions)
+        }
+
+
+
+
+
+
+  return  { mutationFn, ...mutationOptions }}
+
+    export type GenerateSkillSyncSimulatorSolutionMutationResult = NonNullable<Awaited<ReturnType<typeof generateSkillSyncSimulatorSolution>>>
+
+    export type GenerateSkillSyncSimulatorSolutionMutationError = ErrorType<void | AiLimitedResponse>
+    export type GenerateSkillSyncSimulatorSolutionMutationVariables = {roomId: string;activityId: string}
+
+    /**
+ * @summary Generate a code solution for a shared coding simulator
+ */
+export const useGenerateSkillSyncSimulatorSolution = <TError = ErrorType<void | AiLimitedResponse>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof generateSkillSyncSimulatorSolution>>, TError,GenerateSkillSyncSimulatorSolutionMutationVariables, TContext>, request?: SecondParameter<typeof customFetch>}
+ , queryClient?: QueryClient): UseMutationResult<
+        Awaited<ReturnType<typeof generateSkillSyncSimulatorSolution>>,
+        TError,
+        GenerateSkillSyncSimulatorSolutionMutationVariables,
+        TContext
+      > => {
+      return useMutation(getGenerateSkillSyncSimulatorSolutionMutationOptions(options), queryClient);
     }
 
 export const getSubmitSkillSyncActivityAttemptUrl = (roomId: string,

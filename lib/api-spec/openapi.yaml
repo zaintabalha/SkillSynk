@@ -259,6 +259,32 @@ paths:
           content:
             application/json:
               schema: { $ref: "#/components/schemas/SharedActivity" }
+  /skillsync/rooms/{roomId}/activities/{activityId}/solution:
+    post:
+      operationId: generateSkillSyncSimulatorSolution
+      tags: [skillsync]
+      summary: Generate a code solution for a shared coding simulator
+      parameters:
+        - name: roomId
+          in: path
+          required: true
+          schema: { type: string }
+        - name: activityId
+          in: path
+          required: true
+          schema: { type: string }
+      responses:
+        "400":
+          description: The activity is not a coding simulator
+        "404":
+          description: Room or activity not found
+        "429":
+          $ref: "#/components/responses/AiLimited"
+        "200":
+          description: Generated JavaScript solution
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/SimulatorSolution" }
   /skillsync/rooms/{roomId}/activities/{activityId}/attempts:
     post:
       operationId: submitSkillSyncActivityAttempt
@@ -832,6 +858,11 @@ components:
         starter: { type: string }
         expected: { type: string }
         hint: { type: string }
+    SimulatorSolution:
+      type: object
+      required: [code]
+      properties:
+        code: { type: string, minLength: 1, maxLength: 4000 }
     ActivityContent:
       type: object
       properties:

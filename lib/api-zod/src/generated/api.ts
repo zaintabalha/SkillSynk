@@ -643,6 +643,23 @@ export const GenerateSkillSyncActivityResponse = zod.object({
 
 
 /**
+ * @summary Generate a code solution for a shared coding simulator
+ */
+export const GenerateSkillSyncSimulatorSolutionParams = zod.object({
+  "roomId": zod.coerce.string(),
+  "activityId": zod.coerce.string()
+})
+
+export const generateSkillSyncSimulatorSolutionResponseCodeMax = 4000;
+
+
+
+export const GenerateSkillSyncSimulatorSolutionResponse = zod.object({
+  "code": zod.string().min(1).max(generateSkillSyncSimulatorSolutionResponseCodeMax)
+})
+
+
+/**
  * @summary Submit a shared activity attempt
  */
 export const SubmitSkillSyncActivityAttemptParams = zod.object({
