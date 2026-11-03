@@ -2,6 +2,7 @@ import fs from "node:fs/promises";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
 import PptxGenJS from "pptxgenjs";
+import JSZip from "jszip";
 
 const ROOT = path.resolve(path.dirname(fileURLToPath(import.meta.url)), "..");
 const PUBLIC_DIR = path.join(ROOT, "public");
@@ -28,6 +29,20 @@ const H = 7.5;
 const FONT_HEAD = "Cairo";
 const FONT_BODY = "Tajawal";
 const pptx = new PptxGenJS();
+const TRANSITIONS = [
+  { speed: "slow", xml: "<p:fade/>" },
+  { speed: "med", xml: '<p:push dir="r"/>' },
+  { speed: "fast", xml: '<p:wipe dir="r"/>' },
+  { speed: "med", xml: '<p:split orient="vert" dir="out"/>' },
+  { speed: "med", xml: '<p:wheel spokes="4"/>' },
+  { speed: "fast", xml: '<p:zoom dir="in"/>' },
+  { speed: "med", xml: '<p:push dir="l"/>' },
+  { speed: "med", xml: '<p:cover dir="r"/>' },
+  { speed: "fast", xml: "<p:dissolve/>" },
+  { speed: "slow", xml: "<p:fade/>" },
+  { speed: "med", xml: '<p:split orient="horz" dir="in"/>' },
+  { speed: "slow", xml: "<p:fade/>" },
+];
 
 pptx.defineLayout({ name: "LAYOUT_16x9", width: W, height: H });
 pptx.layout = "LAYOUT_16x9";
@@ -468,6 +483,34 @@ function renderFinale() {
   return slide;
 }
 
+async function embedTransitions() {
+  const zip = await JSZip.loadAsync(await fs.readFile(OUTPUT_PATH));
+
+  for (let index = 0; index < TRANSITIONS.length; index += 1) {
+    const slidePath = `ppt/slides/slide${index + 1}.xml`;
+    const slideFile = zip.file(slidePath);
+    if (!slideFile) throw new Error(`Missing PowerPoint slide XML: ${slidePath}`);
+
+    let xml = await slideFile.async("string");
+    xml = xml.replace(/<p:transition\b[\s\S]*?<\/p:transition>/g, "");
+    const transition = TRANSITIONS[index];
+    const transitionXml = `<p:transition spd="${transition.speed}" advClick="1">${transition.xml}</p:transition>`;
+    const clrMapEnd = "</p:clrMapOvr>";
+    if (!xml.includes(clrMapEnd)) {
+      throw new Error(`Could not insert transition into ${slidePath}`);
+    }
+    xml = xml.replace(clrMapEnd, `${clrMapEnd}${transitionXml}`);
+    zip.file(slidePath, xml);
+  }
+
+  const transitionedFile = await zip.generateAsync({
+    type: "nodebuffer",
+    compression: "DEFLATE",
+    compressionOptions: { level: 9 },
+  });
+  await fs.writeFile(OUTPUT_PATH, transitionedFile);
+}
+
 async function main() {
   const manifest = JSON.parse(await fs.readFile(MANIFEST_PATH, "utf8"));
   if (manifest.length !== 12) {
@@ -498,8 +541,9 @@ async function main() {
 
   await fs.mkdir(PUBLIC_DIR, { recursive: true });
   await pptx.writeFile({ fileName: OUTPUT_PATH });
+  await embedTransitions();
   const stat = await fs.stat(OUTPUT_PATH);
-  console.log(`Generated ${path.basename(OUTPUT_PATH)} (${stat.size} bytes, 12 slides).`);
+  console.log(`Generated ${path.basename(OUTPUT_PATH)} (${stat.size} bytes, 12 slides, 12 transitions).`);
 }
 
 main().catch((error) => {
