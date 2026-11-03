@@ -1,5 +1,5 @@
 import { SignIn, SignUp, useAuth } from '@clerk/react';
-import { ArrowDown, ArrowLeft, ArrowLeftRight, ArrowRight, ArrowUpRight, BookOpen, Compass, HeartHandshake, Plus } from 'lucide-react';
+import { ArrowDown, ArrowLeft, ArrowRight, ArrowUpRight, BookOpen, Compass, HeartHandshake, Plus } from 'lucide-react';
 import { useHealthCheck } from '@workspace/api-client-react';
 import { Link, Redirect } from 'wouter';
 import { Brand, LanguageToggle, basePath } from '@/components/shell';
@@ -28,12 +28,23 @@ function Landing() {
         <div className="hero-ctas"><Link href="/sign-up" className="button" data-testid="link-hero-cta">{t('heroCta')} <ArrowRight size={17} className="flip-rtl" /></Link><a href="#how-it-works" className="text-link">{t('seeHow')} <ArrowDown size={15} /></a></div>
         <div className="hero-proof"><div className="proof-avatars" dir="ltr"><span>MK</span><span>AJ</span><span>SR</span><span><Plus size={11} /></span></div><div><strong>{t('proofTitle')}</strong><small>{t('proofDetail')}</small></div></div>
       </div>
-      <div className="hero-art" aria-hidden="true">
-        <div className="orbit orbit-one" /><div className="orbit orbit-two" />
-        <div className="orbit-label label-top">{t('artTeach')} <b>Figma</b></div>
-        <div className="orbit-label label-bottom">{t('artLearn')} <b>Python</b></div>
-        <div className="art-center"><div className="art-sun"><span /></div><div className="art-person person-left"><i /><b /></div><div className="art-person person-right"><i /><b /></div><div className="art-sparkle s-one"><Plus size={20} /></div><div className="art-sparkle s-two"><Plus size={14} /></div><span className="art-note">{t('artNote')}</span></div>
-        <div className="art-stamp"><span>{t('stampLearn')}</span><b><ArrowLeftRight size={16} /></b><span>{t('stampTeach')}</span></div>
+      <div className="hero-art">
+        <div className="hero-browser-window">
+          <div className="hero-browser-bar" aria-hidden="true">
+            <span className="hero-browser-dots"><i /><i /><i /></span>
+            <span className="hero-browser-address">skillsync.ai / learning room</span>
+            <span className="hero-browser-menu"><i /><i /><i /></span>
+          </div>
+          <div className="hero-browser-viewport">
+            <img
+              src="https://i.postimg.cc/cLzmFZ3q/c7ef1ab8-9984-421f-a839-daa8009b9ac0.jpg"
+              alt={t('heroPlatformPreview')}
+              loading="eager"
+              decoding="async"
+            />
+          </div>
+        </div>
+        <span className="hero-preview-caption" aria-hidden="true">{t('heroPreviewCaption')}</span>
       </div>
       <span className="hero-index mono">{t('heroIndex')}</span>
     </section>
