@@ -37,7 +37,7 @@ function Landing() {
           </div>
           <div className="hero-browser-viewport">
             <img
-              src="https://i.postimg.cc/cLzmFZ3q/c7ef1ab8-9984-421f-a839-daa8009b9ac0.jpg"
+              src="https://i.postimg.cc/3r2j5Vyy/0d7d7547-e315-4da7-ab3a-c4bb687c77e9.jpg"
               alt={t('heroPlatformPreview')}
               loading="eager"
               decoding="async"
