@@ -1,0 +1,30 @@
+uploads = []
+generated = []
+
+[[outputs]]
+id = "gBTjM8rqDzCdxKDY3l5lg"
+uri = "file://.local/outputs/SkillSync_AI_Pitch_Deck.pptx"
+type = "slides"
+title = "SkillSync AI — PowerPoint Export"
+description = "PowerPoint export rendered from the Arabic 12-slide presentation."
+logical_id = "7906bbd0-45c6-455b-8ae1-227edc1b9099"
+content_hash = "sha256:97f066e8ef7587cb3e13c3e1174c522891c365ac8beb4c65de4cec5bb88bf27f"
+size = 1990976
+mtime_ms = 1793666278630
+storage_uri = "gcs://replit-rams-assets-worf/rams/assets/repl:420483f3-fa7b-4381-b080-3d6cd6b2b854/7906bbd0-45c6-455b-8ae1-227edc1b9099/2daa592f-78b6-4b01-9910-24d65ec96706"
+storage_version_token = "1793666279012014"
+content_type = "application/vnd.openxmlformats-officedocument.presentationml.presentation"
+
+[[outputs]]
+id = "iPrOP55nTtJADmsMgnFS1"
+uri = "file://artifacts/skillsync-arabic-pitch/public/SkillSync_AI_Pitch_Deck.pptx"
+type = "slides"
+title = "SkillSync AI — Native PowerPoint with Speaker Notes"
+description = "12 editable Arabic slides, speaker notes on every slide, RTL formatting, and a clickable live-app link on the finale."
+logical_id = "fe6bc7cb-b298-46e3-a297-36dfe1a463b0"
+content_hash = "sha256:a5c2b1314a35cea491696a70ffb9d4dc2ac9fff21f1e1e3f990adf516c6cfdab"
+size = 284363
+mtime_ms = 1793666231297
+storage_uri = "gcs://replit-rams-assets-worf/rams/assets/repl:420483f3-fa7b-4381-b080-3d6cd6b2b854/fe6bc7cb-b298-46e3-a297-36dfe1a463b0/0ce3226f-bc94-47af-b090-8295e22356f1"
+storage_version_token = "1793666279484306"
+content_type = "application/vnd.openxmlformats-officedocument.presentationml.presentation"

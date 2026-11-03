@@ -4,7 +4,9 @@
   "private": true,
   "type": "module",
   "scripts": {
+    "predev": "pnpm exec tsx scripts/generate-pptx.mjs",
     "dev": "vite --config vite.config.ts --host 0.0.0.0",
+    "prebuild": "pnpm exec tsx scripts/generate-pptx.mjs",
     "build": "vite build --config vite.config.ts",
     "serve": "vite preview --config vite.config.ts --host 0.0.0.0",
     "validate-slides": "pnpm exec tsx scripts/validate-slides.ts",
@@ -36,5 +38,8 @@
     "vite": "catalog:",
     "wouter": "catalog:",
     "yaml": "2.8.3"
+  },
+  "dependencies": {
+    "pptxgenjs": "^4.0.1"
   }
 }

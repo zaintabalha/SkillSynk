@@ -51,6 +51,42 @@ body {
   -webkit-user-select: none;
 }
 
+.pptx-download-button {
+  position: fixed;
+  z-index: 1000;
+  top: max(14px, env(safe-area-inset-top));
+  right: max(14px, env(safe-area-inset-right));
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.55rem;
+  min-height: 46px;
+  padding: 0.7rem 1rem;
+  border: 1px solid rgba(248, 246, 241, 0.42);
+  border-radius: 999px;
+  background: #1f4a38;
+  box-shadow: 0 8px 24px rgba(10, 25, 18, 0.25);
+  color: #fff;
+  font-family: 'Tajawal', sans-serif;
+  font-size: 15px;
+  font-weight: 800;
+  line-height: 1;
+  text-decoration: none;
+  white-space: nowrap;
+  -webkit-tap-highlight-color: transparent;
+}
+
+.pptx-download-button:hover,
+.pptx-download-button:focus-visible {
+  background: #c85a32;
+  outline: 2px solid #fff;
+  outline-offset: 2px;
+}
+
+.pptx-download-button:active {
+  transform: translateY(1px);
+}
+
 .ss-slide {
   box-sizing: border-box;
   display: flex;
@@ -787,6 +823,13 @@ body {
 }
 
 @media (max-width: 700px) {
+  .pptx-download-button {
+    top: max(8px, env(safe-area-inset-top));
+    right: max(8px, env(safe-area-inset-right));
+    min-height: 42px;
+    padding: 0.6rem 0.8rem;
+    font-size: 14px;
+  }
   .ss-slide { padding: 4vh 5vw; gap: 2.4vh; }
   .ss-heading { font-size: 5.8vw; }
   .ss-subtitle, .ss-body { font-size: 3vw; }

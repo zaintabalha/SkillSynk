@@ -278,6 +278,16 @@ function SlideViewer() {
       className="slide-viewer h-screen w-screen overflow-hidden bg-black flex items-center justify-center"
       onClick={() => iframeRef.current?.focus()}
     >
+      <a
+        className="pptx-download-button"
+        href={`${base}/SkillSync_AI_Pitch_Deck.pptx`}
+        download="SkillSync_AI_Pitch_Deck.pptx"
+        aria-label="تحميل العرض بصيغة PowerPoint"
+        onClick={(event) => event.stopPropagation()}
+      >
+        <span aria-hidden="true">📥</span>
+        تحميل PowerPoint (.pptx)
+      </a>
       <iframe
         ref={iframeRef}
         src={`${base}/slide${firstPosition}?replitMotion=1`}
