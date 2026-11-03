@@ -1,0 +1,28 @@
+kind = "slides"
+previewPath = "/skillsync-arabic-pitch/"
+title = "SkillSync AI — عرض تحكيم عربي"
+description = "عرض تقديمي عربي باتجاه RTL مدته عشر دقائق ويمتد عبر 12 شريحة، يشرح مشكلة التعلم التشاركي، آلية المطابقة، معمارية الذكاء الاصطناعي والمحاكاة، وغرفة الفيديو، مع نص إلقاء موجّه للجنة التحكيم."
+version = "1.0.0"
+id = "artifacts/skillsync-arabic-pitch"
+router = "path"
+
+[[services]]
+name = "web"
+paths = [ "/skillsync-arabic-pitch/" ]
+localPort = 24790
+
+[services.development]
+run = "pnpm --filter @workspace/skillsync-arabic-pitch run dev"
+
+[services.production]
+build = [ "pnpm", "--filter", "@workspace/skillsync-arabic-pitch", "run", "build" ]
+serve = "static"
+publicDir = "artifacts/skillsync-arabic-pitch/dist/public"
+
+[[services.production.rewrites]]
+from = "/*"
+to = "/index.html"
+
+[services.env]
+PORT = "24790"
+BASE_PATH = "/skillsync-arabic-pitch/"
