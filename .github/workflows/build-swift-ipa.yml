@@ -99,9 +99,9 @@ jobs:
           preferred = next((device for device in ipads if device["name"] == "iPad (10th generation)"), None)
           selected = preferred or (ipads[0] if ipads else None)
           if selected:
-              print("platform=iOS Simulator,id=" + selected["udid"])
+              print("platform=iOS Simulator,id=" + selected["udid"] + ",arch=arm64")
           else:
-              print("generic/platform=iOS Simulator")
+              print("generic/platform=iOS Simulator,arch=arm64")
           ' "$IOS_SIMULATOR_RUNTIME_VERSION"
           )"
 
@@ -111,10 +111,10 @@ jobs:
             -scheme SkillSyncAI \
             -configuration Debug \
             -sdk iphonesimulator \
-            -arch arm64 \
             -destination "$SIMULATOR_DESTINATION" \
             -derivedDataPath "$RUNNER_TEMP/SkillSyncAI-DerivedData" \
             clean build \
             CODE_SIGN_IDENTITY="" \
             CODE_SIGNING_REQUIRED=NO \
-            CODE_SIGNING_ALLOWED=NO
+            CODE_SIGNING_ALLOWED=NO \
+            ONLY_ACTIVE_ARCH=YES
