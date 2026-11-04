@@ -69,18 +69,21 @@ final class NotificationManager: NSObject, UNUserNotificationCenterDelegate {
         center.removePendingNotificationRequests(withIdentifiers: ["roleswap-\(roomId)"])
     }
 
-    func userNotificationCenter(
+    nonisolated func userNotificationCenter(
         _ center: UNUserNotificationCenter,
         willPresent notification: UNNotification
     ) async -> UNNotificationPresentationOptions {
-        UIApplication.shared.applicationState == .active ? [] : [.banner, .sound, .badge]
+        await MainActor.run {
+            UIApplication.shared.applicationState == .active ? [] : [.banner, .sound, .badge]
+        }
     }
 
-    func userNotificationCenter(
+    nonisolated func userNotificationCenter(
         _ center: UNUserNotificationCenter,
         didReceive response: UNNotificationResponse
     ) async {
-        if let roomId = response.notification.request.content.userInfo["roomId"] as? String {
+        guard let roomId = response.notification.request.content.userInfo["roomId"] as? String else { return }
+        await MainActor.run {
             NotificationCenter.default.post(name: .skillSyncOpenRoom, object: roomId)
         }
     }
