@@ -1,7 +1,11 @@
-name: Build SkillSync iOS IPA
+name: Build SkillSync iOS Simulator
 
 on:
   push:
+    paths:
+      - "ios-native/**"
+      - ".github/workflows/build-swift-ipa.yml"
+  pull_request:
     paths:
       - "ios-native/**"
       - ".github/workflows/build-swift-ipa.yml"
@@ -11,14 +15,14 @@ permissions:
   contents: read
 
 concurrency:
-  group: build-swift-ipa-${{ github.ref }}
+  group: build-swift-simulator-${{ github.ref }}
   cancel-in-progress: true
 
 jobs:
-  build-ipa:
-    name: Sign and export development IPA
+  build-simulator:
+    name: Analyze and compile for iOS Simulator
     runs-on: macos-latest
-    timeout-minutes: 45
+    timeout-minutes: 30
     defaults:
       run:
         working-directory: ios-native
@@ -32,138 +36,29 @@ jobs:
         with:
           xcode-version: "26.0"
 
-      - name: Validate required signing secrets
-        env:
-          IOS_CERTIFICATE_P12_BASE64: ${{ secrets.IOS_CERTIFICATE_P12_BASE64 }}
-          IOS_CERTIFICATE_PASSWORD: ${{ secrets.IOS_CERTIFICATE_PASSWORD }}
-          IOS_PROVISIONING_PROFILE_BASE64: ${{ secrets.IOS_PROVISIONING_PROFILE_BASE64 }}
-          IOS_TEAM_ID: ${{ secrets.IOS_TEAM_ID }}
-          CLERK_PUBLISHABLE_KEY: ${{ secrets.CLERK_PUBLISHABLE_KEY }}
-        run: |
-          missing=()
-          for name in IOS_CERTIFICATE_P12_BASE64 IOS_CERTIFICATE_PASSWORD IOS_PROVISIONING_PROFILE_BASE64 IOS_TEAM_ID CLERK_PUBLISHABLE_KEY; do
-            if [[ -z "${!name}" ]]; then
-              missing+=("$name")
-            fi
-          done
-          if (( ${#missing[@]} > 0 )); then
-            printf 'Missing GitHub repository secrets: %s\n' "${missing[*]}" >&2
-            exit 1
-          fi
-          if [[ "$CLERK_PUBLISHABLE_KEY" != pk_live_* && "$CLERK_PUBLISHABLE_KEY" != pk_test_* ]]; then
-            echo "CLERK_PUBLISHABLE_KEY must be a Clerk publishable key." >&2
-            exit 1
-          fi
-
-      - name: Install development signing certificate and profile
-        env:
-          IOS_CERTIFICATE_P12_BASE64: ${{ secrets.IOS_CERTIFICATE_P12_BASE64 }}
-          IOS_CERTIFICATE_PASSWORD: ${{ secrets.IOS_CERTIFICATE_PASSWORD }}
-          IOS_PROVISIONING_PROFILE_BASE64: ${{ secrets.IOS_PROVISIONING_PROFILE_BASE64 }}
-          IOS_TEAM_ID: ${{ secrets.IOS_TEAM_ID }}
-        run: |
-          set -euo pipefail
-          CERT_PATH="$RUNNER_TEMP/skillsync-development.p12"
-          PROFILE_PATH="$RUNNER_TEMP/skillsync-development.mobileprovision"
-          KEYCHAIN_PATH="$RUNNER_TEMP/skillsync-build.keychain-db"
-          KEYCHAIN_PASSWORD="$(openssl rand -hex 24)"
-
-          printf '%s' "$IOS_CERTIFICATE_P12_BASE64" | base64 -D > "$CERT_PATH"
-          printf '%s' "$IOS_PROVISIONING_PROFILE_BASE64" | base64 -D > "$PROFILE_PATH"
-
-          security create-keychain -p "$KEYCHAIN_PASSWORD" "$KEYCHAIN_PATH"
-          echo "IOS_KEYCHAIN_PATH=$KEYCHAIN_PATH" >> "$GITHUB_ENV"
-          security set-keychain-settings -lut 21600 "$KEYCHAIN_PATH"
-          security unlock-keychain -p "$KEYCHAIN_PASSWORD" "$KEYCHAIN_PATH"
-          security import "$CERT_PATH" -k "$KEYCHAIN_PATH" -P "$IOS_CERTIFICATE_PASSWORD" -T /usr/bin/codesign
-          security set-key-partition-list -S apple-tool:,apple:,codesign: -s -k "$KEYCHAIN_PASSWORD" "$KEYCHAIN_PATH"
-          security list-keychains -d user -s "$KEYCHAIN_PATH"
-
-          security cms -D -i "$PROFILE_PATH" > "$RUNNER_TEMP/skillsync-profile.plist"
-          PROFILE_UUID=$(/usr/libexec/PlistBuddy -c 'Print UUID' "$RUNNER_TEMP/skillsync-profile.plist")
-          PROFILE_NAME=$(/usr/libexec/PlistBuddy -c 'Print Name' "$RUNNER_TEMP/skillsync-profile.plist")
-          PROFILE_TEAM_ID=$(/usr/libexec/PlistBuddy -c 'Print TeamIdentifier:0' "$RUNNER_TEMP/skillsync-profile.plist")
-          PROFILE_BUNDLE_ID=$(/usr/libexec/PlistBuddy -c 'Print Entitlements:application-identifier' "$RUNNER_TEMP/skillsync-profile.plist")
-          if [[ "$PROFILE_TEAM_ID" != "$IOS_TEAM_ID" || "$PROFILE_BUNDLE_ID" != "${IOS_TEAM_ID}.ai.skillsync.native" ]]; then
-            echo "Provisioning profile must match bundle ID ai.skillsync.native." >&2
-            exit 1
-          fi
-
-          PROFILE_DIR="$HOME/Library/MobileDevice/Provisioning Profiles"
-          mkdir -p "$PROFILE_DIR"
-          cp "$PROFILE_PATH" "$PROFILE_DIR/$PROFILE_UUID.mobileprovision"
-          {
-            echo "IOS_PROFILE_PATH=$PROFILE_DIR/$PROFILE_UUID.mobileprovision"
-            echo "IOS_PROFILE_UUID=$PROFILE_UUID"
-            echo "IOS_PROFILE_NAME=$PROFILE_NAME"
-          } >> "$GITHUB_ENV"
+      - name: Show Xcode version
+        run: xcodebuild -version
 
       - name: Resolve Swift packages
         run: xcodebuild -resolvePackageDependencies -project SkillSyncAI.xcodeproj -scheme SkillSyncAI
 
-      - name: Archive iOS device build
-        env:
-          IOS_TEAM_ID: ${{ secrets.IOS_TEAM_ID }}
-          CLERK_PUBLISHABLE_KEY: ${{ secrets.CLERK_PUBLISHABLE_KEY }}
-        run: |
-          set -euo pipefail
-          xcodebuild archive \
-            -project SkillSyncAI.xcodeproj \
-            -scheme SkillSyncAI \
-            -configuration Debug \
-            -destination 'generic/platform=iOS' \
-            -archivePath "$RUNNER_TEMP/SkillSyncAI.xcarchive" \
-            DEVELOPMENT_TEAM="$IOS_TEAM_ID" \
-            CODE_SIGN_STYLE=Manual \
-            CODE_SIGN_IDENTITY="Apple Development" \
-            PROVISIONING_PROFILE_SPECIFIER="$IOS_PROFILE_NAME" \
-            CLERK_PUBLISHABLE_KEY="$CLERK_PUBLISHABLE_KEY"
+      - name: Run Xcode static analyzer
+        run: >-
+          xcodebuild analyze
+          -project SkillSyncAI.xcodeproj
+          -scheme SkillSyncAI
+          -configuration Debug
+          -destination 'generic/platform=iOS Simulator'
+          CODE_SIGNING_ALLOWED=NO
+          CODE_SIGNING_REQUIRED=NO
 
-      - name: Create development export options
-        env:
-          IOS_TEAM_ID: ${{ secrets.IOS_TEAM_ID }}
-        run: |
-          python3 - <<'PY'
-          import os
-          import plistlib
-          options = {
-              "method": "development",
-              "signingStyle": "manual",
-              "teamID": os.environ["IOS_TEAM_ID"],
-              "provisioningProfiles": {
-                  "ai.skillsync.native": os.environ["IOS_PROFILE_NAME"]
-              },
-          }
-          with open(os.path.join(os.environ["RUNNER_TEMP"], "ExportOptions.plist"), "wb") as f:
-              plistlib.dump(options, f)
-          PY
-
-      - name: Export signed IPA
-        run: |
-          set -euo pipefail
-          xcodebuild -exportArchive \
-            -archivePath "$RUNNER_TEMP/SkillSyncAI.xcarchive" \
-            -exportPath "$RUNNER_TEMP/skillsync-ipa" \
-            -exportOptionsPlist "$RUNNER_TEMP/ExportOptions.plist"
-          test -s "$RUNNER_TEMP/skillsync-ipa/SkillSyncAI.ipa"
-
-      - name: Upload IPA artifact
-        uses: actions/upload-artifact@v4
-        with:
-          name: SkillSyncAI-development-ipa
-          path: ${{ runner.temp }}/skillsync-ipa/SkillSyncAI.ipa
-          if-no-files-found: error
-          retention-days: 14
-
-      - name: Remove signing materials
-        if: always()
-        run: |
-          if [[ -n "${IOS_KEYCHAIN_PATH:-}" ]]; then
-            security delete-keychain "$IOS_KEYCHAIN_PATH" || true
-          fi
-          if [[ -n "${IOS_PROFILE_PATH:-}" ]]; then
-            rm -f "$IOS_PROFILE_PATH"
-          fi
-          rm -f "$RUNNER_TEMP/skillsync-development.p12" \
-                "$RUNNER_TEMP/skillsync-development.mobileprovision" \
-                "$RUNNER_TEMP/skillsync-profile.plist"
+      - name: Build iOS Simulator app
+        run: >-
+          xcodebuild build
+          -project SkillSyncAI.xcodeproj
+          -scheme SkillSyncAI
+          -configuration Debug
+          -destination 'generic/platform=iOS Simulator'
+          -derivedDataPath "$RUNNER_TEMP/SkillSyncAI-DerivedData"
+          CODE_SIGNING_ALLOWED=NO
+          CODE_SIGNING_REQUIRED=NO
