@@ -570,3 +570,36 @@ html[lang='ar'] .display { line-height: 1.25; }
   .audio-draft audio { width: min(220px, 50%); }
   .image-lightbox { padding: 14px; }
 }
+
+/* Keep room chat controls above mobile navigation and browser safe areas. */
+@media (max-width: 1180px) {
+  .room-stage-chat { overflow: visible; }
+  .room-stage-chat .chat-pane > .message-composer {
+    position: sticky;
+    bottom: calc(12px + env(safe-area-inset-bottom, 0px));
+    z-index: 7;
+    flex-shrink: 0;
+    box-shadow: 0 -10px 22px rgba(248, 247, 240, .94);
+  }
+  .room-stage-chat .message-feed {
+    scroll-padding-block: 16px 28px;
+    overscroll-behavior-y: contain;
+  }
+}
+
+@media (max-width: 760px) {
+  .room-stage-chat .chat-pane {
+    height: auto;
+    min-height: max(360px, calc(100dvh - 320px));
+  }
+  .room-stage-chat .chat-pane .message-feed {
+    min-height: clamp(180px, calc(100dvh - 520px), 320px);
+    max-height: none;
+  }
+  .room-stage-chat .chat-pane > .message-composer {
+    bottom: calc(61px + env(safe-area-inset-bottom, 0px) + 10px);
+  }
+  .room-stage-chat .big-composer textarea {
+    scroll-margin-block-end: calc(80px + env(safe-area-inset-bottom, 0px));
+  }
+}
