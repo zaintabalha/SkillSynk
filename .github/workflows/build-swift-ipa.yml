@@ -22,7 +22,7 @@ jobs:
   build-simulator:
     name: Compile for iOS Simulator
     runs-on: macos-latest
-    timeout-minutes: 30
+    timeout-minutes: 60
     steps:
       - name: Check out source
         uses: actions/checkout@v4
@@ -34,6 +34,19 @@ jobs:
 
       - name: Show Xcode version
         run: xcodebuild -version
+
+      - name: Install iOS Simulator runtime if missing
+        shell: bash
+        run: |
+          if xcrun simctl list runtimes -j |
+            python3 -c 'import json,sys; data=json.load(sys.stdin); sys.exit(0 if any(runtime.get("platform") == "iOS" and runtime.get("isAvailable") for runtime in data.get("runtimes", [])) else 1)'
+          then
+            echo "An available iOS Simulator runtime is already installed."
+          else
+            echo "No available iOS Simulator runtime found; downloading the iOS platform."
+            xcodebuild -downloadPlatform iOS
+          fi
+          xcrun simctl list runtimes
 
       - name: Resolve Swift packages
         run: >-
