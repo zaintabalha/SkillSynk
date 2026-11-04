@@ -111,6 +111,7 @@ jobs:
             -scheme SkillSyncAI \
             -configuration Debug \
             -sdk iphonesimulator \
+            -arch arm64 \
             -destination "$SIMULATOR_DESTINATION" \
             -derivedDataPath "$RUNNER_TEMP/SkillSyncAI-DerivedData" \
             clean build \
