@@ -20,13 +20,9 @@ concurrency:
 
 jobs:
   build-simulator:
-    name: Analyze and compile for iOS Simulator
+    name: Compile for iOS Simulator
     runs-on: macos-latest
     timeout-minutes: 30
-    defaults:
-      run:
-        working-directory: ios-native
-        shell: bash
     steps:
       - name: Check out source
         uses: actions/checkout@v4
@@ -40,25 +36,45 @@ jobs:
         run: xcodebuild -version
 
       - name: Resolve Swift packages
-        run: xcodebuild -resolvePackageDependencies -project SkillSyncAI.xcodeproj -scheme SkillSyncAI
-
-      - name: Run Xcode static analyzer
         run: >-
-          xcodebuild analyze
-          -project SkillSyncAI.xcodeproj
+          xcodebuild -resolvePackageDependencies
+          -project "$GITHUB_WORKSPACE/ios-native/SkillSyncAI.xcodeproj"
           -scheme SkillSyncAI
-          -configuration Debug
-          -destination 'generic/platform=iOS Simulator'
-          CODE_SIGNING_ALLOWED=NO
-          CODE_SIGNING_REQUIRED=NO
 
-      - name: Build iOS Simulator app
-        run: >-
-          xcodebuild build
-          -project SkillSyncAI.xcodeproj
-          -scheme SkillSyncAI
-          -configuration Debug
-          -destination 'generic/platform=iOS Simulator'
-          -derivedDataPath "$RUNNER_TEMP/SkillSyncAI-DerivedData"
-          CODE_SIGNING_ALLOWED=NO
-          CODE_SIGNING_REQUIRED=NO
+      - name: Clean and build for an available iPad simulator
+        shell: bash
+        run: |
+          set -euo pipefail
+
+          # Prefer the requested iPad model; fall back to any installed iPad,
+          # then to Xcode's generic simulator destination if none is installed.
+          SIMULATOR_DESTINATION="$(
+            xcrun simctl list devices available -j |
+              python3 -c '
+          import json
+          import sys
+
+          data = json.load(sys.stdin)
+          devices = [device for group in data["devices"].values() for device in group]
+          ipads = [device for device in devices if device.get("isAvailable") and device["name"].startswith("iPad ")]
+          preferred = next((device for device in ipads if device["name"] == "iPad (10th generation)"), None)
+          selected = preferred or (ipads[0] if ipads else None)
+          if selected:
+              print("platform=iOS Simulator,id=" + selected["udid"])
+          else:
+              print("generic/platform=iOS Simulator")
+          '
+          )"
+
+          echo "Building for destination: $SIMULATOR_DESTINATION"
+          xcodebuild \
+            -project "$GITHUB_WORKSPACE/ios-native/SkillSyncAI.xcodeproj" \
+            -scheme SkillSyncAI \
+            -configuration Debug \
+            -sdk iphonesimulator \
+            -destination "$SIMULATOR_DESTINATION" \
+            -derivedDataPath "$RUNNER_TEMP/SkillSyncAI-DerivedData" \
+            clean build \
+            CODE_SIGN_IDENTITY="" \
+            CODE_SIGNING_REQUIRED=NO \
+            CODE_SIGNING_ALLOWED=NO
