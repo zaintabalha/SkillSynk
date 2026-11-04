@@ -64,6 +64,32 @@ jobs:
             echo "No iOS $XCODE_VERSION Simulator runtime is available for the selected Xcode." >&2
             exit 1
           fi
+          echo "IOS_SIMULATOR_RUNTIME_VERSION=$XCODE_VERSION" >> "$GITHUB_ENV"
+
+      - name: Select iPad Simulator destination
+        shell: bash
+        run: |
+          set -euo pipefail
+          SIMULATOR_DESTINATION="$(
+            xcrun simctl list devices available -j |
+              python3 -c '
+          import json
+          import sys
+
+          version = sys.argv[1].replace(".", "-")
+          runtime_id = "com.apple.CoreSimulator.SimRuntime.iOS-" + version
+          data = json.load(sys.stdin)
+          devices = [device for device in data["devices"].get(runtime_id, []) if device.get("isAvailable")]
+          ipads = [device for device in devices if device["name"].startswith("iPad ")]
+          selected = next((device for device in ipads if device["name"] == "iPad (10th generation)"), None)
+          selected = selected or (ipads[0] if ipads else None) or (devices[0] if devices else None)
+          if not selected:
+              raise SystemExit("No available iOS Simulator device matches the installed runtime.")
+          print("platform=iOS Simulator,id=" + selected["udid"] + ",arch=arm64")
+          ' "$IOS_SIMULATOR_RUNTIME_VERSION"
+          )"
+          echo "IOS_SIMULATOR_DESTINATION=$SIMULATOR_DESTINATION" >> "$GITHUB_ENV"
+          echo "Using simulator destination: $SIMULATOR_DESTINATION"
 
       - name: Resolve Swift packages
         run: >-
@@ -77,7 +103,7 @@ jobs:
           -project ios-native/SkillSyncAI.xcodeproj
           -scheme SkillSyncAI
           -configuration Debug
-          -destination 'generic/platform=iOS Simulator,arch=arm64'
+          -destination "$IOS_SIMULATOR_DESTINATION"
           CODE_SIGNING_ALLOWED=NO
           ONLY_ACTIVE_ARCH=YES
 
@@ -87,7 +113,7 @@ jobs:
           -project ios-native/SkillSyncAI.xcodeproj
           -scheme SkillSyncAI
           -configuration Debug
-          -destination 'generic/platform=iOS Simulator,arch=arm64'
+          -destination "$IOS_SIMULATOR_DESTINATION"
           -derivedDataPath build/ios-native
           CODE_SIGNING_ALLOWED=NO
           ONLY_ACTIVE_ARCH=YES
