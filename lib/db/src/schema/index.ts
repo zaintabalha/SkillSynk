@@ -29,3 +29,4 @@ export * from "./skillsync-suspensions";
 export * from "./skillsync-user-notices";
 export * from "./skillsync-activities";
 export * from "./skillsync-activity-attempts";
+export * from "./skillsync-push-devices";

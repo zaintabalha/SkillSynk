@@ -62,6 +62,8 @@ export * from './profileEnvelope';
 export * from './profileInput';
 export * from './projectSubmission';
 export * from './projectSubmissionEvaluationStatus';
+export * from './pushDeviceInput';
+export * from './pushDeviceInputEnvironment';
 export * from './recommendationResponse';
 export * from './reportInput';
 export * from './reportInputCategory';

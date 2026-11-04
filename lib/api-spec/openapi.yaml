@@ -115,6 +115,35 @@ paths:
             application/json:
               schema:
                 $ref: "#/components/schemas/RoomSummary"
+  /skillsync/push/devices:
+    post:
+      operationId: registerSkillSyncPushDevice
+      tags: [skillsync]
+      summary: Register the signed-in iOS device for push notifications
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/PushDeviceInput"
+      responses:
+        "204":
+          description: Device registered
+        "400":
+          description: Invalid device registration
+    delete:
+      operationId: unregisterSkillSyncPushDevice
+      tags: [skillsync]
+      summary: Remove the signed-in iOS device from push delivery
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/PushDeviceInput"
+      responses:
+        "204":
+          description: Device removed
   /skillsync/rooms:
     get:
       operationId: getSkillSyncRooms
@@ -996,6 +1025,18 @@ components:
         mediaObjectPath: { type: ["string", "null"] }
         mediaName: { type: ["string", "null"], maxLength: 255 }
         mediaDurationSeconds: { type: ["integer", "null"], minimum: 0, maximum: 3600 }
+    PushDeviceInput:
+      type: object
+      required: [token, environment]
+      properties:
+        token:
+          type: string
+          minLength: 64
+          maxLength: 256
+          pattern: "^[A-Fa-f0-9]{64,256}$"
+        environment:
+          type: string
+          enum: [development, production]
     ActivityQuestion:
       type: object
       required: [id, prompt, choices, answerIndex, explanation]

@@ -54,6 +54,7 @@ import { aiRequestContext } from "../lib/skillsync-ai-limits";
 import { ensureDemoData } from "../lib/skillsync-demo";
 import roomInteractionRouter from "./skillsync-room-interactions";
 import adminRouter from "./skillsync-admin";
+import pushRouter from "./skillsync-push";
 import { messageDto, roomActivities, recordAiUse, roomContext as sharedRoomContext, roomMemory } from "../lib/skillsync-room-service";
 
 const router: IRouter = Router();
@@ -61,6 +62,7 @@ const router: IRouter = Router();
 router.use("/skillsync", requireSkillSyncAuth);
 router.use("/skillsync", aiRequestContext);
 router.use(roomInteractionRouter);
+router.use(pushRouter);
 router.use(adminRouter);
 
 function iso(value: Date | string): string {

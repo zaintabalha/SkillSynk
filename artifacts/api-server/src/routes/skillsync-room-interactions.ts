@@ -18,6 +18,7 @@ import { roomContext, resolveSpeaker, roomMemory, messageDto, roomActivities, at
 import { answerRoomQuestion, generateCallCopilotText, generateCallSummary, generateRoomActivity, generateSimulatorSolution, transcribeCallAudio } from "../lib/skillsync-room-ai";
 import { withAiBudget } from "../lib/skillsync-ai-limits";
 import { logger } from "../lib/logger";
+import { notifySkillSyncUsers } from "../lib/skillsync-push";
 import { evaluateSimulatorResponse } from "../lib/skillsync-simulator-evaluation";
 import {
   createRoomMediaUploadUrl, deleteRoomMediaFile, getRoomMediaFile, newRoomMediaId,
@@ -93,6 +94,16 @@ async function createActivity(context: RoomContext, kind: Kind, prompt: string, 
     id, roomId: context.room.id, kind, title: generated.title, instructions: generated.instructions,
     content: generated.content, createdBy: userId, isDemo: !generated.aiPowered,
   });
+  if (!context.room.isDemo) {
+    const partnerId = context.match.userAId === userId ? context.match.userBId : context.match.userAId;
+    notifySkillSyncUsers([partnerId], {
+      event: "activity_ready",
+      title: "SkillSync AI",
+      body: "A shared activity is ready in your learning room.",
+      roomId: context.room.id,
+      activityId: id,
+    });
+  }
   recordAiUseNonBlocking(context, userId, kind, generated.aiPowered);
   const activity = (await roomActivities(context.room.id)).find((item) => item.id === id)!;
   return { activity, aiPowered: generated.aiPowered };
@@ -190,6 +201,19 @@ function sendChat(channel: "partner" | "ai"): RequestHandler {
           replyTo: replySnapshot(repliedMessage),
         }).returning();
         assistantMessage = messageDto(response);
+      }
+      if (!context.room.isDemo) {
+        const partnerId = context.match.userAId === speaker.userId ? context.match.userBId : context.match.userAId;
+        if (activityId === null) {
+          notifySkillSyncUsers([partnerId], {
+            event: content === null ? "partner_message" : "ai_reply",
+            title: "SkillSync AI",
+            body: content === null
+              ? "You have a new partner message in your learning room."
+              : "SkillSync AI has replied in your learning room.",
+            roomId: context.room.id,
+          });
+        }
       }
       res.status(201).json(SendSkillSyncMessageResponse.parse({ message: messageDto(saved), assistantMessage, aiPowered }));
     };
@@ -336,6 +360,14 @@ router.post("/skillsync/rooms/:roomId/messages/:messageId/transcription", async 
   );
   const [updated] = await db.update(messages).set({ transcript }).where(eq(messages.id, message.id)).returning();
   recordAiUseNonBlocking(context, res.locals.userId, "voice_note_transcription", true);
+  if (!context.room.isDemo && message.senderId && message.senderId !== res.locals.userId) {
+    notifySkillSyncUsers([message.senderId], {
+      event: "partner_message",
+      title: "SkillSync AI",
+      body: "The voice note in your learning room has been transcribed.",
+      roomId: context.room.id,
+    });
+  }
   res.json(TranscribeSkillSyncVoiceNoteResponse.parse({ messageId: updated.id, transcript: updated.transcript ?? "" }));
 });
 router.post("/skillsync/rooms/:roomId/call-copilot", async (req, res) => {
@@ -451,6 +483,15 @@ router.post("/skillsync/rooms/:roomId/activities/:activityId/solution", async (r
     { userId: res.locals.userId, roomId: context.room.id },
   );
   recordAiUseNonBlocking(context, res.locals.userId, "simulator_solution", true);
+  if (!context.room.isDemo) {
+    notifySkillSyncUsers([res.locals.userId], {
+      event: "solution_ready",
+      title: "SkillSync AI",
+      body: "Your simulator solution is ready to view.",
+      roomId: context.room.id,
+      activityId: activity.id,
+    });
+  }
   res.json(GenerateSkillSyncSimulatorSolutionResponse.parse({ code }));
 });
 router.post("/skillsync/rooms/:roomId/activities/:activityId/attempts", async (req, res) => {

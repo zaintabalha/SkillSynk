@@ -188,6 +188,42 @@ export const ConnectSkillSyncMatchResponse = zod.object({
 
 
 /**
+ * @summary Register the signed-in iOS device for push notifications
+ */
+export const registerSkillSyncPushDeviceBodyTokenMin = 64;
+export const registerSkillSyncPushDeviceBodyTokenMax = 256;
+
+
+export const registerSkillSyncPushDeviceBodyTokenRegExp = new RegExp('^[A-Fa-f0-9]{64,256}$');
+
+
+export const RegisterSkillSyncPushDeviceBody = zod.object({
+  "token": zod.string().min(registerSkillSyncPushDeviceBodyTokenMin).max(registerSkillSyncPushDeviceBodyTokenMax).regex(registerSkillSyncPushDeviceBodyTokenRegExp),
+  "environment": zod.enum(['development', 'production'])
+})
+
+export const RegisterSkillSyncPushDeviceResponse = zod.void()
+
+
+/**
+ * @summary Remove the signed-in iOS device from push delivery
+ */
+export const unregisterSkillSyncPushDeviceBodyTokenMin = 64;
+export const unregisterSkillSyncPushDeviceBodyTokenMax = 256;
+
+
+export const unregisterSkillSyncPushDeviceBodyTokenRegExp = new RegExp('^[A-Fa-f0-9]{64,256}$');
+
+
+export const UnregisterSkillSyncPushDeviceBody = zod.object({
+  "token": zod.string().min(unregisterSkillSyncPushDeviceBodyTokenMin).max(unregisterSkillSyncPushDeviceBodyTokenMax).regex(unregisterSkillSyncPushDeviceBodyTokenRegExp),
+  "environment": zod.enum(['development', 'production'])
+})
+
+export const UnregisterSkillSyncPushDeviceResponse = zod.void()
+
+
+/**
  * @summary List the signed-in user's learning rooms
  */
 export const getSkillSyncRoomsResponseProgressMin = 0;

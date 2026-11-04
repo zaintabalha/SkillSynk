@@ -1,0 +1,59 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+<plist version="1.0">
+<dict>
+    <key>CFBundleDisplayName</key>
+    <string>SkillSync AI</string>
+    <key>CFBundleIdentifier</key>
+    <string>$(PRODUCT_BUNDLE_IDENTIFIER)</string>
+    <key>CFBundleName</key>
+    <string>SkillSync AI</string>
+    <key>CFBundlePackageType</key>
+    <string>APPL</string>
+    <key>CFBundleShortVersionString</key>
+    <string>1.0</string>
+    <key>CFBundleVersion</key>
+    <string>1</string>
+    <key>LSRequiresIPhoneOS</key>
+    <true/>
+    <key>ClerkPublishableKey</key>
+    <string>$(CLERK_PUBLISHABLE_KEY)</string>
+    <key>SkillSyncAPIBaseURL</key>
+    <string>$(SKILLSYNC_API_BASE_URL)</string>
+    <key>APNSEnvironment</key>
+    <string>$(APNS_ENVIRONMENT)</string>
+    <key>NSCameraUsageDescription</key>
+    <string>SkillSync AI uses the camera for partner video study rooms.</string>
+    <key>NSMicrophoneUsageDescription</key>
+    <string>SkillSync AI uses the microphone for video rooms and voice notes.</string>
+    <key>NSPhotoLibraryUsageDescription</key>
+    <string>Choose images to share with your learning partner.</string>
+    <key>NSPhotoLibraryAddUsageDescription</key>
+    <string>Save learning-room media to your photo library when requested.</string>
+    <key>UIBackgroundModes</key>
+    <array>
+        <string>remote-notification</string>
+        <string>fetch</string>
+        <string>processing</string>
+    </array>
+    <key>BGTaskSchedulerPermittedIdentifiers</key>
+    <array>
+        <string>ai.skillsync.native.refresh</string>
+    </array>
+    <key>UILaunchScreen</key>
+    <dict/>
+    <key>UISupportedInterfaceOrientations</key>
+    <array>
+        <string>UIInterfaceOrientationPortrait</string>
+        <string>UIInterfaceOrientationLandscapeLeft</string>
+        <string>UIInterfaceOrientationLandscapeRight</string>
+    </array>
+    <key>UISupportedInterfaceOrientations~ipad</key>
+    <array>
+        <string>UIInterfaceOrientationPortrait</string>
+        <string>UIInterfaceOrientationPortraitUpsideDown</string>
+        <string>UIInterfaceOrientationLandscapeLeft</string>
+        <string>UIInterfaceOrientationLandscapeRight</string>
+    </array>
+</dict>
+</plist>

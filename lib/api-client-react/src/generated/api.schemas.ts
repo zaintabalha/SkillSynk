@@ -472,6 +472,24 @@ export interface ChatMessageInput {
   mediaDurationSeconds?: number | null;
 }
 
+export type PushDeviceInputEnvironment = typeof PushDeviceInputEnvironment[keyof typeof PushDeviceInputEnvironment];
+
+
+export const PushDeviceInputEnvironment = {
+  development: 'development',
+  production: 'production',
+} as const;
+
+export interface PushDeviceInput {
+  /**
+     * @minLength 64
+     * @maxLength 256
+     * @pattern ^[A-Fa-f0-9]{64,256}$
+     */
+  token: string;
+  environment: PushDeviceInputEnvironment;
+}
+
 export interface SimulatorSolution {
   /**
      * @minLength 1

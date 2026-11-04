@@ -50,6 +50,7 @@ import type {
   ProfileEnvelope,
   ProfileInput,
   ProjectSubmission,
+  PushDeviceInput,
   RecommendationResponse,
   ReportInput,
   ReportTicket,
@@ -748,6 +749,182 @@ export const useConnectSkillSyncMatch = <TError = ErrorType<AiLimitedResponse>,
         TContext
       > => {
       return useMutation(getConnectSkillSyncMatchMutationOptions(options), queryClient);
+    }
+
+export const getRegisterSkillSyncPushDeviceUrl = () => {
+
+
+
+
+  return `/api/skillsync/push/devices`
+}
+
+/**
+ * @summary Register the signed-in iOS device for push notifications
+ */
+export const registerSkillSyncPushDevice = async (pushDeviceInput: PushDeviceInput, options?: Parameters<typeof customFetch>[1]): Promise<void> => {
+
+    const getHeaders = (h?: NonNullable<RequestInit['headers']>): Record<string, string | readonly string[]> => {
+    if (!h) return {};
+    if (h instanceof Headers) return Object.fromEntries(h.entries());
+    if (Symbol.iterator in h) {
+      return Object.fromEntries(
+        Array.from(h as Iterable<Iterable<string>>, (entry) => Array.from(entry) as [string, string]),
+      );
+    }
+    const headers: Record<string, string | readonly string[]> = {};
+    for (const [name, value] of Object.entries<string | readonly string[] | undefined>(h)) {
+      if (value !== undefined) headers[name] = value;
+    }
+    return headers;
+  };
+return customFetch<void>(getRegisterSkillSyncPushDeviceUrl(),
+  {
+    ...options,
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json', ...getHeaders(options?.headers) },
+    body: JSON.stringify(pushDeviceInput)
+  }
+);}
+
+
+
+
+
+export const getRegisterSkillSyncPushDeviceMutationKey = () => ['registerSkillSyncPushDevice'] as const;
+
+export const getRegisterSkillSyncPushDeviceMutationOptions = <TError = ErrorType<void>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof registerSkillSyncPushDevice>>, TError,RegisterSkillSyncPushDeviceMutationVariables, TContext>, request?: SecondParameter<typeof customFetch>}
+): UseMutationOptions<Awaited<ReturnType<typeof registerSkillSyncPushDevice>>, TError,RegisterSkillSyncPushDeviceMutationVariables, TContext> => {
+
+const mutationKey = getRegisterSkillSyncPushDeviceMutationKey();
+const {mutation: mutationOptions, request: requestOptions} = options ?
+      options.mutation && 'mutationKey' in options.mutation && options.mutation.mutationKey ?
+      options
+      : {...options, mutation: {...options.mutation, mutationKey}}
+      : {mutation: { mutationKey, }, request: undefined};
+
+
+
+
+      const mutationFn: MutationFunction<Awaited<ReturnType<typeof registerSkillSyncPushDevice>>, RegisterSkillSyncPushDeviceMutationVariables> = (props) => {
+          const {data} = props ?? {};
+
+          return  registerSkillSyncPushDevice(data,requestOptions)
+        }
+
+
+
+
+
+
+  return  { mutationFn, ...mutationOptions }}
+
+    export type RegisterSkillSyncPushDeviceMutationResult = NonNullable<Awaited<ReturnType<typeof registerSkillSyncPushDevice>>>
+    export type RegisterSkillSyncPushDeviceMutationBody = BodyType<PushDeviceInput>
+    export type RegisterSkillSyncPushDeviceMutationError = ErrorType<void>
+    export type RegisterSkillSyncPushDeviceMutationVariables = {data: BodyType<PushDeviceInput>}
+
+    /**
+ * @summary Register the signed-in iOS device for push notifications
+ */
+export const useRegisterSkillSyncPushDevice = <TError = ErrorType<void>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof registerSkillSyncPushDevice>>, TError,RegisterSkillSyncPushDeviceMutationVariables, TContext>, request?: SecondParameter<typeof customFetch>}
+ , queryClient?: QueryClient): UseMutationResult<
+        Awaited<ReturnType<typeof registerSkillSyncPushDevice>>,
+        TError,
+        RegisterSkillSyncPushDeviceMutationVariables,
+        TContext
+      > => {
+      return useMutation(getRegisterSkillSyncPushDeviceMutationOptions(options), queryClient);
+    }
+
+export const getUnregisterSkillSyncPushDeviceUrl = () => {
+
+
+
+
+  return `/api/skillsync/push/devices`
+}
+
+/**
+ * @summary Remove the signed-in iOS device from push delivery
+ */
+export const unregisterSkillSyncPushDevice = async (pushDeviceInput: PushDeviceInput, options?: Parameters<typeof customFetch>[1]): Promise<void> => {
+
+    const getHeaders = (h?: NonNullable<RequestInit['headers']>): Record<string, string | readonly string[]> => {
+    if (!h) return {};
+    if (h instanceof Headers) return Object.fromEntries(h.entries());
+    if (Symbol.iterator in h) {
+      return Object.fromEntries(
+        Array.from(h as Iterable<Iterable<string>>, (entry) => Array.from(entry) as [string, string]),
+      );
+    }
+    const headers: Record<string, string | readonly string[]> = {};
+    for (const [name, value] of Object.entries<string | readonly string[] | undefined>(h)) {
+      if (value !== undefined) headers[name] = value;
+    }
+    return headers;
+  };
+return customFetch<void>(getUnregisterSkillSyncPushDeviceUrl(),
+  {
+    ...options,
+    method: 'DELETE',
+    headers: { 'Content-Type': 'application/json', ...getHeaders(options?.headers) },
+    body: JSON.stringify(pushDeviceInput)
+  }
+);}
+
+
+
+
+
+export const getUnregisterSkillSyncPushDeviceMutationKey = () => ['unregisterSkillSyncPushDevice'] as const;
+
+export const getUnregisterSkillSyncPushDeviceMutationOptions = <TError = ErrorType<unknown>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof unregisterSkillSyncPushDevice>>, TError,UnregisterSkillSyncPushDeviceMutationVariables, TContext>, request?: SecondParameter<typeof customFetch>}
+): UseMutationOptions<Awaited<ReturnType<typeof unregisterSkillSyncPushDevice>>, TError,UnregisterSkillSyncPushDeviceMutationVariables, TContext> => {
+
+const mutationKey = getUnregisterSkillSyncPushDeviceMutationKey();
+const {mutation: mutationOptions, request: requestOptions} = options ?
+      options.mutation && 'mutationKey' in options.mutation && options.mutation.mutationKey ?
+      options
+      : {...options, mutation: {...options.mutation, mutationKey}}
+      : {mutation: { mutationKey, }, request: undefined};
+
+
+
+
+      const mutationFn: MutationFunction<Awaited<ReturnType<typeof unregisterSkillSyncPushDevice>>, UnregisterSkillSyncPushDeviceMutationVariables> = (props) => {
+          const {data} = props ?? {};
+
+          return  unregisterSkillSyncPushDevice(data,requestOptions)
+        }
+
+
+
+
+
+
+  return  { mutationFn, ...mutationOptions }}
+
+    export type UnregisterSkillSyncPushDeviceMutationResult = NonNullable<Awaited<ReturnType<typeof unregisterSkillSyncPushDevice>>>
+    export type UnregisterSkillSyncPushDeviceMutationBody = BodyType<PushDeviceInput>
+    export type UnregisterSkillSyncPushDeviceMutationError = ErrorType<unknown>
+    export type UnregisterSkillSyncPushDeviceMutationVariables = {data: BodyType<PushDeviceInput>}
+
+    /**
+ * @summary Remove the signed-in iOS device from push delivery
+ */
+export const useUnregisterSkillSyncPushDevice = <TError = ErrorType<unknown>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof unregisterSkillSyncPushDevice>>, TError,UnregisterSkillSyncPushDeviceMutationVariables, TContext>, request?: SecondParameter<typeof customFetch>}
+ , queryClient?: QueryClient): UseMutationResult<
+        Awaited<ReturnType<typeof unregisterSkillSyncPushDevice>>,
+        TError,
+        UnregisterSkillSyncPushDeviceMutationVariables,
+        TContext
+      > => {
+      return useMutation(getUnregisterSkillSyncPushDeviceMutationOptions(options), queryClient);
     }
 
 export const getGetSkillSyncRoomsUrl = () => {
