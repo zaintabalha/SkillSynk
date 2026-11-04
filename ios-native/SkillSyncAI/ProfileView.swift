@@ -116,10 +116,8 @@ struct ProfileView: View {
     }
 
     @MainActor private func signOut() async {
-        guard await NotificationManager.shared.removeCurrentDevice() else {
-            error = "Could not disconnect push notifications. Check your connection and try signing out again."
-            return
-        }
+        // Do not strand the user in a session if the device-token cleanup endpoint is unavailable.
+        _ = await NotificationManager.shared.removeCurrentDevice()
         do {
             try await clerk.auth.signOut(sessionId: clerk.session?.id)
         } catch { error = error.localizedDescription }

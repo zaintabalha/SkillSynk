@@ -38,3 +38,7 @@ The API adds an authenticated device-registration endpoint and a small device-to
 ## Validation limitations
 
 This workspace runs Linux and has no Xcode, Apple SDKs, or Swift compiler. The project files can be reviewed here, but an iOS build, simulator run, device permission test, code signing, and IPA export must be completed on a Mac with Xcode. APNs delivery also requires the Apple credentials above and a deployed API server.
+
+## GitHub Actions build check
+
+The repository workflow at `.github/workflows/ios-native.yml` resolves the Clerk package, runs Xcode static analysis, and builds the app for the iOS Simulator on a macOS runner. It validates compilation but does not replace simulator/device tests, Apple signing, or push-delivery testing.

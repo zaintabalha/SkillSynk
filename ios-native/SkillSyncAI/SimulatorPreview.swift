@@ -240,13 +240,18 @@ private struct SimulatorWebPreview: UIViewRepresentable {
             let trimmed = source.trimmingCharacters(in: .whitespacesAndNewlines)
             if trimmed.lowercased().hasPrefix("<!doctype") || trimmed.lowercased().hasPrefix("<html") {
                 var html = source
-                let lower = html.lowercased()
-                if let headEnd = lower.range(of: "</head>") {
-                    html.insert(contentsOf: "<meta http-equiv=\"Content-Security-Policy\" content=\"\(csp)\">\(bridge)", at: headEnd.lowerBound)
-                } else {
-                    html = "<!doctype html><html><head><meta http-equiv=\"Content-Security-Policy\" content=\"\(csp)\">\(bridge)</head><body>\(html)</body></html>"
+                let secureHead = "<meta http-equiv=\"Content-Security-Policy\" content=\"\(csp)\">\(bridge)"
+                if let headStart = html.range(of: "<head", options: .caseInsensitive),
+                   let headEnd = html[headStart.lowerBound...].firstIndex(of: ">") {
+                    html.insert(contentsOf: secureHead, at: html.index(after: headEnd))
+                    return html
                 }
-                return html
+                if let htmlStart = html.range(of: "<html", options: .caseInsensitive),
+                   let htmlEnd = html[htmlStart.lowerBound...].firstIndex(of: ">") {
+                    html.insert(contentsOf: "<head>\(secureHead)</head>", at: html.index(after: htmlEnd))
+                    return html
+                }
+                return "<!doctype html><html><head>\(secureHead)</head><body>\(html)</body></html>"
             }
             let encoded = Data(source.utf8).base64EncodedString()
             return """

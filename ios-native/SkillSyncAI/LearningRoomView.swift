@@ -183,6 +183,7 @@ private struct RoleSwapTimerCard: View {
 
 private struct LearningPlanView: View {
     let room: LearningRoom
+    @Environment(\.horizontalSizeClass) private var horizontalSizeClass
 
     var body: some View {
         ScrollView {
@@ -195,9 +196,18 @@ private struct LearningPlanView: View {
                     }
                 }
                 if let paths = room.curriculum.learningPaths {
-                    HStack(alignment: .top, spacing: 12) {
-                        PersonalPathCard(title: "Learner A", path: paths.userA)
-                        PersonalPathCard(title: "Learner B", path: paths.userB)
+                    Group {
+                        if horizontalSizeClass == .regular {
+                            HStack(alignment: .top, spacing: 12) {
+                                PersonalPathCard(title: "Learner A", path: paths.userA)
+                                PersonalPathCard(title: "Learner B", path: paths.userB)
+                            }
+                        } else {
+                            VStack(spacing: 12) {
+                                PersonalPathCard(title: "Learner A", path: paths.userA)
+                                PersonalPathCard(title: "Learner B", path: paths.userB)
+                            }
+                        }
                     }
                 } else {
                     ForEach(Array(room.curriculum.stages.enumerated()), id: \.offset) { index, stage in

@@ -200,6 +200,7 @@ struct ChatPanel: View {
 
     @MainActor private func toggleRecording() async {
         if isRecording {
+            let recordedDuration = Int(recorder?.currentTime.rounded() ?? 0)
             recorder?.stop()
             isRecording = false
             guard let recordingURL,
@@ -216,14 +217,14 @@ struct ChatPanel: View {
                     body: MediaUploadRequest(fileName: fileName, size: data.count, contentType: "audio/mp4")
                 )
                 try await SkillSyncAPI.shared.upload(to: upload.uploadUrl, data: data, contentType: "audio/mp4")
-                await send(content: "", mediaObjectPath: upload.mediaObjectPath, mediaName: fileName, duration: 60)
+                await send(content: "", mediaObjectPath: upload.mediaObjectPath, mediaName: fileName, duration: recordedDuration)
                 try? FileManager.default.removeItem(at: recordingURL)
             } catch { error = error.localizedDescription }
             return
         }
 
         let granted = await withCheckedContinuation { continuation in
-            AVAudioSession.sharedInstance().requestRecordPermission { continuation.resume(returning: $0) }
+            AVAudioApplication.requestRecordPermission { continuation.resume(returning: $0) }
         }
         guard granted else {
             error = "Allow microphone access in Settings to record a voice note."

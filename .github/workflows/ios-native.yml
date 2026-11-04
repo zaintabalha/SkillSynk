@@ -1,0 +1,58 @@
+name: Native iOS build
+
+on:
+  push:
+    paths:
+      - "ios-native/**"
+      - ".github/workflows/ios-native.yml"
+  pull_request:
+    paths:
+      - "ios-native/**"
+      - ".github/workflows/ios-native.yml"
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: ios-native-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  build:
+    name: Analyze and build for iOS Simulator
+    runs-on: macos-latest
+    timeout-minutes: 30
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@v4
+
+      - name: Select Xcode 26
+        uses: maxim-lobanov/setup-xcode@v1
+        with:
+          xcode-version: "26.0"
+
+      - name: Show toolchain
+        run: xcodebuild -version
+
+      - name: Resolve Swift packages
+        run: xcodebuild -resolvePackageDependencies -project ios-native/SkillSyncAI.xcodeproj -scheme SkillSyncAI
+
+      - name: Run Xcode static analyzer
+        run: >-
+          xcodebuild analyze
+          -project ios-native/SkillSyncAI.xcodeproj
+          -scheme SkillSyncAI
+          -configuration Debug
+          -destination 'generic/platform=iOS Simulator'
+          CODE_SIGNING_ALLOWED=NO
+
+      - name: Build iOS Simulator app
+        run: >-
+          xcodebuild build
+          -project ios-native/SkillSyncAI.xcodeproj
+          -scheme SkillSyncAI
+          -configuration Debug
+          -destination 'generic/platform=iOS Simulator'
+          -derivedDataPath build/ios-native
+          CODE_SIGNING_ALLOWED=NO

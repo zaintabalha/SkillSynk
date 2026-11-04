@@ -206,6 +206,7 @@
 
 /* Begin XCConfigurationList section */
 		A70000000000000000000001 /* Build configuration list for PBXProject */ = {isa = XCConfigurationList; buildConfigurations = (A70000000000000000000005 /* Project Debug */, A70000000000000000000006 /* Project Release */, ); defaultConfigurationIsVisible = 0; defaultConfigurationName = Release; };
+		A70000000000000000000002 /* Build configuration list for PBXNativeTarget */ = {isa = XCConfigurationList; buildConfigurations = (A70000000000000000000003 /* Target Debug */, A70000000000000000000004 /* Target Release */, ); defaultConfigurationIsVisible = 0; defaultConfigurationName = Release; };
 		A70000000000000000000005 /* Project Debug */ = {isa = XCBuildConfiguration; buildSettings = {CLANG_ENABLE_MODULES = YES; IPHONEOS_DEPLOYMENT_TARGET = 17.0; SDKROOT = iphoneos; SWIFT_VERSION = 6.0; }; name = Debug; };
 		A70000000000000000000006 /* Project Release */ = {isa = XCBuildConfiguration; buildSettings = {CLANG_ENABLE_MODULES = YES; IPHONEOS_DEPLOYMENT_TARGET = 17.0; SDKROOT = iphoneos; SWIFT_VERSION = 6.0; }; name = Release; };
 /* End XCConfigurationList section */
