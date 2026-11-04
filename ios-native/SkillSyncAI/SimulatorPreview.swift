@@ -141,7 +141,7 @@ struct SimulatorWorkspace: View {
             code = solution.code
             logs = []
             error = nil
-        } catch { error = error.localizedDescription }
+        } catch let caughtError { error = caughtError.localizedDescription }
     }
 }
 

@@ -114,7 +114,7 @@ struct LearningRoomView: View {
         do {
             room = try await SkillSyncAPI.shared.get("skillsync/rooms/\(roomId)")
             error = nil
-        } catch { error = error.localizedDescription }
+        } catch let caughtError { error = caughtError.localizedDescription }
         loading = false
     }
 }

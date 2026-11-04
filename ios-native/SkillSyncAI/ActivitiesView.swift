@@ -124,14 +124,14 @@ struct ActivitiesView: View {
             prompt = ""
             selectedActivityId = activity.id
             error = nil
-        } catch { error = error.localizedDescription }
+        } catch let caughtError { error = caughtError.localizedDescription }
     }
 
     @MainActor private func refreshRoom() async {
         do {
             room = try await SkillSyncAPI.shared.get("skillsync/rooms/\(room.roomId)")
             error = nil
-        } catch { error = error.localizedDescription }
+        } catch let caughtError { error = caughtError.localizedDescription }
     }
 
     private func iconFor(_ kind: String) -> String {
@@ -256,6 +256,6 @@ private struct ActivityPracticeView: View {
             submittedAttempt = response
             error = nil
             await onSubmitted()
-        } catch { error = error.localizedDescription }
+        } catch let caughtError { error = caughtError.localizedDescription }
     }
 }

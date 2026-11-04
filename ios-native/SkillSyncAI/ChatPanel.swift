@@ -169,7 +169,7 @@ struct ChatPanel: View {
             draft = ""
             replyTo = nil
             error = nil
-        } catch { error = error.localizedDescription }
+        } catch let caughtError { error = caughtError.localizedDescription }
     }
 
     @MainActor private func sendPhoto(_ item: PhotosPickerItem) async {
@@ -194,7 +194,7 @@ struct ChatPanel: View {
             )
             try await SkillSyncAPI.shared.upload(to: upload.uploadUrl, data: data, contentType: contentType)
             await send(content: "", mediaObjectPath: upload.mediaObjectPath, mediaName: filename)
-        } catch { error = error.localizedDescription }
+        } catch let caughtError { error = caughtError.localizedDescription }
         photoItem = nil
     }
 
@@ -219,7 +219,7 @@ struct ChatPanel: View {
                 try await SkillSyncAPI.shared.upload(to: upload.uploadUrl, data: data, contentType: "audio/mp4")
                 await send(content: "", mediaObjectPath: upload.mediaObjectPath, mediaName: fileName, duration: recordedDuration)
                 try? FileManager.default.removeItem(at: recordingURL)
-            } catch { error = error.localizedDescription }
+            } catch let caughtError { error = caughtError.localizedDescription }
             return
         }
 
@@ -246,7 +246,7 @@ struct ChatPanel: View {
             recordingURL = url
             isRecording = true
             error = nil
-        } catch { error = error.localizedDescription }
+        } catch let caughtError { error = caughtError.localizedDescription }
     }
 }
 
@@ -369,7 +369,7 @@ private struct MessageAttachment: View {
             let data = try await SkillSyncAPI.shared.authenticatedData(path: path)
             guard let decoded = UIImage(data: data) else { throw SkillSyncAPIError.invalidResponse }
             image = decoded
-        } catch { error = error.localizedDescription }
+        } catch let caughtError { error = caughtError.localizedDescription }
     }
 
     @MainActor private func playAudio() async {
@@ -382,7 +382,7 @@ private struct MessageAttachment: View {
             let player = try AVAudioPlayer(data: data)
             audioPlayer = player
             player.play()
-        } catch { error = error.localizedDescription }
+        } catch let caughtError { error = caughtError.localizedDescription }
     }
 
     @MainActor private func transcribe() async {
@@ -396,6 +396,6 @@ private struct MessageAttachment: View {
             )
             transcript = response.transcript
             error = nil
-        } catch { error = error.localizedDescription }
+        } catch let caughtError { error = caughtError.localizedDescription }
     }
 }

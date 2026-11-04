@@ -4,4 +4,4 @@
 - [Jitsi audio boundary](jitsi-audio-boundary.md) — browser capture of the local mic cannot reliably transcribe remote participants inside the cross-origin Jitsi frame.
 - [Provider limiter tests](provider-limiter-tests.md) — exercise rate-limit behavior with an isolated limiter, not the shared provider limiter used by live requests.
 - [Room media type boundaries](room-media-types.md) — message media categories (`image`/`audio`) and storage MIME values (`image/png`, etc.) need separate validation.
-- [Native iOS companion](native-ios.md) — keep SwiftUI sources isolated from the web artifacts; use Clerk REST auth and direct APNs for native push.
+- [Native iOS companion](native-ios.md) — keep SwiftUI isolated; use Clerk/APNs and match the Xcode simulator runtime, active architecture, and Swift 6 actor annotations.

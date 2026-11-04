@@ -83,7 +83,7 @@ struct ProfileView: View {
                 bio = profile.bio
             }
             error = nil
-        } catch { error = error.localizedDescription }
+        } catch let caughtError { error = caughtError.localizedDescription }
         loading = false
     }
 
@@ -112,7 +112,7 @@ struct ProfileView: View {
             profile = updated
             saved = true
             error = nil
-        } catch { error = error.localizedDescription }
+        } catch let caughtError { error = caughtError.localizedDescription }
     }
 
     @MainActor private func signOut() async {
@@ -120,7 +120,7 @@ struct ProfileView: View {
         _ = await NotificationManager.shared.removeCurrentDevice()
         do {
             try await clerk.auth.signOut(sessionId: clerk.session?.id)
-        } catch { error = error.localizedDescription }
+        } catch let caughtError { error = caughtError.localizedDescription }
     }
 
     private func formField(_ title: String, text: Binding<String>, prompt: String) -> some View {

@@ -78,7 +78,7 @@ struct DashboardView: View {
         do {
             dashboard = try await SkillSyncAPI.shared.get("skillsync/dashboard")
             error = nil
-        } catch { error = error.localizedDescription }
+        } catch let caughtError { error = caughtError.localizedDescription }
         loading = false
     }
 }

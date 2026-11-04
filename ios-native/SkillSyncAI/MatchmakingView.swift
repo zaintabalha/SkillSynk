@@ -66,7 +66,7 @@ struct MatchmakingView: View {
             let result: RecommendationResponse = try await SkillSyncAPI.shared.get("skillsync/matches")
             recommendations = result.recommendations
             error = nil
-        } catch { error = error.localizedDescription }
+        } catch let caughtError { error = caughtError.localizedDescription }
         loading = false
     }
 
@@ -82,7 +82,7 @@ struct MatchmakingView: View {
             recommendations.removeAll { $0.id == candidate.id }
             notice = "You’re connected with \(candidate.displayName). Your learning room is ready."
             openRoom(room)
-        } catch { error = error.localizedDescription }
+        } catch let caughtError { error = caughtError.localizedDescription }
     }
 }
 
