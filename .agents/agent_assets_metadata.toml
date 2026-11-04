@@ -28,3 +28,17 @@ mtime_ms = 1793666922381
 storage_uri = "gcs://replit-rams-assets-worf/rams/assets/repl:420483f3-fa7b-4381-b080-3d6cd6b2b854/fe6bc7cb-b298-46e3-a297-36dfe1a463b0/1ecfa3dc-f2f3-487f-a255-63701c1cd581"
 storage_version_token = "1793666950259424"
 content_type = "application/vnd.openxmlformats-officedocument.presentationml.presentation"
+
+[[outputs]]
+id = "gCeM0-icpOpQwy73EkyKc"
+uri = "file://generated-artifacts/skillsync-ai-android/SkillSyncAI-Android-debug.apk"
+type = "unspecified"
+title = "SkillSync AI Android APK"
+description = "Installable debug-signed Android WebView APK. It opens the live SkillSync AI site and requests camera/microphone permission for Jitsi when needed."
+logical_id = "1c51aec9-231f-4b23-9514-8a8adc187e90"
+content_hash = "sha256:a1d9934a365b4ab109830ea1ed61acbe8ff29a0ec21fbe2bf014038a966110da"
+size = 13967
+mtime_ms = 1793752277317
+storage_uri = "gcs://replit-rams-assets-worf/rams/assets/repl:420483f3-fa7b-4381-b080-3d6cd6b2b854/1c51aec9-231f-4b23-9514-8a8adc187e90/9691a863-2fb2-4e63-830a-680796ad1a63"
+storage_version_token = "1793752284517405"
+content_type = "application/octet-stream"

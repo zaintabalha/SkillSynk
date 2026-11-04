@@ -3,3 +3,6 @@
 
 # No need to store the pnpm store twice.
 .local
+generated-artifacts/
+artifacts/skillsync-ai/android-wrapper/.gradle/
+artifacts/skillsync-ai/android-wrapper/**/build/

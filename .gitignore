@@ -5,6 +5,9 @@ dist
 tmp
 out-tsc
 *.tsbuildinfo
+generated-artifacts/
+**/.gradle/
+**/build/
 .expo
 .expo-shared
 .next

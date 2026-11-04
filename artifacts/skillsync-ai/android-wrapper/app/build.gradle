@@ -1,0 +1,16 @@
+plugins {
+    id "com.android.application"
+}
+
+android {
+    namespace "ai.skillsync.app"
+    compileSdk 35
+
+    defaultConfig {
+        applicationId "ai.skillsync.app"
+        minSdk 24
+        targetSdk 34
+        versionCode 1
+        versionName "1.0"
+    }
+}
