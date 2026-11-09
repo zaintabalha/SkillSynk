@@ -5,3 +5,4 @@
 - [Provider limiter tests](provider-limiter-tests.md) — exercise rate-limit behavior with an isolated limiter, not the shared provider limiter used by live requests.
 - [Room media type boundaries](room-media-types.md) — message media categories (`image`/`audio`) and storage MIME values (`image/png`, etc.) need separate validation.
 - [Native iOS companion](native-ios.md) — keep SwiftUI isolated; use Clerk/APNs and match the Xcode simulator runtime, active architecture, and Swift 6 actor annotations.
+- [Vercel deployment boundary](vercel-deployment.md) — Vercel serves the SkillSync UI statically and routes `/api/*` to a serverless Express handler; don't assume persistent workers.

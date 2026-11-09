@@ -1,31 +1,11 @@
 {
-  "version": 2,
   "installCommand": "pnpm install --frozen-lockfile",
-  "builds": [
+  "buildCommand": "pnpm run build:vercel",
+  "outputDirectory": "artifacts/skillsync-ai/dist/public",
+  "rewrites": [
     {
-      "src": "artifacts/api-server/src/app.ts",
-      "use": "@vercel/node"
-    },
-    {
-      "src": "artifacts/skillsync-ai/package.json",
-      "use": "@vercel/static-build",
-      "config": {
-        "buildCommand": "PORT=3000 BASE_PATH=/ pnpm --filter @workspace/skillsync-ai run build",
-        "distDir": "artifacts/skillsync-ai/dist/public"
-      }
-    }
-  ],
-  "routes": [
-    {
-      "src": "^/api(?:/.*)?$",
-      "dest": "/artifacts/api-server/src/app.ts"
-    },
-    {
-      "handle": "filesystem"
-    },
-    {
-      "src": "/(.*)",
-      "dest": "/index.html"
+      "source": "/:path*",
+      "destination": "/index.html"
     }
   ]
 }
